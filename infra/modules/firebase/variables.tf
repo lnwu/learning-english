@@ -41,3 +41,9 @@ variable "google_oauth_client_secret" {
   type        = string
   sensitive   = true
 }
+
+variable "preview_authorized_domains" {
+  description = "Preview domains to be added into Firebase authorized domains"
+  type        = list(string)
+  default     = []
+}

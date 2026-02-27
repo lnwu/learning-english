@@ -1,0 +1,159 @@
+name: Infra Preview Domains
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - closed
+  deployment_status:
+
+jobs:
+  sync-preview-domains:
+    if: |
+      (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) ||
+      (github.event_name == 'deployment_status' && github.event.deployment_status.environment == 'Preview')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: read
+      pull-requests: read
+      id-token: write
+    defaults:
+      run:
+        working-directory: infra
+    env:
+      TF_IN_AUTOMATION: true
+      TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
+      TF_VAR_google_oauth_client_id: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
+      TF_VAR_google_oauth_client_secret: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
+      GITHUB_TOKEN: ${{ github.token }}
+    concurrency:
+      group: infra-preview-domains
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
+
+      - name: Collect preview domains from open PR deployments
+        id: collect
+        env:
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          owner_repo="$REPO"
+          open_prs=$(curl -fsSL \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${owner_repo}/pulls?state=open&per_page=100")
+
+          mapfile -t pr_numbers < <(echo "$open_prs" | jq -r '.[].number')
+
+          domain_lines=""
+          for pr_number in "${pr_numbers[@]:-}"; do
+            if [[ -z "$pr_number" ]]; then
+              continue
+            fi
+
+            pr=$(curl -fsSL \
+              -H "Authorization: Bearer $GITHUB_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${owner_repo}/pulls/${pr_number}")
+
+            head_sha=$(echo "$pr" | jq -r '.head.sha // empty')
+            if [[ -z "$head_sha" ]]; then
+              continue
+            fi
+
+            deployments=$(curl -fsSL \
+              -H "Authorization: Bearer $GITHUB_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${owner_repo}/deployments?sha=${head_sha}&per_page=100")
+
+            mapfile -t deployment_ids < <(echo "$deployments" | jq -r '.[].id')
+            for deployment_id in "${deployment_ids[@]:-}"; do
+              if [[ -z "$deployment_id" ]]; then
+                continue
+              fi
+
+              statuses=$(curl -fsSL \
+                -H "Authorization: Bearer $GITHUB_TOKEN" \
+                -H "Accept: application/vnd.github+json" \
+                "https://api.github.com/repos/${owner_repo}/deployments/${deployment_id}/statuses?per_page=100")
+
+              preview_urls=$(echo "$statuses" | jq -r '
+                .[]
+                | select((.state == "success") and ((.environment // "") | ascii_downcase == "preview"))
+                | (.environment_url // .target_url // empty)
+              ')
+
+              if [[ -n "$preview_urls" ]]; then
+                domain_lines+="${preview_urls}"$'\n'
+              fi
+            done
+          done
+
+          mapfile -t unique_domains < <(
+            echo "$domain_lines" \
+              | sed '/^$/d' \
+              | sed -E 's#^https?://##; s#/.*$##; s#^www\.##' \
+              | tr '[:upper:]' '[:lower:]' \
+              | grep -E '\.vercel\.app$' \
+              | sort -u || true
+          )
+
+          domains_json=$(printf '%s\n' "${unique_domains[@]:-}" | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          open_pr_count=${#pr_numbers[@]}
+          domain_count=${#unique_domains[@]}
+
+          echo "open_pr_count=${open_pr_count}" >> "$GITHUB_OUTPUT"
+          echo "domain_count=${domain_count}" >> "$GITHUB_OUTPUT"
+          echo "domains_json=${domains_json}" >> "$GITHUB_OUTPUT"
+
+          if [[ "$open_pr_count" -gt 0 && "$domain_count" -eq 0 ]]; then
+            echo "should_skip=true" >> "$GITHUB_OUTPUT"
+            echo "No preview domain found from deployment_status for open PRs. Skip apply." >&2
+          else
+            echo "should_skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Write preview domains tfvars
+        if: steps.collect.outputs.should_skip != 'true'
+        run: |
+          set -euo pipefail
+          printf '{"preview_authorized_domains": %s}\n' '${{ steps.collect.outputs.domains_json }}' > preview-domains.auto.tfvars.json
+
+      - name: Terraform Init
+        if: steps.collect.outputs.should_skip != 'true'
+        run: terraform init -input=false
+
+      - name: Terraform Format Check
+        if: steps.collect.outputs.should_skip != 'true'
+        run: terraform fmt -check -recursive
+
+      - name: Terraform Validate
+        if: steps.collect.outputs.should_skip != 'true'
+        run: terraform validate
+
+      - name: Terraform Apply
+        if: steps.collect.outputs.should_skip != 'true'
+        run: terraform apply -auto-approve -input=false
+
+      - name: Skip summary
+        if: steps.collect.outputs.should_skip == 'true'
+        run: |
+          echo "Skip apply: open PRs=${{ steps.collect.outputs.open_pr_count }}, preview domains=${{ steps.collect.outputs.domain_count }}"
