@@ -4,20 +4,20 @@ resource "google_project" "this" {
 }
 
 resource "google_project_service" "firebase" {
-  project            = google_project.this.project_id
-  service            = "firebase.googleapis.com"
+  project = google_project.this.project_id
+  service = "firebase.googleapis.com"
 }
 
 resource "google_project_service" "firestore" {
-  project            = google_project.this.project_id
-  service            = "firestore.googleapis.com"
-  depends_on         = [google_project_service.firebase]
+  project    = google_project.this.project_id
+  service    = "firestore.googleapis.com"
+  depends_on = [google_project_service.firebase]
 }
 
 resource "google_project_service" "firebaserules" {
-  project            = google_project.this.project_id
-  service            = "firebaserules.googleapis.com"
-  depends_on         = [google_project_service.firebase]
+  project    = google_project.this.project_id
+  service    = "firebaserules.googleapis.com"
+  depends_on = [google_project_service.firebase]
 }
 
 resource "google_firebase_project" "this" {
