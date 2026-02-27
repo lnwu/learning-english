@@ -1,16 +1,15 @@
-name: Infra Deploy
+name: Infra Plan
 
 on:
-  push:
+  pull_request:
     branches:
       - main
     paths:
       - infra/**
-      - .github/workflows/infra-deploy.yml
-  workflow_dispatch:
+      - .github/workflows/infra-plan.yml
 
 jobs:
-  apply:
+  plan:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -46,5 +45,5 @@ jobs:
       - name: Terraform Validate
         run: terraform validate
 
-      - name: Terraform Apply
-        run: terraform apply -auto-approve -input=false
+      - name: Terraform Plan
+        run: terraform plan -input=false
