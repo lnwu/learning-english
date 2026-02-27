@@ -1,12 +1,14 @@
 import { Analytics } from "@vercel/analytics/next";
 import "./index.css";
 import { Inter, Noto_Sans_SC } from "next/font/google";
+import { headers } from "next/headers";
 
 import type { Metadata } from "next";
 import { FC, ReactNode } from "react";
 import { AuthProvider } from "@/components/auth";
 import { AppShell } from "@/components/auth/AppShell";
 import { Toaster } from "@/components/ui";
+import { detectLocaleFromAcceptLanguage, localeToHtmlLang } from "@/lib/i18n";
 
 export const metadata: Metadata = {
   title: "English Learning",
@@ -20,9 +22,12 @@ const notoSansSC = Noto_Sans_SC({
   display: "swap",
 });
 
-const RootLayout: FC<{ children: ReactNode }> = ({ children }) => {
+const RootLayout: FC<{ children: ReactNode }> = async ({ children }) => {
+  const acceptLanguage = (await headers()).get("accept-language");
+  const locale = detectLocaleFromAcceptLanguage(acceptLanguage);
+
   return (
-    <html lang="en" className={`${inter.variable} ${notoSansSC.variable}`}>
+    <html lang={localeToHtmlLang(locale)} className={`${inter.variable} ${notoSansSC.variable}`}>
       <body className="flex min-h-screen flex-col antialiased">
         <AuthProvider>
           <AppShell>
