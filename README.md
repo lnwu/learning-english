@@ -6,5 +6,5 @@
 
 ```bash
 bun install
-bun vercel login
+bun dev
 ```
