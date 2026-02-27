@@ -17,10 +17,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { makeAutoObservable } from "mobx";
 import { SyncQueueManager } from "@/lib/syncQueue";
 import {
-  migrateLocalDataToFirestore,
-  hasPendingMigration,
-} from "@/lib/migrateLocalData";
-import {
   calculateMasteryScore,
   calculatePriority,
   getMasteryLevelIndex,
@@ -552,24 +548,6 @@ export const useFirestoreWords = () => {
     const doSync = () => syncToFirestore();
 
     setPendingCount(SyncQueueManager.getUniqueWordCount());
-
-    if (hasPendingMigration() && words.wordData.size > 0) {
-      console.log("Found pending migration data, migrating...");
-      const wordIds = new Map<string, string>();
-      words.wordData.forEach((data, word) => {
-        wordIds.set(word, data.id);
-      });
-      migrateLocalDataToFirestore(user.uid, wordIds).then(
-        (result) => {
-          console.log("Migration result:", result);
-          if (result.success) {
-            console.log(`Migrated ${result.migratedCount} items`);
-          } else {
-            console.error("Migration errors:", result.errors);
-          }
-        }
-      );
-    }
 
     const SYNC_INTERVAL = 30 * 1000;
 

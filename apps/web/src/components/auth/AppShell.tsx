@@ -12,8 +12,12 @@ export const AppShell: FC<{ children: ReactNode }> = ({ children }) => {
   const pathname = usePathname();
 
   useEffect(() => {
-    if (!loading && !user && pathname !== "/login") {
+    if (loading) return;
+    if (!user && pathname !== "/login") {
       router.replace("/login");
+    }
+    if (user && pathname === "/login") {
+      router.replace("/home");
     }
   }, [user, loading, pathname, router]);
 
