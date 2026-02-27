@@ -1,9 +1,6 @@
 name: Infra Preview Domains
 
 on:
-  push:
-    branches:
-      - main
   pull_request:
     branches:
       - main
@@ -14,7 +11,6 @@ on:
 jobs:
   sync-preview-domains:
     if: |
-      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
       (github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.head.repo.full_name == github.repository) ||
       (github.event_name == 'deployment_status' && github.event.deployment_status.state == 'success' && (github.event.deployment.environment == 'Preview' || github.event.deployment.environment == 'preview' || github.event.deployment_status.environment == 'Preview' || github.event.deployment_status.environment == 'preview'))
     runs-on: ubuntu-latest
