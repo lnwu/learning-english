@@ -28,6 +28,18 @@ locals {
   web_app_name = "Learning English Web"
 }
 
+variable "google_oauth_client_id" {
+  description = "Google OAuth 2.0 Client ID"
+  type        = string
+  sensitive   = true
+}
+
+variable "google_oauth_client_secret" {
+  description = "Google OAuth 2.0 Client Secret"
+  type        = string
+  sensitive   = true
+}
+
 provider "google" {
   project               = local.project_id
   region                = local.region
@@ -49,4 +61,7 @@ module "firebase" {
   project_id   = local.project_id
   project_name = local.project_name
   web_app_name = local.web_app_name
+
+  google_oauth_client_id     = var.google_oauth_client_id
+  google_oauth_client_secret = var.google_oauth_client_secret
 }

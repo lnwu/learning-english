@@ -28,6 +28,8 @@ jobs:
     env:
       TF_IN_AUTOMATION: true
       TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
+      TF_VAR_google_oauth_client_id: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
+      TF_VAR_google_oauth_client_secret: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
 
     steps:
       - name: Checkout
@@ -66,6 +68,8 @@ jobs:
     env:
       TF_IN_AUTOMATION: true
       TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
+      TF_VAR_google_oauth_client_id: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
+      TF_VAR_google_oauth_client_secret: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
 
     steps:
       - name: Checkout

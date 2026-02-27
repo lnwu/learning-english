@@ -12,8 +12,8 @@ import {
   getDocs,
   updateDoc,
 } from "firebase/firestore";
-import { db, ensureFirebaseAuth } from "@/lib/firebase";
-import { useSession } from "next-auth/react";
+import { db } from "@/lib/firebase";
+import { useAuth } from "@/hooks/useAuth";
 import { makeAutoObservable } from "mobx";
 import { SyncQueueManager } from "@/lib/syncQueue";
 import {
@@ -270,7 +270,7 @@ class Words {
 const words = new Words();
 
 export const useFirestoreWords = () => {
-  const { data: session } = useSession();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
@@ -279,15 +279,13 @@ export const useFirestoreWords = () => {
 
   useEffect(() => {
     const setupFirestore = async () => {
-      if (!session?.user?.email) {
+      if (!user) {
         setLoading(false);
         return;
       }
 
       try {
-        await ensureFirebaseAuth(session.user.email);
-
-        const userId = session.user.email;
+        const userId = user.uid;
         const wordsCollection = collection(db, "users", userId, "words");
 
         const unsubscribe = onSnapshot(
@@ -357,17 +355,15 @@ export const useFirestoreWords = () => {
     };
 
     setupFirestore();
-  }, [session?.user?.email]);
+  }, [user?.uid]);
 
   const addWord = async (word: string, translation: string) => {
-    if (!session?.user?.email) {
+    if (!user) {
       throw new Error("User not authenticated");
     }
 
     try {
-      await ensureFirebaseAuth(session.user.email);
-
-      const userId = session.user.email;
+      const userId = user.uid;
       const wordsCollection = collection(db, "users", userId, "words");
 
       await addDoc(wordsCollection, {
@@ -386,11 +382,11 @@ export const useFirestoreWords = () => {
   };
 
   const deleteWord = async (word: string) => {
-    if (!session?.user?.email) {
+    if (!user) {
       throw new Error("User not authenticated");
     }
 
-    const userId = session.user.email;
+    const userId = user.uid;
     const wordsCollection = collection(db, "users", userId, "words");
 
     try {
@@ -408,7 +404,7 @@ export const useFirestoreWords = () => {
   };
 
   const updateTranslation = async (word: string, translation: string) => {
-    if (!session?.user?.email) {
+    if (!user) {
       throw new Error("User not authenticated");
     }
 
@@ -418,9 +414,7 @@ export const useFirestoreWords = () => {
     }
 
     try {
-      await ensureFirebaseAuth(session.user.email);
-
-      const userId = session.user.email;
+      const userId = user.uid;
       const wordDocRef = doc(db, "users", userId, "words", wordId);
       await updateDoc(wordDocRef, {
         translation,
@@ -434,11 +428,11 @@ export const useFirestoreWords = () => {
   };
 
   const removeAllWords = async () => {
-    if (!session?.user?.email) {
+    if (!user) {
       throw new Error("User not authenticated");
     }
 
-    const userId = session.user.email;
+    const userId = user.uid;
     const wordsCollection = collection(db, "users", userId, "words");
 
     try {
@@ -455,7 +449,6 @@ export const useFirestoreWords = () => {
     }
   };
 
-  // Record a correct attempt with input time
   const recordCorrectAttempt = (word: string, inputTimeSeconds: number) => {
     words.recordCorrectAttempt(word, inputTimeSeconds);
 
@@ -476,7 +469,6 @@ export const useFirestoreWords = () => {
     }
   };
 
-  // Record an incorrect attempt (hint revealed)
   const recordIncorrectAttempt = (word: string) => {
     words.recordIncorrectAttempt(word);
 
@@ -497,9 +489,8 @@ export const useFirestoreWords = () => {
     }
   };
 
-  // Batch sync to Firestore
   const syncToFirestore = async () => {
-    if (!session?.user?.email) {
+    if (!user) {
       console.warn("User not authenticated, skipping sync");
       return;
     }
@@ -513,21 +504,17 @@ export const useFirestoreWords = () => {
     console.log(`Syncing ${queue.length} items to Firestore...`);
 
     try {
-      await ensureFirebaseAuth(session.user.email);
-      const userId = session.user.email;
+      const userId = user.uid;
 
-      // Group by wordId to batch updates
       const updates: Map<
         string,
         { correctCount: number; totalAttempts: number; inputTimes: number[] }
       > = new Map();
 
       queue.forEach((item) => {
-        // Use the latest data for each word
         updates.set(item.wordId, item.data);
       });
 
-      // Batch update to Firestore
       const updatePromises = Array.from(updates.entries()).map(
         async ([wordId, data]) => {
           const wordDocRef = doc(db, "users", userId, "words", wordId);
@@ -559,23 +546,20 @@ export const useFirestoreWords = () => {
     }
   };
 
-  // Periodic sync
   useEffect(() => {
-    if (!session?.user?.email) return;
+    if (!user) return;
 
     const doSync = () => syncToFirestore();
 
-    // Initialize: show pending count
     setPendingCount(SyncQueueManager.getUniqueWordCount());
 
-    // Check for pending migration data
     if (hasPendingMigration() && words.wordData.size > 0) {
       console.log("Found pending migration data, migrating...");
       const wordIds = new Map<string, string>();
       words.wordData.forEach((data, word) => {
         wordIds.set(word, data.id);
       });
-      migrateLocalDataToFirestore(session.user.email, wordIds).then(
+      migrateLocalDataToFirestore(user.uid, wordIds).then(
         (result) => {
           console.log("Migration result:", result);
           if (result.success) {
@@ -587,12 +571,10 @@ export const useFirestoreWords = () => {
       );
     }
 
-    // Set timer: sync every 30 seconds
     const SYNC_INTERVAL = 30 * 1000;
 
     syncTimerRef.current = setInterval(doSync, SYNC_INTERVAL);
 
-    // Sync immediately on page load
     doSync();
 
     return () => {
@@ -601,12 +583,11 @@ export const useFirestoreWords = () => {
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.user?.email]);
+  }, [user?.uid]);
 
-  // Sync on visibility change
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible" && session?.user?.email) {
+      if (document.visibilityState === "visible" && user) {
         syncToFirestore();
       }
     };
@@ -615,12 +596,11 @@ export const useFirestoreWords = () => {
     return () =>
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.user?.email]);
+  }, [user?.uid]);
 
-  // Sync on network restore
   useEffect(() => {
     const handleOnline = () => {
-      if (session?.user?.email) {
+      if (user) {
         console.log("Network restored, syncing...");
         syncToFirestore();
       }
@@ -629,9 +609,8 @@ export const useFirestoreWords = () => {
     window.addEventListener("online", handleOnline);
     return () => window.removeEventListener("online", handleOnline);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.user?.email]);
+  }, [user?.uid]);
 
-  // Sync before page unload
   useEffect(() => {
     const handleBeforeUnload = () => {
       if (SyncQueueManager.getQueueLength() > 0) {
@@ -644,17 +623,14 @@ export const useFirestoreWords = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Reset all practice records
   const resetPracticeRecords = async () => {
-    if (!session?.user?.email) {
+    if (!user) {
       throw new Error("User not authenticated");
     }
 
     try {
-      await ensureFirebaseAuth(session.user.email);
-      const userId = session.user.email;
+      const userId = user.uid;
 
-      // Reset local state
       words.wordData.forEach((data) => {
         data.correctCount = 0;
         data.totalAttempts = 0;
@@ -662,7 +638,6 @@ export const useFirestoreWords = () => {
         data.lastPracticedAt = null;
       });
 
-      // Update all words in Firestore
       const updatePromises = Array.from(words.wordData.entries()).map(
         async ([, data]) => {
           const wordDocRef = doc(db, "users", userId, "words", data.id);
@@ -677,7 +652,6 @@ export const useFirestoreWords = () => {
 
       await Promise.all(updatePromises);
 
-      // Clear sync queue
       SyncQueueManager.clearQueue();
       setPendingCount(0);
 

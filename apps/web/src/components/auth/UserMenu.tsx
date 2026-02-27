@@ -1,17 +1,14 @@
 "use client";
 
-import { signOut } from "next-auth/react";
+import { signOut } from "@/lib/firebase";
+import type { User } from "firebase/auth";
 import Image from "next/image";
 import Link from "next/link";
 import { useState, useRef, useEffect } from "react";
 import { useLocale } from "@/hooks";
 
 interface UserMenuProps {
-  user: {
-    name?: string | null;
-    email?: string | null;
-    image?: string | null;
-  };
+  user: User;
 }
 
 export const UserMenu = ({ user }: UserMenuProps) => {
@@ -22,11 +19,9 @@ export const UserMenu = ({ user }: UserMenuProps) => {
 
   const handleSignOut = async () => {
     try {
-      await signOut({ redirectTo: "/login" });
+      await signOut();
     } catch (error) {
       console.error("Sign out failed:", error);
-      // Fallback: redirect manually if signOut fails
-      window.location.href = "/login";
     }
   };
 
@@ -53,10 +48,10 @@ export const UserMenu = ({ user }: UserMenuProps) => {
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 p-1 transition-colors"
       >
-        {user.image && !imageError ? (
+        {user.photoURL && !imageError ? (
           <Image
-            src={user.image}
-            alt={user.name || t('common.user')}
+            src={user.photoURL}
+            alt={user.displayName || t('common.user')}
             width={40}
             height={40}
             className="rounded-full"
@@ -64,7 +59,7 @@ export const UserMenu = ({ user }: UserMenuProps) => {
           />
         ) : (
           <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-semibold">
-            {(user.name || user.email || "U").charAt(0).toUpperCase()}
+            {(user.displayName || user.email || "U").charAt(0).toUpperCase()}
           </div>
         )}
       </button>
@@ -73,7 +68,7 @@ export const UserMenu = ({ user }: UserMenuProps) => {
         <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-2 z-50">
           {/* User Info */}
           <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-            <p className="font-medium text-sm">{user.name || t('common.user')}</p>
+            <p className="font-medium text-sm">{user.displayName || t('common.user')}</p>
             <p className="text-gray-600 dark:text-gray-400 text-xs">{user.email || ""}</p>
           </div>
 

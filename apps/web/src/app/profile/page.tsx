@@ -1,15 +1,14 @@
 "use client";
 
 import { Button, ConfirmDialog, Input, MasteryBar } from "@/components/ui";
-import { useFirestoreWords, useLocale, toast } from "@/hooks";
+import { useFirestoreWords, useLocale, toast, useAuth } from "@/hooks";
 import { observer } from "mobx-react-lite";
 import Link from "next/link";
-import { useSession } from "next-auth/react";
 import { useState, useEffect } from "react";
 import { type Locale } from "@/lib/i18n";
 
 const Profile = observer(() => {
-  const { data: session } = useSession();
+  const { user } = useAuth();
   const { words, resetPracticeRecords, loading, error } = useFirestoreWords();
   const [isClient, setIsClient] = useState(false);
   const { locale, setLocale, t } = useLocale();
@@ -142,12 +141,12 @@ const Profile = observer(() => {
         <h1 className="text-3xl font-bold mb-6">{t('profile.title')}</h1>
 
         {/* User Info */}
-        {session?.user && (
+        {user && (
           <div className="mb-8 p-6 bg-white dark:bg-gray-800 rounded-lg shadow">
             <h2 className="text-xl font-semibold mb-4">{t('profile.accountInfo')}</h2>
             <div className="space-y-2">
-              <p><strong>{t('profile.email')}:</strong> {session.user.email}</p>
-              {session.user.name && <p><strong>{t('profile.name')}:</strong> {session.user.name}</p>}
+              <p><strong>{t('profile.email')}:</strong> {user.email}</p>
+              {user.displayName && <p><strong>{t('profile.name')}:</strong> {user.displayName}</p>}
             </div>
           </div>
         )}

@@ -1,20 +1,34 @@
 "use client";
 
-import { signIn } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui";
-import { useLocale } from "@/hooks";
+import { useLocale, useAuth } from "@/hooks";
+import { signInWithGoogle } from "@/lib/firebase";
+import { useEffect } from "react";
 
 const LoginPage = () => {
   const { t } = useLocale();
-  
+  const { user, loading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && user) {
+      router.replace("/home");
+    }
+  }, [user, loading, router]);
+
   const handleSignIn = async () => {
     try {
-      await signIn("google", { callbackUrl: "/home" });
+      await signInWithGoogle();
     } catch (error) {
       console.error("Sign in error:", error);
     }
   };
-  
+
+  if (loading || user) {
+    return null;
+  }
+
   return (
     <div className="flex min-h-screen flex-col items-center justify-center p-4">
       <div className="w-full max-w-md space-y-8">
