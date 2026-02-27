@@ -29,7 +29,7 @@ jobs:
       TF_VAR_google_oauth_client_secret: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
       GITHUB_TOKEN: ${{ github.token }}
     concurrency:
-      group: infra-preview-domains
+      group: infra-terraform-apply
       cancel-in-progress: false
 
     steps:
@@ -158,7 +158,7 @@ jobs:
 
       - name: Terraform Apply
         if: steps.collect.outputs.should_skip != 'true'
-        run: terraform apply -auto-approve -input=false
+        run: terraform apply -auto-approve -input=false -lock-timeout=20m
 
       - name: Skip summary
         if: steps.collect.outputs.should_skip == 'true'
