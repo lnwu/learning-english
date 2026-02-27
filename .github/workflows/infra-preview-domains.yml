@@ -5,17 +5,14 @@ on:
     branches:
       - main
     types:
-      - opened
-      - reopened
-      - synchronize
       - closed
   deployment_status:
 
 jobs:
   sync-preview-domains:
     if: |
-      (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) ||
-      (github.event_name == 'deployment_status' && github.event.deployment_status.environment == 'Preview')
+      (github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.head.repo.full_name == github.repository) ||
+      (github.event_name == 'deployment_status' && github.event.deployment_status.state == 'success' && (github.event.deployment.environment == 'Preview' || github.event.deployment.environment == 'preview' || github.event.deployment_status.environment == 'Preview' || github.event.deployment_status.environment == 'preview'))
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -84,6 +81,16 @@ jobs:
               -H "Accept: application/vnd.github+json" \
               "https://api.github.com/repos/${owner_repo}/deployments?sha=${head_sha}&per_page=100")
 
+            deployment_preview_urls=$(echo "$deployments" | jq -r '
+              .[]
+              | select((.environment // "") | ascii_downcase | contains("preview"))
+              | (.environment_url // .payload.web_url // .payload.url // empty)
+            ')
+
+            if [[ -n "$deployment_preview_urls" ]]; then
+              domain_lines+="${deployment_preview_urls}"$'\n'
+            fi
+
             mapfile -t deployment_ids < <(echo "$deployments" | jq -r '.[].id')
             for deployment_id in "${deployment_ids[@]:-}"; do
               if [[ -z "$deployment_id" ]]; then
@@ -97,7 +104,7 @@ jobs:
 
               preview_urls=$(echo "$statuses" | jq -r '
                 .[]
-                | select((.state == "success") and ((.environment // "") | ascii_downcase == "preview"))
+                | select((.state == "success") and (((.environment // "") | ascii_downcase | contains("preview")) or ((.description // "") | ascii_downcase | contains("preview"))))
                 | (.environment_url // .target_url // empty)
               ')
 
