@@ -6,8 +6,8 @@
     "dev": "vercel link --cwd apps/web && turbo dev"
   },
   "workspaces": [
-    "apps/*",
-    "infra/*"
+    "infra",
+    "apps/*"
   ],
   "dependencies": {
     "turbo": "^2.8.11"
