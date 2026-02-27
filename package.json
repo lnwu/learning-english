@@ -1,0 +1,15 @@
+{
+  "name": "learn-english",
+  "packageManager": "bun@1.3.10",
+  "private": true,
+  "scripts": {
+    "dev": "vercel dev --cwd=apps/web"
+  },
+  "workspaces": [
+    "apps/*",
+    "infra/*"
+  ],
+  "dependencies": {
+    "turbo": "^2.8.11"
+  }
+}

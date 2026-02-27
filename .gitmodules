@@ -1,6 +1,0 @@
-[submodule "learning-english-web"]
-	path = learning-english-web
-	url = git@github.com:lnwu/learning-english-web.git
-[submodule "learning-english-infra"]
-	path = learning-english-infra
-	url = git@github.com:lnwu/learning-english-infra.git
