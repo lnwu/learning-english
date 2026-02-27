@@ -5,14 +5,14 @@ on:
     branches:
       - main
     types:
+      - opened
+      - reopened
+      - synchronize
       - closed
-  deployment_status:
 
 jobs:
   sync-preview-domains:
-    if: |
-      (github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.head.repo.full_name == github.repository) ||
-      (github.event_name == 'deployment_status' && github.event.deployment_status.state == 'success' && (github.event.deployment.environment == 'Preview' || github.event.deployment.environment == 'preview' || github.event.deployment_status.environment == 'Preview' || github.event.deployment_status.environment == 'preview'))
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -49,8 +49,59 @@ jobs:
         id: collect
         env:
           REPO: ${{ github.repository }}
+          CURRENT_ACTION: ${{ github.event.action }}
+          CURRENT_PR_NUMBER: ${{ github.event.pull_request.number }}
+          CURRENT_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
+
+          if [[ "$CURRENT_ACTION" != "closed" ]]; then
+            attempt=1
+            max_attempts=36
+            while [[ "$attempt" -le "$max_attempts" ]]; do
+              deployments_for_current_pr=$(curl -fsSL \
+                -H "Authorization: Bearer $GITHUB_TOKEN" \
+                -H "Accept: application/vnd.github+json" \
+                "https://api.github.com/repos/${REPO}/deployments?sha=${CURRENT_HEAD_SHA}&per_page=100")
+
+              deployment_preview_count=$(echo "$deployments_for_current_pr" | jq -r '
+                [ .[]
+                  | select((.environment // "") | ascii_downcase | contains("preview"))
+                  | (.environment_url // .payload.web_url // .payload.url // empty)
+                  | select(length > 0)
+                ] | length
+              ')
+
+              status_preview_count=0
+              mapfile -t current_deployment_ids < <(echo "$deployments_for_current_pr" | jq -r '.[].id')
+              for deployment_id in "${current_deployment_ids[@]:-}"; do
+                [[ -z "$deployment_id" ]] && continue
+                statuses=$(curl -fsSL \
+                  -H "Authorization: Bearer $GITHUB_TOKEN" \
+                  -H "Accept: application/vnd.github+json" \
+                  "https://api.github.com/repos/${REPO}/deployments/${deployment_id}/statuses?per_page=100")
+                current_count=$(echo "$statuses" | jq -r '
+                  [ .[]
+                    | select((.state == "success") and (((.environment // "") | ascii_downcase | contains("preview")) or ((.description // "") | ascii_downcase | contains("preview"))))
+                    | (.environment_url // .target_url // empty)
+                    | select(length > 0)
+                  ] | length
+                ')
+                status_preview_count=$((status_preview_count + current_count))
+              done
+
+              if [[ "$deployment_preview_count" -gt 0 || "$status_preview_count" -gt 0 ]]; then
+                break
+              fi
+
+              if [[ "$attempt" -eq "$max_attempts" ]]; then
+                break
+              fi
+
+              sleep 10
+              attempt=$((attempt + 1))
+            done
+          fi
 
           owner_repo="$REPO"
           open_prs=$(curl -fsSL \
@@ -133,7 +184,7 @@ jobs:
 
           if [[ "$open_pr_count" -gt 0 && "$domain_count" -eq 0 ]]; then
             echo "should_skip=true" >> "$GITHUB_OUTPUT"
-            echo "No preview domain found from deployment_status for open PRs. Skip apply." >&2
+            echo "No preview domain found for open PRs. Skip apply." >&2
           else
             echo "should_skip=false" >> "$GITHUB_OUTPUT"
           fi
