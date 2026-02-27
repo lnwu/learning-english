@@ -1,4 +1,4 @@
-name: Infra Plan
+name: Plan
 
 on:
   pull_request:
