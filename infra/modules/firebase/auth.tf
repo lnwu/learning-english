@@ -30,6 +30,13 @@ resource "google_identity_platform_config" "this" {
     }
   }
 
+  authorized_domains = [
+    "localhost",
+    "${google_project.this.project_id}.firebaseapp.com",
+    "${google_project.this.project_id}.web.app",
+    "learning-english-web.vercel.app",
+  ]
+
   depends_on = [
     google_firebase_project.this,
     google_project_service.identitytoolkit,
