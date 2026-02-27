@@ -3,7 +3,7 @@
   "packageManager": "bun@1.3.10",
   "private": true,
   "scripts": {
-    "dev": "vercel dev --cwd=apps/web"
+    "dev": "vercel link --cwd apps/web && turbo dev"
   },
   "workspaces": [
     "apps/*",
