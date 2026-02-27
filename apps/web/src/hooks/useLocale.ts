@@ -1,7 +1,7 @@
 "use client";
 
-import { useSyncExternalStore, useCallback } from "react";
-import { getCurrentLocale, setLocale as setI18nLocale, t, type Locale } from "@/lib/i18n";
+import { useSyncExternalStore, useCallback, useEffect } from "react";
+import { getCurrentLocale, localeToHtmlLang, setLocale as setI18nLocale, t, type Locale } from "@/lib/i18n";
 
 // Store for managing locale state
 let listeners: Array<() => void> = [];
@@ -29,6 +29,10 @@ function getServerSnapshot(): Locale {
 
 export const useLocale = () => {
   const locale = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+
+  useEffect(() => {
+    document.documentElement.lang = localeToHtmlLang(locale);
+  }, [locale]);
 
   const setLocale = useCallback((newLocale: Locale) => {
     setI18nLocale(newLocale);

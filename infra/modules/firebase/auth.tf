@@ -4,6 +4,15 @@ resource "google_project_service" "identitytoolkit" {
   depends_on = [google_project_service.firebase]
 }
 
+locals {
+  base_authorized_domains = [
+    "localhost",
+    "${google_project.this.project_id}.firebaseapp.com",
+    "${google_project.this.project_id}.web.app",
+    "learning-english-web.vercel.app",
+  ]
+}
+
 resource "google_identity_platform_config" "this" {
   provider = google-beta
   project  = google_project.this.project_id
@@ -30,12 +39,10 @@ resource "google_identity_platform_config" "this" {
     }
   }
 
-  authorized_domains = [
-    "localhost",
-    "${google_project.this.project_id}.firebaseapp.com",
-    "${google_project.this.project_id}.web.app",
-    "learning-english-web.vercel.app",
-  ]
+  authorized_domains = sort(distinct(concat(
+    local.base_authorized_domains,
+    [for domain in var.preview_authorized_domains : trimsuffix(replace(replace(domain, "https://", ""), "http://", ""), "/")]
+  )))
 
   depends_on = [
     google_firebase_project.this,

@@ -2,6 +2,25 @@
 
 export type Locale = 'zh' | 'en';
 
+export function localeToHtmlLang(locale: Locale): string {
+  return locale === 'zh' ? 'zh-CN' : 'en';
+}
+
+export function detectLocaleFromAcceptLanguage(acceptLanguage: string | null | undefined): Locale {
+  if (!acceptLanguage) return 'zh';
+  const normalized = acceptLanguage.toLowerCase();
+  return normalized.includes('zh') ? 'zh' : 'en';
+}
+
+function detectBrowserLocale(): Locale {
+  if (typeof navigator === 'undefined') return 'zh';
+  const candidates = [...(navigator.languages || []), navigator.language]
+    .filter(Boolean)
+    .map((item) => item.toLowerCase());
+  const hasZh = candidates.some((item) => item.startsWith('zh'));
+  return hasZh ? 'zh' : 'en';
+}
+
 export const translations = {
   zh: {
     // Common
@@ -242,7 +261,8 @@ export function t(key: string, locale: Locale = 'zh'): string {
 export function getCurrentLocale(): Locale {
   if (typeof window === 'undefined') return 'zh';
   const stored = localStorage.getItem('locale');
-  return (stored === 'en' ? 'en' : 'zh') as Locale;
+  if (stored === 'zh' || stored === 'en') return stored;
+  return detectBrowserLocale();
 }
 
 // 设置语言

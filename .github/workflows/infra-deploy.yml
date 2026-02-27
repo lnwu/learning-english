@@ -12,6 +12,9 @@ on:
 jobs:
   apply:
     runs-on: ubuntu-latest
+    concurrency:
+      group: infra-terraform-apply
+      cancel-in-progress: false
     permissions:
       contents: read
       id-token: write
@@ -47,4 +50,4 @@ jobs:
         run: terraform validate
 
       - name: Terraform Apply
-        run: terraform apply -auto-approve -input=false
+        run: terraform apply -auto-approve -input=false -lock-timeout=20m
