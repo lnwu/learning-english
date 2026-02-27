@@ -20,6 +20,12 @@ resource "google_project_service" "firebaserules" {
   depends_on = [google_project_service.firebase]
 }
 
+resource "google_project_service" "iamcredentials" {
+  project    = google_project.this.project_id
+  service    = "iamcredentials.googleapis.com"
+  depends_on = [google_project_service.firebase]
+}
+
 resource "google_firebase_project" "this" {
   provider = google-beta
   project  = google_project.this.project_id
