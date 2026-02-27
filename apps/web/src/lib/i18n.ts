@@ -18,7 +18,7 @@ export const translations = {
     
     // Login page
     'login.title': 'Learning English',
-    'login.subtitle': '登录以访问您的词汇库',
+    'login.subtitle': '登录以访问您的词汇',
     'login.signInWithGoogle': '使用 Google 登录',
     'login.dataSaveNote': '您的词汇数据将保存到您的 Google 账户',
     
