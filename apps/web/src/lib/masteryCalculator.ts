@@ -24,6 +24,11 @@ const MIN_ATTEMPTS_FOR_FAMILIAR = 3;
 const MIN_ATTEMPTS_FOR_PROFICIENT = 5;
 const DEFAULT_EARLY_CONSISTENCY = 30;
 const SPEED_SCORE_MULTIPLIER = 40;
+const ACCURACY_SMOOTHING = 1;
+const SPEED_SAMPLE_SIZE = 5;
+const RECENCY_DECAY_START_DAYS = 2;
+const RECENCY_DECAY_PER_DAY = 0.03;
+const MIN_RECENCY_MULTIPLIER = 0.6;
 
 export type MasteryLevel =
   | "new"
@@ -77,7 +82,13 @@ export function getMasteryLevelIndex(score: number): number {
  * Calculate the mastery score for a word
  */
 export function calculateMasteryScore(metrics: WordMetrics): MasteryResult {
-  const { word, correctCount, totalAttempts, inputTimes } = metrics;
+  const {
+    word,
+    correctCount,
+    totalAttempts,
+    inputTimes,
+    lastPracticedAt,
+  } = metrics;
 
   // If never practiced, return 0
   if (totalAttempts === 0) {
@@ -91,13 +102,20 @@ export function calculateMasteryScore(metrics: WordMetrics): MasteryResult {
   }
 
   // Accuracy Factor (40% weight)
-  const accuracyScore = (correctCount / totalAttempts) * 100;
+  const accuracyScore =
+    ((correctCount + ACCURACY_SMOOTHING) /
+      (totalAttempts + ACCURACY_SMOOTHING * 2)) *
+    100;
 
   // Speed Factor (30% weight)
   const expectedTime = getExpectedInputTime(word.length);
-  const avgInputTime =
+  const speedSamples =
     inputTimes.length > 0
-      ? inputTimes.reduce((a, b) => a + b, 0) / inputTimes.length
+      ? inputTimes.slice(-SPEED_SAMPLE_SIZE)
+      : [];
+  const avgInputTime =
+    speedSamples.length > 0
+      ? speedSamples.reduce((a, b) => a + b, 0) / speedSamples.length
       : expectedTime * 2; // Default to slow if no data
   const speedRatio = expectedTime / avgInputTime;
   const speedScore = Math.min(100, speedRatio * SPEED_SCORE_MULTIPLIER);
@@ -126,9 +144,25 @@ export function calculateMasteryScore(metrics: WordMetrics): MasteryResult {
     score = Math.min(score, 59);
   }
 
+  const daysSincePractice = lastPracticedAt
+    ? (Date.now() - lastPracticedAt.getTime()) / (1000 * 60 * 60 * 24)
+    : Infinity;
+  const recencyMultiplier =
+    daysSincePractice <= RECENCY_DECAY_START_DAYS
+      ? 1
+      : Math.max(
+          MIN_RECENCY_MULTIPLIER,
+          1 -
+            (daysSincePractice - RECENCY_DECAY_START_DAYS) *
+              RECENCY_DECAY_PER_DAY
+        );
+  score *= recencyMultiplier;
+
+  const finalScore = Math.max(0, Math.min(100, Math.round(score)));
+
   return {
-    score: Math.max(0, Math.min(100, score)),
-    level: getMasteryLevel(score),
+    score: finalScore,
+    level: getMasteryLevel(finalScore),
     accuracyScore: Math.round(accuracyScore),
     speedScore: Math.round(speedScore),
     consistencyScore: Math.round(consistencyScore),
