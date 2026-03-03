@@ -22,8 +22,8 @@ export interface MasteryResult {
 
 const MIN_ATTEMPTS_FOR_FAMILIAR = 3;
 const MIN_ATTEMPTS_FOR_PROFICIENT = 5;
-const DEFAULT_EARLY_CONSISTENCY = 30;
-const SPEED_SCORE_MULTIPLIER = 40;
+const DEFAULT_EARLY_CONSISTENCY = 50;
+const SPEED_SCORE_MULTIPLIER = 70;
 
 export type MasteryLevel =
   | "new"
@@ -107,11 +107,11 @@ export function calculateMasteryScore(metrics: WordMetrics): MasteryResult {
   if (inputTimes.length >= 3) {
     const lastTimes = inputTimes.slice(-10); // Use last 10 times
     const mean = lastTimes.reduce((a, b) => a + b, 0) / lastTimes.length;
-    const variance = Math.sqrt(
+    const stdDev = Math.sqrt(
       lastTimes.reduce((sum, t) => sum + Math.pow(t - mean, 2), 0) /
         lastTimes.length
     );
-    const cv = mean > 0 ? variance / mean : 0; // Coefficient of variation
+    const cv = mean > 0 ? stdDev / mean : 0; // Coefficient of variation
     consistencyScore = Math.max(0, Math.min(100, 100 - cv * 100));
   }
 
