@@ -42,8 +42,8 @@
 }
 
 :root {
-  --font-sans: "Segoe UI";
-  --font-cjk: "Noto Sans SC";
+  --font-sans: "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-cjk: "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", "Source Han Sans SC", sans-serif;
   --radius: 0.625rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
