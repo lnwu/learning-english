@@ -96,6 +96,16 @@ class Words {
     data.lastPracticedAt = new Date();
   }
 
+  reduceFrequency(word: string, reduceBy: number) {
+    const data = this.wordData.get(word);
+    if (!data) return;
+
+    const safeReduceBy = Math.max(1, Math.floor(reduceBy));
+
+    data.totalAttempts = Math.max(0, data.totalAttempts - safeReduceBy);
+    data.correctCount = Math.max(0, Math.min(data.correctCount, data.totalAttempts));
+  }
+
   // Get mastery score for a word (0-100)
   getMasteryScore(word: string): number {
     const data = this.wordData.get(word);
@@ -485,6 +495,26 @@ export const useFirestoreWords = () => {
     }
   };
 
+  const reduceFrequency = (word: string, reduceBy: number = 1) => {
+    words.reduceFrequency(word, reduceBy);
+
+    const wordId = words.getWordId(word);
+    const data = words.getWordData(word);
+    if (wordId && data) {
+      SyncQueueManager.addToQueue({
+        type: "attempt",
+        word,
+        wordId,
+        data: {
+          correctCount: data.correctCount,
+          totalAttempts: data.totalAttempts,
+          inputTimes: data.inputTimes,
+        },
+      });
+      setPendingCount(SyncQueueManager.getUniqueWordCount());
+    }
+  };
+
   const syncToFirestore = async () => {
     if (!user) {
       console.warn("User not authenticated, skipping sync");
@@ -648,6 +678,7 @@ export const useFirestoreWords = () => {
     removeAllWords,
     recordCorrectAttempt,
     recordIncorrectAttempt,
+    reduceFrequency,
     syncToFirestore,
     resetPracticeRecords,
     loading,

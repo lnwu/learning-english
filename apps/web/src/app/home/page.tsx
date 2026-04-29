@@ -7,13 +7,15 @@ import Link from "next/link";
 import { useFirestoreWords, useLocale, toast } from "@/hooks";
 
 const Home = observer(() => {
-  const { words, recordCorrectAttempt, recordIncorrectAttempt, syncToFirestore, syncing, pendingCount, loading, error, updateTranslation } = useFirestoreWords();
+  const { words, recordCorrectAttempt, recordIncorrectAttempt, reduceFrequency, syncToFirestore, syncing, pendingCount, loading, error, updateTranslation } = useFirestoreWords();
   const { t } = useLocale();
   const [isClient, setIsClient] = useState(false);
   const [shouldFocusFirst, setShouldFocusFirst] = useState(false);
   const [randomWords, setRandomWords] = useState<[string, string][]>([]);
   const [editingWord, setEditingWord] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState("");
+  const [reducingWord, setReducingWord] = useState<string | null>(null);
+  const [reducingValue, setReducingValue] = useState("1");
   const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
   const incorrectRecordedRef = useRef<Set<string>>(new Set());
   const timerStartRef = useRef<Map<string, number>>(new Map());
@@ -145,6 +147,30 @@ const Home = observer(() => {
         variant: "destructive",
       });
     }
+  };
+
+  const commitReduceFrequency = () => {
+    if (!reducingWord) {
+      return;
+    }
+
+    const reduceBy = Number.parseInt(reducingValue, 10);
+    if (!Number.isFinite(reduceBy) || reduceBy <= 0) {
+      toast({
+        title: t("home.reduceFrequencyInvalid"),
+        variant: "destructive",
+      });
+      return;
+    }
+
+    reduceFrequency(reducingWord, reduceBy);
+    toast({
+      title: t("home.reduceFrequencyDone"),
+      variant: "success",
+    });
+
+    setReducingWord(null);
+    setReducingValue("1");
   };
 
   const isCorrect = () => {
@@ -321,6 +347,17 @@ const Home = observer(() => {
                         {inputValue !== word && <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-800 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">{word}</div>}
                       </span>
                       <MasteryBar score={words.getMasteryScore(word)} />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setReducingWord(word);
+                          setReducingValue("1");
+                        }}
+                      >
+                        {t("home.reduceFrequency")}
+                      </Button>
                     </div>
                     {englishDefinition && <div className="max-w-xs w-full text-right text-sm text-gray-500 whitespace-pre-line justify-self-end">{englishDefinition}</div>}
                     {englishDefinition && <div />}
@@ -328,6 +365,33 @@ const Home = observer(() => {
                 );
               })}
             </ul>
+            {reducingWord && (
+              <div className="flex items-center justify-end gap-2">
+                <div className="text-sm text-gray-600">
+                  {t("home.reduceFrequencyFor")}: {reducingWord}
+                </div>
+                <Input
+                  className="w-20"
+                  type="number"
+                  min={1}
+                  value={reducingValue}
+                  onChange={(e) => setReducingValue(e.target.value)}
+                />
+                <Button type="button" onClick={commitReduceFrequency}>
+                  {t("common.confirm")}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setReducingWord(null);
+                    setReducingValue("1");
+                  }}
+                >
+                  {t("common.cancel")}
+                </Button>
+              </div>
+            )}
             <div className="flex space-x-2 justify-end">
               <Button type="submit" disabled={!isCorrect()}>
                 {t("home.refresh")}

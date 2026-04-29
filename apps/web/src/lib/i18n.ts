@@ -60,6 +60,10 @@ export const translations = {
     'home.translationUpdated': '中文翻译已更新',
     'home.translationEmpty': '中文翻译不能为空',
     'home.translationUpdateFailed': '更新翻译失败，请重试',
+    'home.reduceFrequency': '减少频率',
+    'home.reduceFrequencyFor': '减少频率',
+    'home.reduceFrequencyInvalid': '请输入大于 0 的整数',
+    'home.reduceFrequencyDone': '已减少出现频率',
     
     // Profile page
     'profile.title': '用户资料',
@@ -174,6 +178,10 @@ export const translations = {
     'home.translationUpdated': 'Chinese translation updated',
     'home.translationEmpty': 'Chinese translation cannot be empty',
     'home.translationUpdateFailed': 'Failed to update translation. Please try again.',
+    'home.reduceFrequency': 'Reduce frequency',
+    'home.reduceFrequencyFor': 'Reduce frequency',
+    'home.reduceFrequencyInvalid': 'Please enter an integer greater than 0',
+    'home.reduceFrequencyDone': 'Frequency reduced',
     
     // Profile page
     'profile.title': 'User Profile',
