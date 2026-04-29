@@ -540,7 +540,9 @@ export const useFirestoreWords = () => {
       queue.forEach((item) => {
         const existing = updates.get(item.wordId);
         updates.set(item.wordId, {
-          ...item.data,
+          correctCount: item.data.correctCount,
+          totalAttempts: item.data.totalAttempts,
+          inputTimes: item.data.inputTimes,
           updateLastPracticed: (existing?.updateLastPracticed ?? false) || item.type === "attempt",
         });
       });
@@ -548,7 +550,13 @@ export const useFirestoreWords = () => {
       const updatePromises = Array.from(updates.entries()).map(
         async ([wordId, data]) => {
           const wordDocRef = doc(db, "users", userId, "words", wordId);
-          const updateData: Record<string, unknown> = {
+          type WordUpdateData = {
+            correctCount: number;
+            totalAttempts: number;
+            inputTimes: number[];
+            lastPracticedAt?: Date;
+          };
+          const updateData: WordUpdateData = {
             correctCount: data.correctCount,
             totalAttempts: data.totalAttempts,
             inputTimes: data.inputTimes,
