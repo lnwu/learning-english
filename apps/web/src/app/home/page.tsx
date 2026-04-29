@@ -368,6 +368,7 @@ const Home = observer(() => {
                       </span>
                       <div
                         className="select-none"
+                        tabIndex={-1}
                         onPointerDown={() => {
                           clearLongPressTimer();
 
