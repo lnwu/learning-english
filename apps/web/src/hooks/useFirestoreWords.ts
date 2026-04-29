@@ -100,7 +100,7 @@ class Words {
     const data = this.wordData.get(word);
     if (!data) return;
 
-    const safeReduceBy = Math.max(1, Math.floor(reduceBy));
+    const safeReduceBy = Number.isFinite(reduceBy) ? Math.max(1, Math.floor(reduceBy)) : 1;
 
     data.totalAttempts = Math.max(0, data.totalAttempts - safeReduceBy);
     data.correctCount = Math.max(0, Math.min(data.correctCount, data.totalAttempts));
@@ -502,7 +502,7 @@ export const useFirestoreWords = () => {
     const data = words.getWordData(word);
     if (wordId && data) {
       SyncQueueManager.addToQueue({
-        type: "attempt",
+        type: "reduce_frequency",
         word,
         wordId,
         data: {
@@ -534,22 +534,29 @@ export const useFirestoreWords = () => {
 
       const updates: Map<
         string,
-        { correctCount: number; totalAttempts: number; inputTimes: number[] }
+        { correctCount: number; totalAttempts: number; inputTimes: number[]; updateLastPracticed: boolean }
       > = new Map();
 
       queue.forEach((item) => {
-        updates.set(item.wordId, item.data);
+        const existing = updates.get(item.wordId);
+        updates.set(item.wordId, {
+          ...item.data,
+          updateLastPracticed: (existing?.updateLastPracticed ?? false) || item.type === "attempt",
+        });
       });
 
       const updatePromises = Array.from(updates.entries()).map(
         async ([wordId, data]) => {
           const wordDocRef = doc(db, "users", userId, "words", wordId);
-          await updateDoc(wordDocRef, {
+          const updateData: Record<string, unknown> = {
             correctCount: data.correctCount,
             totalAttempts: data.totalAttempts,
             inputTimes: data.inputTimes,
-            lastPracticedAt: new Date(),
-          });
+          };
+          if (data.updateLastPracticed) {
+            updateData.lastPracticedAt = new Date();
+          }
+          await updateDoc(wordDocRef, updateData);
         }
       );
 

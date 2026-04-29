@@ -1,7 +1,7 @@
 // 同步队列项类型
 export interface SyncQueueItem {
   id: string;
-  type: 'attempt';
+  type: 'attempt' | 'reduce_frequency';
   word: string;
   wordId: string;
   data: {
