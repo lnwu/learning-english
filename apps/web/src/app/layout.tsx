@@ -1,6 +1,5 @@
 import { Analytics } from "@vercel/analytics/next";
 import "./index.css";
-import { Inter, Noto_Sans_SC } from "next/font/google";
 import { headers } from "next/headers";
 
 import type { Metadata } from "next";
@@ -15,19 +14,12 @@ export const metadata: Metadata = {
   description: "English Learning App",
 };
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
-const notoSansSC = Noto_Sans_SC({
-  weight: ["400", "500", "700"],
-  variable: "--font-cjk",
-  display: "swap",
-});
-
 const RootLayout: FC<{ children: ReactNode }> = async ({ children }) => {
   const acceptLanguage = (await headers()).get("accept-language");
   const locale = detectLocaleFromAcceptLanguage(acceptLanguage);
 
   return (
-    <html lang={localeToHtmlLang(locale)} className={`${inter.variable} ${notoSansSC.variable}`}>
+    <html lang={localeToHtmlLang(locale)}>
       <body className="flex min-h-screen flex-col antialiased">
         <AuthProvider>
           <AppShell>
