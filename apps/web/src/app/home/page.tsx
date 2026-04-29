@@ -5,6 +5,7 @@ import { useEffect, useState, useRef, type FormEvent } from "react";
 import { observer } from "mobx-react-lite";
 import Link from "next/link";
 import { useFirestoreWords, useLocale, toast } from "@/hooks";
+import { getMasteryLevel } from "@/lib/masteryCalculator";
 
 const Home = observer(() => {
   const { words, recordCorrectAttempt, recordIncorrectAttempt, reduceFrequency, syncToFirestore, syncing, pendingCount, loading, error, updateTranslation } = useFirestoreWords();
@@ -16,6 +17,7 @@ const Home = observer(() => {
   const [editingValue, setEditingValue] = useState("");
   const [reducingWord, setReducingWord] = useState<string | null>(null);
   const [reducingValue, setReducingValue] = useState("1");
+  const longPressTimerRef = useRef<number | null>(null);
   const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
   const incorrectRecordedRef = useRef<Set<string>>(new Set());
   const timerStartRef = useRef<Map<string, number>>(new Map());
@@ -154,6 +156,17 @@ const Home = observer(() => {
       return;
     }
 
+    const score = words.getMasteryScore(reducingWord);
+    if (getMasteryLevel(score) !== "mastered") {
+      toast({
+        title: t("home.reduceFrequencyLocked"),
+        variant: "destructive",
+      });
+      setReducingWord(null);
+      setReducingValue("1");
+      return;
+    }
+
     const reduceBy = Number.parseInt(reducingValue, 10);
     if (!Number.isFinite(reduceBy) || reduceBy <= 0) {
       toast({
@@ -171,6 +184,13 @@ const Home = observer(() => {
 
     setReducingWord(null);
     setReducingValue("1");
+  };
+
+  const clearLongPressTimer = () => {
+    if (longPressTimerRef.current) {
+      window.clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
   };
 
   const isCorrect = () => {
@@ -346,18 +366,30 @@ const Home = observer(() => {
                         {inputValue === word ? "✅" : "❌"}
                         {inputValue !== word && <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-800 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">{word}</div>}
                       </span>
-                      <MasteryBar score={words.getMasteryScore(word)} />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setReducingWord(word);
-                          setReducingValue("1");
+                      <div
+                        className="select-none"
+                        onPointerDown={() => {
+                          clearLongPressTimer();
+
+                          const score = words.getMasteryScore(word);
+                          if (getMasteryLevel(score) !== "mastered") {
+                            return;
+                          }
+
+                          longPressTimerRef.current = window.setTimeout(() => {
+                            setReducingWord(word);
+                            setReducingValue("1");
+                          }, 600);
+                        }}
+                        onPointerUp={clearLongPressTimer}
+                        onPointerCancel={clearLongPressTimer}
+                        onPointerLeave={clearLongPressTimer}
+                        onContextMenu={(e) => {
+                          e.preventDefault();
                         }}
                       >
-                        {t("home.reduceFrequency")}
-                      </Button>
+                        <MasteryBar score={words.getMasteryScore(word)} />
+                      </div>
                     </div>
                     {englishDefinition && <div className="max-w-xs w-full text-right text-sm text-gray-500 whitespace-pre-line justify-self-end">{englishDefinition}</div>}
                     {englishDefinition && <div />}

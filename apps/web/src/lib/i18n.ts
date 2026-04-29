@@ -64,6 +64,7 @@ export const translations = {
     'home.reduceFrequencyFor': '减少频率',
     'home.reduceFrequencyInvalid': '请输入大于 0 的整数',
     'home.reduceFrequencyDone': '已减少出现频率',
+    'home.reduceFrequencyLocked': '仅“已掌握”的单词支持减少频率',
     
     // Profile page
     'profile.title': '用户资料',
@@ -182,6 +183,7 @@ export const translations = {
     'home.reduceFrequencyFor': 'Reduce frequency',
     'home.reduceFrequencyInvalid': 'Please enter an integer greater than 0',
     'home.reduceFrequencyDone': 'Frequency reduced',
+    'home.reduceFrequencyLocked': 'Only mastered words can reduce frequency',
     
     // Profile page
     'profile.title': 'User Profile',
