@@ -294,10 +294,12 @@ const Home = observer(() => {
                         }}
                         value={inputValue}
                       />
-                      <span
-                        tabIndex={inputValue === word ? -1 : 0}
+                      <button
+                        type="button"
                         title={word}
-                        className={`${inputValue === word ? "" : "cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:rounded"} px-1 relative group`}
+                        aria-label={`${t("home.hint")}: ${word}`}
+                        disabled={inputValue === word}
+                        className={`${inputValue === word ? "" : "cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:rounded"} px-1 relative group disabled:cursor-default`}
                         onMouseEnter={() => {
                           if (inputValue !== word) {
                             handleHintReveal(word);
@@ -308,9 +310,8 @@ const Home = observer(() => {
                             handleHintReveal(word);
                           }
                         }}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" && inputValue !== word) {
-                            e.preventDefault();
+                        onClick={() => {
+                          if (inputValue !== word) {
                             const utterance = new SpeechSynthesisUtterance(word);
                             utterance.lang = "en-US";
                             speechSynthesis.speak(utterance);
@@ -319,7 +320,7 @@ const Home = observer(() => {
                       >
                         {inputValue === word ? "✅" : "❌"}
                         {inputValue !== word && <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-800 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">{word}</div>}
-                      </span>
+                      </button>
                       <MasteryBar score={words.getMasteryScore(word)} />
                     </div>
                     {englishDefinition && <div className="max-w-xs w-full text-right text-sm text-gray-500 whitespace-pre-line justify-self-end">{englishDefinition}</div>}
