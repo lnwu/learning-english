@@ -317,9 +317,7 @@ export const useFirestoreWords = () => {
                 totalAttempts: data.totalAttempts ?? 0,
                 inputTimes,
                 lastPracticedAt,
-                ...(data.correctPracticeDates !== undefined && {
-              correctPracticeDates: data.correctPracticeDates,
-            }),
+                correctPracticeDates: data.correctPracticeDates ?? [],
                 createdAt: data.createdAt?.toDate() ?? new Date(),
                 id: doc.id,
               };
