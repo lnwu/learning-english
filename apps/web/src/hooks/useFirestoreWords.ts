@@ -30,9 +30,17 @@ interface WordData {
   totalAttempts: number;
   inputTimes: number[];
   lastPracticedAt: Date | null;
+  correctPracticeDates: string[];
   createdAt: Date;
   id: string;
 }
+
+const formatPracticeDate = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
 
 class Words {
   static MAX_RANDOM_WORDS = 5;
@@ -57,6 +65,7 @@ class Words {
       totalAttempts: 0,
       inputTimes: [],
       lastPracticedAt: null,
+      correctPracticeDates: [],
       createdAt: new Date(),
       id,
     });
@@ -78,8 +87,11 @@ class Words {
     data.totalAttempts += 1;
     data.correctCount += 1;
     data.inputTimes.push(inputTimeSeconds);
+    const today = formatPracticeDate(new Date());
+    if (!data.correctPracticeDates.includes(today)) {
+      data.correctPracticeDates.push(today);
+    }
 
-    // Keep only last N input times
     if (data.inputTimes.length > Words.MAX_INPUT_TIMES) {
       data.inputTimes = data.inputTimes.slice(-Words.MAX_INPUT_TIMES);
     }
@@ -289,18 +301,23 @@ export const useFirestoreWords = () => {
           (snapshot) => {
             const wordsData: WordData[] = snapshot.docs.map((doc) => {
               const data = doc.data();
-              // Migration: convert old frequency-based data to new format
               const inputTimes = data.inputTimes ?? [];
               const hasOldFormat = data.frequency !== undefined && data.correctCount === undefined;
-              
+              const lastPracticedAt = data.lastPracticedAt?.toDate() ?? null;
+              const correctPracticeDates =
+                data.correctPracticeDates ??
+                (lastPracticedAt && (data.correctCount ?? inputTimes.length) > 0
+                  ? [formatPracticeDate(lastPracticedAt)]
+                  : []);
+               
               return {
                 word: data.word,
                 translation: data.translation,
-                // Migration: estimate correctCount from inputTimes length if old format
                 correctCount: hasOldFormat ? inputTimes.length : (data.correctCount ?? 0),
                 totalAttempts: hasOldFormat ? inputTimes.length : (data.totalAttempts ?? 0),
                 inputTimes,
-                lastPracticedAt: data.lastPracticedAt?.toDate() ?? null,
+                lastPracticedAt,
+                correctPracticeDates,
                 createdAt: data.createdAt?.toDate() ?? new Date(),
                 id: doc.id,
               };
@@ -369,6 +386,7 @@ export const useFirestoreWords = () => {
         totalAttempts: 0,
         inputTimes: [],
         lastPracticedAt: null,
+        correctPracticeDates: [],
         createdAt: new Date(),
       });
     } catch (err) {
@@ -459,6 +477,7 @@ export const useFirestoreWords = () => {
           correctCount: data.correctCount,
           totalAttempts: data.totalAttempts,
           inputTimes: data.inputTimes,
+          correctPracticeDates: data.correctPracticeDates,
         },
       });
       setPendingCount(SyncQueueManager.getUniqueWordCount());
@@ -479,6 +498,7 @@ export const useFirestoreWords = () => {
           correctCount: data.correctCount,
           totalAttempts: data.totalAttempts,
           inputTimes: data.inputTimes,
+          correctPracticeDates: data.correctPracticeDates,
         },
       });
       setPendingCount(SyncQueueManager.getUniqueWordCount());
@@ -504,7 +524,12 @@ export const useFirestoreWords = () => {
 
       const updates: Map<
         string,
-        { correctCount: number; totalAttempts: number; inputTimes: number[] }
+        {
+          correctCount: number;
+          totalAttempts: number;
+          inputTimes: number[];
+          correctPracticeDates?: string[];
+        }
       > = new Map();
 
       queue.forEach((item) => {
@@ -518,6 +543,7 @@ export const useFirestoreWords = () => {
             correctCount: data.correctCount,
             totalAttempts: data.totalAttempts,
             inputTimes: data.inputTimes,
+            correctPracticeDates: data.correctPracticeDates ?? [],
             lastPracticedAt: new Date(),
           });
         }
@@ -614,6 +640,7 @@ export const useFirestoreWords = () => {
         data.totalAttempts = 0;
         data.inputTimes = [];
         data.lastPracticedAt = null;
+        data.correctPracticeDates = [];
       });
 
       const updatePromises = Array.from(words.wordData.entries()).map(
@@ -624,6 +651,7 @@ export const useFirestoreWords = () => {
             totalAttempts: 0,
             inputTimes: [],
             lastPracticedAt: null,
+            correctPracticeDates: [],
           });
         }
       );
