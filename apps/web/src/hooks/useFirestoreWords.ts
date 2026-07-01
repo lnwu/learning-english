@@ -35,11 +35,18 @@ interface WordData {
   id: string;
 }
 
-const formatPracticeDate = (date: Date) => {
+const formatLocalPracticeDate = (date: Date) => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+};
+
+const getLocalPracticeDate = (practiceDate: string) => {
+  const date = new Date(practiceDate);
+  return Number.isNaN(date.getTime())
+    ? practiceDate
+    : formatLocalPracticeDate(date);
 };
 
 class Words {
@@ -87,16 +94,21 @@ class Words {
     data.totalAttempts += 1;
     data.correctCount += 1;
     data.inputTimes.push(inputTimeSeconds);
-    const today = formatPracticeDate(new Date());
-    if (!data.correctPracticeDates.includes(today)) {
-      data.correctPracticeDates.push(today);
+    const now = new Date();
+    const today = formatLocalPracticeDate(now);
+    if (
+      !data.correctPracticeDates.some(
+        (practiceDate) => getLocalPracticeDate(practiceDate) === today
+      )
+    ) {
+      data.correctPracticeDates.push(now.toISOString());
     }
 
     if (data.inputTimes.length > Words.MAX_INPUT_TIMES) {
       data.inputTimes = data.inputTimes.slice(-Words.MAX_INPUT_TIMES);
     }
 
-    data.lastPracticedAt = new Date();
+    data.lastPracticedAt = now;
   }
 
   // Record an incorrect attempt (hint revealed)
@@ -302,22 +314,16 @@ export const useFirestoreWords = () => {
             const wordsData: WordData[] = snapshot.docs.map((doc) => {
               const data = doc.data();
               const inputTimes = data.inputTimes ?? [];
-              const hasOldFormat = data.frequency !== undefined && data.correctCount === undefined;
               const lastPracticedAt = data.lastPracticedAt?.toDate() ?? null;
-              const correctPracticeDates =
-                data.correctPracticeDates ??
-                (lastPracticedAt && (data.correctCount ?? inputTimes.length) > 0
-                  ? [formatPracticeDate(lastPracticedAt)]
-                  : []);
-               
+                
               return {
                 word: data.word,
                 translation: data.translation,
-                correctCount: hasOldFormat ? inputTimes.length : (data.correctCount ?? 0),
-                totalAttempts: hasOldFormat ? inputTimes.length : (data.totalAttempts ?? 0),
+                correctCount: data.correctCount ?? 0,
+                totalAttempts: data.totalAttempts ?? 0,
                 inputTimes,
                 lastPracticedAt,
-                correctPracticeDates,
+                correctPracticeDates: data.correctPracticeDates ?? [],
                 createdAt: data.createdAt?.toDate() ?? new Date(),
                 id: doc.id,
               };

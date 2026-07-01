@@ -31,6 +31,20 @@ const SPEED_WEIGHT = 0.15;
 const CONSISTENCY_WEIGHT = 0.2;
 const REVIEW_WEIGHT = 0.15;
 
+const formatLocalPracticeDate = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const getLocalPracticeDate = (practiceDate: string) => {
+  const date = new Date(practiceDate);
+  return Number.isNaN(date.getTime())
+    ? practiceDate
+    : formatLocalPracticeDate(date);
+};
+
 export type MasteryLevel =
   | "new"
   | "learning"
@@ -124,7 +138,7 @@ export function calculateMasteryScore(metrics: WordMetrics): MasteryResult {
     consistencyScore = Math.max(0, Math.min(100, 100 * Math.exp(-cv * 2)));
   }
 
-  const reviewDays = new Set(correctPracticeDates).size;
+  const reviewDays = new Set(correctPracticeDates.map(getLocalPracticeDate)).size;
   const reviewScore = Math.min(100, reviewDays * REVIEW_DAY_SCORE_MULTIPLIER);
 
   let score = Math.round(
