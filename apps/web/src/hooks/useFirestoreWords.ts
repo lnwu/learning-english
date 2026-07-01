@@ -22,6 +22,10 @@ import {
   getMasteryLevelIndex,
   type MasteryResult,
 } from "@/lib/masteryCalculator";
+import {
+  formatLocalPracticeDate,
+  getLocalPracticeDate,
+} from "@/lib/practiceDate";
 
 interface WordData {
   word: string;
@@ -35,23 +39,10 @@ interface WordData {
   id: string;
 }
 
-const formatLocalPracticeDate = (date: Date) => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-};
-
-const getLocalPracticeDate = (practiceDate: string) => {
-  const date = new Date(practiceDate);
-  return Number.isNaN(date.getTime())
-    ? practiceDate
-    : formatLocalPracticeDate(date);
-};
-
 class Words {
   static MAX_RANDOM_WORDS = 5;
-  static MAX_INPUT_TIMES = 20; // Keep last 20 input times
+  static MAX_INPUT_TIMES = 20;
+  static MAX_CORRECT_PRACTICE_DATES = 30;
 
   wordData: Map<string, WordData> = new Map();
   userInputs: Map<string, string> = new Map();
@@ -102,6 +93,9 @@ class Words {
       )
     ) {
       data.correctPracticeDates.push(now.toISOString());
+      if (data.correctPracticeDates.length > Words.MAX_CORRECT_PRACTICE_DATES) {
+        data.correctPracticeDates = data.correctPracticeDates.slice(-Words.MAX_CORRECT_PRACTICE_DATES);
+      }
     }
 
     if (data.inputTimes.length > Words.MAX_INPUT_TIMES) {
@@ -323,7 +317,9 @@ export const useFirestoreWords = () => {
                 totalAttempts: data.totalAttempts ?? 0,
                 inputTimes,
                 lastPracticedAt,
-                correctPracticeDates: data.correctPracticeDates ?? [],
+                ...(data.correctPracticeDates !== undefined && {
+              correctPracticeDates: data.correctPracticeDates,
+            }),
                 createdAt: data.createdAt?.toDate() ?? new Date(),
                 id: doc.id,
               };
@@ -549,7 +545,9 @@ export const useFirestoreWords = () => {
             correctCount: data.correctCount,
             totalAttempts: data.totalAttempts,
             inputTimes: data.inputTimes,
-            correctPracticeDates: data.correctPracticeDates ?? [],
+            ...(data.correctPracticeDates !== undefined && {
+              correctPracticeDates: data.correctPracticeDates,
+            }),
             lastPracticedAt: new Date(),
           });
         }
