@@ -1,15 +1,10 @@
-/**
- * Word Familiarity/Mastery Calculator
- *
- * This module implements the mastery algorithm described in docs/WORD_FAMILIARITY_ALGORITHM.md
- */
-
 export interface WordMetrics {
   word: string;
   correctCount: number;
   totalAttempts: number;
   inputTimes: number[];
   lastPracticedAt: Date | null;
+  correctPracticeDates?: string[];
 }
 
 export interface MasteryResult {
@@ -18,17 +13,25 @@ export interface MasteryResult {
   accuracyScore: number;
   speedScore: number;
   consistencyScore: number;
+  reviewScore: number;
 }
 
 const MIN_ATTEMPTS_FOR_FAMILIAR = 3;
-const MIN_ATTEMPTS_FOR_PROFICIENT = 4;
+const MIN_ATTEMPTS_FOR_PROFICIENT = 5;
+const MIN_ATTEMPTS_FOR_MASTERED = 8;
+const MIN_REVIEW_DAYS_FOR_PROFICIENT = 2;
+const MIN_REVIEW_DAYS_FOR_MASTERED = 3;
 const DEFAULT_EARLY_CONSISTENCY = 50;
 const SPEED_SCORE_MULTIPLIER = 50;
 const ACCURACY_SMOOTHING = 1;
 const SPEED_SAMPLE_SIZE = 5;
-const RECENCY_DECAY_START_DAYS = 2;
-const RECENCY_DECAY_PER_DAY = 0.03;
-const MIN_RECENCY_MULTIPLIER = 0.6;
+const REVIEW_DAY_SCORE_MULTIPLIER = 100 / MIN_REVIEW_DAYS_FOR_MASTERED;
+const ACCURACY_WEIGHT = 0.5;
+const SPEED_WEIGHT = 0.15;
+const CONSISTENCY_WEIGHT = 0.2;
+const REVIEW_WEIGHT = 0.15;
+
+import { getLocalPracticeDate } from "@/lib/practiceDate";
 
 export type MasteryLevel =
   | "new"
@@ -48,10 +51,6 @@ export const MASTERY_LEVELS: Record<
   mastered: { min: 80, max: 100, color: "#22C55E" },
 };
 
-/**
- * Calculate expected input time based on word length
- * Uses tiered formula for better accuracy across different word lengths
- */
 export function getExpectedInputTime(wordLength: number): number {
   if (wordLength <= 3) {
     return 1.5;
@@ -64,9 +63,6 @@ export function getExpectedInputTime(wordLength: number): number {
   }
 }
 
-/**
- * Get mastery level from score
- */
 export function getMasteryLevel(score: number): MasteryLevel {
   if (score >= 80) return "mastered";
   if (score >= 60) return "proficient";
@@ -75,9 +71,6 @@ export function getMasteryLevel(score: number): MasteryLevel {
   return "new";
 }
 
-/**
- * Get mastery level index (0-4) for UI display
- */
 export function getMasteryLevelIndex(score: number): number {
   if (score >= 80) return 4;
   if (score >= 60) return 3;
@@ -86,19 +79,15 @@ export function getMasteryLevelIndex(score: number): number {
   return 0;
 }
 
-/**
- * Calculate the mastery score for a word
- */
 export function calculateMasteryScore(metrics: WordMetrics): MasteryResult {
   const {
     word,
     correctCount,
     totalAttempts,
     inputTimes,
-    lastPracticedAt,
+    correctPracticeDates = [],
   } = metrics;
 
-  // If never practiced, return 0
   if (totalAttempts === 0) {
     return {
       score: 0,
@@ -106,16 +95,15 @@ export function calculateMasteryScore(metrics: WordMetrics): MasteryResult {
       accuracyScore: 0,
       speedScore: 0,
       consistencyScore: 0,
+      reviewScore: 0,
     };
   }
 
-  // Accuracy Factor (40% weight) with Laplace smoothing to reduce small-sample volatility
   const accuracyScore =
     ((correctCount + ACCURACY_SMOOTHING) /
       (totalAttempts + ACCURACY_SMOOTHING * 2)) *
     100;
 
-  // Speed Factor (30% weight)
   const expectedTime = getExpectedInputTime(word.length);
   const speedSamples =
     inputTimes.length > 0 ? inputTimes.slice(-SPEED_SAMPLE_SIZE) : [];
@@ -126,7 +114,6 @@ export function calculateMasteryScore(metrics: WordMetrics): MasteryResult {
   const speedRatio = expectedTime / avgInputTime;
   const speedScore = Math.min(100, Math.max(0, speedRatio * SPEED_SCORE_MULTIPLIER));
 
-  // Consistency Factor (30% weight)
   let consistencyScore = DEFAULT_EARLY_CONSISTENCY;
   if (inputTimes.length >= 3) {
     const lastTimes = inputTimes.slice(-10);
@@ -139,30 +126,29 @@ export function calculateMasteryScore(metrics: WordMetrics): MasteryResult {
     consistencyScore = Math.max(0, Math.min(100, 100 * Math.exp(-cv * 2)));
   }
 
-  // Final score
+  const reviewDays = new Set(correctPracticeDates.map(getLocalPracticeDate)).size;
+  const reviewScore = Math.min(100, reviewDays * REVIEW_DAY_SCORE_MULTIPLIER);
+
   let score = Math.round(
-    accuracyScore * 0.4 + speedScore * 0.3 + consistencyScore * 0.3
+    accuracyScore * ACCURACY_WEIGHT +
+      speedScore * SPEED_WEIGHT +
+      consistencyScore * CONSISTENCY_WEIGHT +
+      reviewScore * REVIEW_WEIGHT
   );
 
   if (totalAttempts < MIN_ATTEMPTS_FOR_FAMILIAR) {
     score = Math.min(score, 39);
-  } else if (totalAttempts < MIN_ATTEMPTS_FOR_PROFICIENT) {
+  } else if (
+    totalAttempts < MIN_ATTEMPTS_FOR_PROFICIENT ||
+    reviewDays < MIN_REVIEW_DAYS_FOR_PROFICIENT
+  ) {
     score = Math.min(score, 59);
+  } else if (
+    totalAttempts < MIN_ATTEMPTS_FOR_MASTERED ||
+    reviewDays < MIN_REVIEW_DAYS_FOR_MASTERED
+  ) {
+    score = Math.min(score, 79);
   }
-
-  const daysSincePractice = lastPracticedAt
-    ? (Date.now() - lastPracticedAt.getTime()) / (1000 * 60 * 60 * 24)
-    : Infinity;
-  const recencyMultiplier =
-    daysSincePractice <= RECENCY_DECAY_START_DAYS
-      ? 1
-      : Math.max(
-          MIN_RECENCY_MULTIPLIER,
-          1 -
-            (daysSincePractice - RECENCY_DECAY_START_DAYS) *
-              RECENCY_DECAY_PER_DAY
-        );
-  score *= recencyMultiplier;
 
   const finalScore = Math.max(0, Math.min(100, Math.round(score)));
 
@@ -172,36 +158,27 @@ export function calculateMasteryScore(metrics: WordMetrics): MasteryResult {
     accuracyScore: Math.round(accuracyScore),
     speedScore: Math.round(speedScore),
     consistencyScore: Math.round(consistencyScore),
+    reviewScore: Math.round(reviewScore),
   };
 }
 
-/**
- * Calculate practice priority for word selection
- * Higher priority = more likely to be selected for practice
- * 
- * PRIORITY RULE: Words not practiced in 7+ days get extremely high priority
- * to ensure weekly review for all words.
- */
 export function calculatePriority(
   masteryScore: number,
   lastPracticedAt: Date | null,
   totalAttempts: number
 ): number {
-  // Days since last practice
   const daysSince = lastPracticedAt
     ? (Date.now() - lastPracticedAt.getTime()) / (1000 * 60 * 60 * 24)
-    : 30; // Treat as 30 days if never practiced
+    : 30;
 
-  // Recency multiplier with strong boost for 7+ days (weekly review guarantee)
   let recencyMultiplier: number;
   if (daysSince < 1) recencyMultiplier = 0.3;
   else if (daysSince < 2) recencyMultiplier = 0.8;
   else if (daysSince < 4) recencyMultiplier = 1.2;
   else if (daysSince < 7) recencyMultiplier = 2.0;
-  else if (daysSince < 14) recencyMultiplier = 8.0;  // Very high priority for weekly review
-  else recencyMultiplier = 15.0;  // Extremely high for overdue words
+  else if (daysSince < 14) recencyMultiplier = 8.0;
+  else recencyMultiplier = 15.0;
 
-  // Practice count multiplier (prioritize new words)
   let practiceMultiplier: number;
   if (totalAttempts === 0) practiceMultiplier = 3.0;
   else if (totalAttempts <= 2) practiceMultiplier = 2.0;
@@ -209,8 +186,7 @@ export function calculatePriority(
   else if (totalAttempts <= 10) practiceMultiplier = 1.0;
   else practiceMultiplier = 0.8;
 
-  // Base priority: lower mastery = higher priority
-  const basePriority = 100 - masteryScore;
+  const basePriority = Math.max(10, 100 - masteryScore);
 
   return basePriority * recencyMultiplier * practiceMultiplier;
 }

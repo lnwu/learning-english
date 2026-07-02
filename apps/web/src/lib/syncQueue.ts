@@ -8,6 +8,7 @@ export interface SyncQueueItem {
     correctCount: number;
     totalAttempts: number;
     inputTimes: number[];
+    correctPracticeDates?: string[];
   };
   timestamp: number;
   retryCount: number;

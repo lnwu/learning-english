@@ -22,6 +22,10 @@ import {
   getMasteryLevelIndex,
   type MasteryResult,
 } from "@/lib/masteryCalculator";
+import {
+  formatLocalPracticeDate,
+  getLocalPracticeDate,
+} from "@/lib/practiceDate";
 
 interface WordData {
   word: string;
@@ -30,13 +34,15 @@ interface WordData {
   totalAttempts: number;
   inputTimes: number[];
   lastPracticedAt: Date | null;
+  correctPracticeDates: string[];
   createdAt: Date;
   id: string;
 }
 
 class Words {
   static MAX_RANDOM_WORDS = 5;
-  static MAX_INPUT_TIMES = 20; // Keep last 20 input times
+  static MAX_INPUT_TIMES = 20;
+  static MAX_CORRECT_PRACTICE_DATES = 30;
 
   wordData: Map<string, WordData> = new Map();
   userInputs: Map<string, string> = new Map();
@@ -57,6 +63,7 @@ class Words {
       totalAttempts: 0,
       inputTimes: [],
       lastPracticedAt: null,
+      correctPracticeDates: [],
       createdAt: new Date(),
       id,
     });
@@ -78,13 +85,24 @@ class Words {
     data.totalAttempts += 1;
     data.correctCount += 1;
     data.inputTimes.push(inputTimeSeconds);
+    const now = new Date();
+    const today = formatLocalPracticeDate(now);
+    if (
+      !data.correctPracticeDates.some(
+        (practiceDate) => getLocalPracticeDate(practiceDate) === today
+      )
+    ) {
+      data.correctPracticeDates.push(now.toISOString());
+      if (data.correctPracticeDates.length > Words.MAX_CORRECT_PRACTICE_DATES) {
+        data.correctPracticeDates = data.correctPracticeDates.slice(-Words.MAX_CORRECT_PRACTICE_DATES);
+      }
+    }
 
-    // Keep only last N input times
     if (data.inputTimes.length > Words.MAX_INPUT_TIMES) {
       data.inputTimes = data.inputTimes.slice(-Words.MAX_INPUT_TIMES);
     }
 
-    data.lastPracticedAt = new Date();
+    data.lastPracticedAt = now;
   }
 
   // Record an incorrect attempt (hint revealed)
@@ -289,18 +307,17 @@ export const useFirestoreWords = () => {
           (snapshot) => {
             const wordsData: WordData[] = snapshot.docs.map((doc) => {
               const data = doc.data();
-              // Migration: convert old frequency-based data to new format
               const inputTimes = data.inputTimes ?? [];
-              const hasOldFormat = data.frequency !== undefined && data.correctCount === undefined;
-              
+              const lastPracticedAt = data.lastPracticedAt?.toDate() ?? null;
+                
               return {
                 word: data.word,
                 translation: data.translation,
-                // Migration: estimate correctCount from inputTimes length if old format
-                correctCount: hasOldFormat ? inputTimes.length : (data.correctCount ?? 0),
-                totalAttempts: hasOldFormat ? inputTimes.length : (data.totalAttempts ?? 0),
+                correctCount: data.correctCount ?? 0,
+                totalAttempts: data.totalAttempts ?? 0,
                 inputTimes,
-                lastPracticedAt: data.lastPracticedAt?.toDate() ?? null,
+                lastPracticedAt,
+                correctPracticeDates: data.correctPracticeDates ?? [],
                 createdAt: data.createdAt?.toDate() ?? new Date(),
                 id: doc.id,
               };
@@ -369,6 +386,7 @@ export const useFirestoreWords = () => {
         totalAttempts: 0,
         inputTimes: [],
         lastPracticedAt: null,
+        correctPracticeDates: [],
         createdAt: new Date(),
       });
     } catch (err) {
@@ -459,6 +477,7 @@ export const useFirestoreWords = () => {
           correctCount: data.correctCount,
           totalAttempts: data.totalAttempts,
           inputTimes: data.inputTimes,
+          correctPracticeDates: data.correctPracticeDates,
         },
       });
       setPendingCount(SyncQueueManager.getUniqueWordCount());
@@ -479,6 +498,7 @@ export const useFirestoreWords = () => {
           correctCount: data.correctCount,
           totalAttempts: data.totalAttempts,
           inputTimes: data.inputTimes,
+          correctPracticeDates: data.correctPracticeDates,
         },
       });
       setPendingCount(SyncQueueManager.getUniqueWordCount());
@@ -504,7 +524,12 @@ export const useFirestoreWords = () => {
 
       const updates: Map<
         string,
-        { correctCount: number; totalAttempts: number; inputTimes: number[] }
+        {
+          correctCount: number;
+          totalAttempts: number;
+          inputTimes: number[];
+          correctPracticeDates?: string[];
+        }
       > = new Map();
 
       queue.forEach((item) => {
@@ -518,6 +543,9 @@ export const useFirestoreWords = () => {
             correctCount: data.correctCount,
             totalAttempts: data.totalAttempts,
             inputTimes: data.inputTimes,
+            ...(data.correctPracticeDates !== undefined && {
+              correctPracticeDates: data.correctPracticeDates,
+            }),
             lastPracticedAt: new Date(),
           });
         }
@@ -614,6 +642,7 @@ export const useFirestoreWords = () => {
         data.totalAttempts = 0;
         data.inputTimes = [];
         data.lastPracticedAt = null;
+        data.correctPracticeDates = [];
       });
 
       const updatePromises = Array.from(words.wordData.entries()).map(
@@ -624,6 +653,7 @@ export const useFirestoreWords = () => {
             totalAttempts: 0,
             inputTimes: [],
             lastPracticedAt: null,
+            correctPracticeDates: [],
           });
         }
       );
