@@ -7,10 +7,10 @@ import {
   deleteDoc,
   doc,
   onSnapshot,
-  query,
-  where,
   getDocs,
   updateDoc,
+  writeBatch,
+  type WriteBatch,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
@@ -281,6 +281,20 @@ class Words {
   }
 }
 
+const FIRESTORE_BATCH_LIMIT = 500;
+
+const commitBatchOperations = async (
+  operations: Array<(batch: WriteBatch) => void>
+) => {
+  for (let i = 0; i < operations.length; i += FIRESTORE_BATCH_LIMIT) {
+    const batch = writeBatch(db);
+    operations
+      .slice(i, i + FIRESTORE_BATCH_LIMIT)
+      .forEach((operation) => operation(batch));
+    await batch.commit();
+  }
+};
+
 const words = new Words();
 
 export const useFirestoreWords = () => {
@@ -292,83 +306,82 @@ export const useFirestoreWords = () => {
   const syncTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    const setupFirestore = async () => {
-      if (!user) {
-        setLoading(false);
-        return;
-      }
+    if (!user) {
+      setLoading(false);
+      return;
+    }
 
-      try {
-        const userId = user.uid;
-        const wordsCollection = collection(db, "users", userId, "words");
+    setLoading(true);
+    setError(null);
 
-        const unsubscribe = onSnapshot(
-          wordsCollection,
-          (snapshot) => {
-            const wordsData: WordData[] = snapshot.docs.map((doc) => {
-              const data = doc.data();
-              const inputTimes = data.inputTimes ?? [];
-              const lastPracticedAt = data.lastPracticedAt?.toDate() ?? null;
-                
-              return {
-                word: data.word,
-                translation: data.translation,
-                correctCount: data.correctCount ?? 0,
-                totalAttempts: data.totalAttempts ?? 0,
-                inputTimes,
-                lastPracticedAt,
-                correctPracticeDates: data.correctPracticeDates ?? [],
-                createdAt: data.createdAt?.toDate() ?? new Date(),
-                id: doc.id,
-              };
-            });
-            words.setWords(wordsData);
-            
-            // Clean up stale sync queue items
-            // If Firestore data matches or exceeds queue data, remove from queue
-            const queue = SyncQueueManager.getQueue();
-            if (queue.length > 0) {
-              const staleIds: string[] = [];
-              queue.forEach((item) => {
-                const firestoreWord = wordsData.find((w) => w.id === item.wordId);
-                if (firestoreWord) {
-                  // If Firestore has same or newer data, this queue item is stale
-                  if (
-                    firestoreWord.totalAttempts >= item.data.totalAttempts &&
-                    firestoreWord.correctCount >= item.data.correctCount
-                  ) {
-                    staleIds.push(item.id);
-                  }
+    try {
+      const userId = user.uid;
+      const wordsCollection = collection(db, "users", userId, "words");
+
+      return onSnapshot(
+        wordsCollection,
+        (snapshot) => {
+          const wordsData: WordData[] = snapshot.docs.map((doc) => {
+            const data = doc.data();
+            const inputTimes = data.inputTimes ?? [];
+            const lastPracticedAt = data.lastPracticedAt?.toDate() ?? null;
+
+            return {
+              word: data.word,
+              translation: data.translation,
+              correctCount: data.correctCount ?? 0,
+              totalAttempts: data.totalAttempts ?? 0,
+              inputTimes,
+              lastPracticedAt,
+              correctPracticeDates: data.correctPracticeDates ?? [],
+              createdAt: data.createdAt?.toDate() ?? new Date(),
+              id: doc.id,
+            };
+          });
+          words.setWords(wordsData);
+
+          // Clean up stale sync queue items
+          // If Firestore data matches or exceeds queue data, remove from queue
+          const queue = SyncQueueManager.getQueue();
+          if (queue.length > 0) {
+            const staleIds: string[] = [];
+            queue.forEach((item) => {
+              const firestoreWord = wordsData.find((w) => w.id === item.wordId);
+              if (firestoreWord) {
+                // If Firestore has same or newer data, this queue item is stale
+                if (
+                  firestoreWord.totalAttempts >= item.data.totalAttempts &&
+                  firestoreWord.correctCount >= item.data.correctCount
+                ) {
+                  staleIds.push(item.id);
                 }
-              });
-              
-              if (staleIds.length > 0) {
-                const updatedQueue = queue.filter((item) => !staleIds.includes(item.id));
-                SyncQueueManager.saveQueue(updatedQueue);
-                setPendingCount(SyncQueueManager.getUniqueWordCount());
               }
+            });
+
+            if (staleIds.length > 0) {
+              const updatedQueue = queue.filter(
+                (item) => !staleIds.includes(item.id)
+              );
+              SyncQueueManager.saveQueue(updatedQueue);
+              setPendingCount(SyncQueueManager.getUniqueWordCount());
             }
-            
-            setLoading(false);
-            setError(null);
-          },
-          (err) => {
-            console.error("Firestore error:", err);
-            setError("Failed to load words from cloud");
-            setLoading(false);
           }
-        );
 
-        return unsubscribe;
-      } catch (err) {
-        console.error("Firebase Auth error:", err);
-        setError("Failed to authenticate with Firebase");
-        setLoading(false);
-      }
-    };
-
-    setupFirestore();
-  }, [user?.uid]);
+          setLoading(false);
+          setError(null);
+        },
+        (err) => {
+          console.error("Firestore error:", err);
+          setError("Failed to load words from cloud");
+          setLoading(false);
+        }
+      );
+    } catch (err) {
+      console.error("Firebase Auth error:", err);
+      setError("Failed to authenticate with Firebase");
+      setLoading(false);
+    }
+  }, [user]);
 
   const addWord = async (word: string, translation: string) => {
     if (!user) {
@@ -400,17 +413,14 @@ export const useFirestoreWords = () => {
       throw new Error("User not authenticated");
     }
 
-    const userId = user.uid;
-    const wordsCollection = collection(db, "users", userId, "words");
+    const wordId = words.getWordId(word);
+    if (!wordId) {
+      throw new Error("Word not found");
+    }
 
     try {
-      const q = query(wordsCollection, where("word", "==", word));
-      const querySnapshot = await getDocs(q);
-
-      const deletePromises = querySnapshot.docs.map((document) =>
-        deleteDoc(doc(db, "users", userId, "words", document.id))
-      );
-      await Promise.all(deletePromises);
+      const userId = user.uid;
+      await deleteDoc(doc(db, "users", userId, "words", wordId));
     } catch (err) {
       console.error("Failed to delete word:", err);
       throw new Error("Failed to delete word from cloud");
@@ -451,12 +461,9 @@ export const useFirestoreWords = () => {
 
     try {
       const querySnapshot = await getDocs(wordsCollection);
-
-      const deletePromises = querySnapshot.docs.map((document) =>
-        deleteDoc(doc(db, "users", userId, "words", document.id))
+      await commitBatchOperations(
+        querySnapshot.docs.map((document) => (batch) => batch.delete(document.ref))
       );
-
-      await Promise.all(deletePromises);
     } catch (err) {
       console.error("Failed to remove all words:", err);
       throw new Error("Failed to remove words from cloud");
@@ -525,21 +532,37 @@ export const useFirestoreWords = () => {
       const updates: Map<
         string,
         {
-          correctCount: number;
-          totalAttempts: number;
-          inputTimes: number[];
-          correctPracticeDates?: string[];
+          data: {
+            correctCount: number;
+            totalAttempts: number;
+            inputTimes: number[];
+            correctPracticeDates?: string[];
+          };
+          queueItemIds: string[];
         }
       > = new Map();
 
       queue.forEach((item) => {
-        updates.set(item.wordId, item.data);
+        const existing = updates.get(item.wordId);
+        if (existing) {
+          existing.data = item.data;
+          existing.queueItemIds.push(item.id);
+        } else {
+          updates.set(item.wordId, {
+            data: item.data,
+            queueItemIds: [item.id],
+          });
+        }
       });
 
-      const updatePromises = Array.from(updates.entries()).map(
-        async ([wordId, data]) => {
+      const updateEntries = Array.from(updates.entries());
+      for (let i = 0; i < updateEntries.length; i += FIRESTORE_BATCH_LIMIT) {
+        const chunk = updateEntries.slice(i, i + FIRESTORE_BATCH_LIMIT);
+        const batch = writeBatch(db);
+
+        chunk.forEach(([wordId, { data }]) => {
           const wordDocRef = doc(db, "users", userId, "words", wordId);
-          await updateDoc(wordDocRef, {
+          batch.update(wordDocRef, {
             correctCount: data.correctCount,
             totalAttempts: data.totalAttempts,
             inputTimes: data.inputTimes,
@@ -548,22 +571,25 @@ export const useFirestoreWords = () => {
             }),
             lastPracticedAt: new Date(),
           });
+        });
+
+        const queueItemIds = chunk.flatMap(
+          ([, { queueItemIds }]) => queueItemIds
+        );
+
+        try {
+          await batch.commit();
+          queueItemIds.forEach((id) => SyncQueueManager.removeFromQueue(id));
+        } catch (error) {
+          console.error("Failed to sync batch:", error);
+          queueItemIds.forEach((id) => SyncQueueManager.incrementRetry(id));
         }
-      );
+      }
 
-      await Promise.all(updatePromises);
-
-      SyncQueueManager.clearQueue();
-      setPendingCount(0);
-
-      console.log("Sync completed successfully");
+      setPendingCount(SyncQueueManager.getUniqueWordCount());
+      console.log("Sync completed");
     } catch (error) {
       console.error("Sync failed:", error);
-
-      queue.forEach((item) => {
-        SyncQueueManager.incrementRetry(item.id);
-      });
-
       setPendingCount(SyncQueueManager.getUniqueWordCount());
     } finally {
       setSyncing(false);
@@ -645,20 +671,18 @@ export const useFirestoreWords = () => {
         data.correctPracticeDates = [];
       });
 
-      const updatePromises = Array.from(words.wordData.entries()).map(
-        async ([, data]) => {
+      await commitBatchOperations(
+        Array.from(words.wordData.values()).map((data) => (batch) => {
           const wordDocRef = doc(db, "users", userId, "words", data.id);
-          await updateDoc(wordDocRef, {
+          batch.update(wordDocRef, {
             correctCount: 0,
             totalAttempts: 0,
             inputTimes: [],
             lastPracticedAt: null,
             correctPracticeDates: [],
           });
-        }
+        })
       );
-
-      await Promise.all(updatePromises);
 
       SyncQueueManager.clearQueue();
       setPendingCount(0);
