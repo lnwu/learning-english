@@ -333,6 +333,9 @@ const Home = observer(() => {
               <Button type="submit" disabled={!isCorrect()}>
                 {t("home.refresh")}
               </Button>
+              <Link href="/sentence">
+                <Button type="button">{t("sentence.entry")}</Button>
+              </Link>
               <Link href="/add-word">
                 <Button type="button">{t("addWord.title")}</Button>
               </Link>

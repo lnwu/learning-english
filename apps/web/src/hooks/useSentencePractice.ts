@@ -1,0 +1,123 @@
+"use client";
+
+import { useCallback, useState } from "react";
+import { useFirestoreWords } from "@/hooks/useFirestoreWords";
+import { getExpectedInputTime } from "@/lib/masteryCalculator";
+
+export interface SentenceQuestion {
+  chinese: string;
+  english: string;
+  grammarPoint: string;
+  words: string[];
+}
+
+export interface SentenceFeedback {
+  correct: boolean;
+  score: number;
+  feedback: string;
+  corrected: string;
+  issues: string[];
+}
+
+const MIN_WORDS = 2;
+const MAX_WORDS = 3;
+
+async function postJson<T>(url: string, payload: unknown): Promise<T> {
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    const message = data && typeof data.error === "string" ? data.error : "请求失败，请稍后重试";
+    throw new Error(message);
+  }
+  return data as T;
+}
+
+export const useSentencePractice = () => {
+  const firestore = useFirestoreWords();
+  const { words, recordCorrectAttempt, recordIncorrectAttempt } = firestore;
+
+  const [question, setQuestion] = useState<SentenceQuestion | null>(null);
+  const [feedback, setFeedback] = useState<SentenceFeedback | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const pickWords = useCallback(() => {
+    const count = Math.floor(Math.random() * (MAX_WORDS - MIN_WORDS + 1)) + MIN_WORDS;
+    return words.getRandomWords(count).map(([word]) => word);
+  }, [words]);
+
+  const generate = useCallback(async () => {
+    setError(null);
+    setFeedback(null);
+
+    const targetWords = pickWords();
+    if (targetWords.length < MIN_WORDS) {
+      setError("insufficientWords");
+      return;
+    }
+
+    setGenerating(true);
+    try {
+      const result = await postJson<SentenceQuestion>("/api/sentence/generate", {
+        words: targetWords,
+      });
+      setQuestion(result);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "生成失败，请稍后重试");
+    } finally {
+      setGenerating(false);
+    }
+  }, [pickWords]);
+
+  const check = useCallback(
+    async (userAnswer: string) => {
+      if (!question) return;
+
+      setError(null);
+      setChecking(true);
+      try {
+        const result = await postJson<SentenceFeedback>("/api/sentence/check", {
+          chinese: question.chinese,
+          words: question.words,
+          reference: question.english,
+          userAnswer,
+        });
+        setFeedback(result);
+
+        question.words.forEach((word) => {
+          if (result.correct) {
+            recordCorrectAttempt(word, getExpectedInputTime(word.length));
+          } else {
+            recordIncorrectAttempt(word);
+          }
+        });
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "批改失败，请稍后重试");
+      } finally {
+        setChecking(false);
+      }
+    },
+    [question, recordCorrectAttempt, recordIncorrectAttempt]
+  );
+
+  return {
+    words,
+    loading: firestore.loading,
+    question,
+    feedback,
+    generating,
+    checking,
+    error,
+    generate,
+    check,
+    syncing: firestore.syncing,
+    pendingCount: firestore.pendingCount,
+    syncToFirestore: firestore.syncToFirestore,
+  };
+};

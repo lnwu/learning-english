@@ -60,7 +60,25 @@ export const translations = {
     'home.translationUpdated': '中文翻译已更新',
     'home.translationEmpty': '中文翻译不能为空',
     'home.translationUpdateFailed': '更新翻译失败，请重试',
-    
+
+    // Sentence practice
+    'sentence.title': '造句练习',
+    'sentence.start': '开始练习',
+    'sentence.generating': '正在生成题目...',
+    'sentence.checking': '批改中...',
+    'sentence.submit': '提交',
+    'sentence.next': '下一题',
+    'sentence.words': '目标单词',
+    'sentence.grammarPoint': '语法点',
+    'sentence.answerPlaceholder': '用英文写出这句话',
+    'sentence.resultCorrect': '正确',
+    'sentence.resultIncorrect': '有待改进',
+    'sentence.score': '得分',
+    'sentence.reference': '参考答案',
+    'sentence.needMoreWords': '词汇库单词不足，请先添加至少 2 个单词。',
+    'sentence.backHome': '返回首页',
+    'sentence.entry': '造句练习',
+
     // Profile page
     'profile.title': '用户资料',
     'profile.loading': '加载您的资料...',
@@ -174,7 +192,25 @@ export const translations = {
     'home.translationUpdated': 'Chinese translation updated',
     'home.translationEmpty': 'Chinese translation cannot be empty',
     'home.translationUpdateFailed': 'Failed to update translation. Please try again.',
-    
+
+    // Sentence practice
+    'sentence.title': 'Sentence Practice',
+    'sentence.start': 'Start Practice',
+    'sentence.generating': 'Generating question...',
+    'sentence.checking': 'Checking...',
+    'sentence.submit': 'Submit',
+    'sentence.next': 'Next',
+    'sentence.words': 'Target Words',
+    'sentence.grammarPoint': 'Grammar Point',
+    'sentence.answerPlaceholder': 'Write this sentence in English',
+    'sentence.resultCorrect': 'Correct',
+    'sentence.resultIncorrect': 'Needs Improvement',
+    'sentence.score': 'Score',
+    'sentence.reference': 'Reference',
+    'sentence.needMoreWords': 'Not enough words. Please add at least 2 words first.',
+    'sentence.backHome': 'Back to Home',
+    'sentence.entry': 'Sentence Practice',
+
     // Profile page
     'profile.title': 'User Profile',
     'profile.loading': 'Loading your profile...',
