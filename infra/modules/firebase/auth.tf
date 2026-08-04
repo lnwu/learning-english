@@ -10,6 +10,7 @@ locals {
     "${google_project.this.project_id}.firebaseapp.com",
     "${google_project.this.project_id}.web.app",
     "learning-english-web.vercel.app",
+    "learn.lnwu.me",
   ]
 }
 
