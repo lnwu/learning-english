@@ -334,7 +334,7 @@ const Profile = observer(() => {
 
         {/* Navigation */}
         <div className="flex space-x-4">
-          <Link href="/home">
+          <Link href="/words">
             <Button>{t('profile.practiceWords')}</Button>
           </Link>
           <Link href="/add-word">

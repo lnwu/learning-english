@@ -79,6 +79,15 @@ export const translations = {
     'sentence.backHome': '返回首页',
     'sentence.entry': '造句练习',
 
+    // Practice hub (home)
+    'practiceHub.title': '练习中心',
+    'practiceHub.subtitle': '选择一种练习方式开始学习',
+    'practiceHub.words.title': '单词练习',
+    'practiceHub.words.description': '根据中文提示拼写单词，巩固词汇记忆',
+    'practiceHub.sentence.title': '造句练习',
+    'practiceHub.sentence.description': '用词汇库的单词造句，练习语法与表达',
+    'practiceHub.back': '返回练习中心',
+
     // Profile page
     'profile.title': '用户资料',
     'profile.loading': '加载您的资料...',
@@ -210,6 +219,15 @@ export const translations = {
     'sentence.needMoreWords': 'Not enough words. Please add at least 2 words first.',
     'sentence.backHome': 'Back to Home',
     'sentence.entry': 'Sentence Practice',
+
+    // Practice hub (home)
+    'practiceHub.title': 'Practice Hub',
+    'practiceHub.subtitle': 'Choose a practice mode to start learning',
+    'practiceHub.words.title': 'Word Practice',
+    'practiceHub.words.description': 'Spell words from Chinese hints to reinforce vocabulary',
+    'practiceHub.sentence.title': 'Sentence Practice',
+    'practiceHub.sentence.description': 'Build sentences with your words to practice grammar',
+    'practiceHub.back': 'Back to Hub',
 
     // Profile page
     'profile.title': 'User Profile',
