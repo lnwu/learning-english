@@ -66,28 +66,25 @@ const Home = () => {
 
   const getEnglishDefinition = async (word: string): Promise<string | null> => {
     try {
-      const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
+      const response = await fetch(`https://api.datamuse.com/words?sp=${encodeURIComponent(word)}&md=d&max=10`);
       if (!response.ok) {
-        throw new Error("Word not found");
+        return null;
       }
-      const data = await response.json();
-      return data.length > 0 ? data[0].meanings[0].definitions[0].definition : null;
+      const data: Array<{ word?: string; defs?: string[] }> = await response.json();
+      const exactWord = word.toLowerCase();
+      const exactMatch = data.find((item) => item.word?.toLowerCase() === exactWord);
+      if (!exactMatch?.defs?.length) {
+        return null;
+      }
+      return exactMatch.defs[0].replace(/^[a-z]\t/, "");
     } catch {
       return null;
     }
   };
 
   const validateWord = async (word: string): Promise<boolean> => {
-    try {
-      const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
-      if (!response.ok) {
-        throw new Error("Word not found");
-      }
-      const data = await response.json();
-      return data.length > 0;
-    } catch {
-      return false;
-    }
+    const definition = await getEnglishDefinition(word);
+    return !!definition;
   };
 
   const handleAddWord = async () => {
