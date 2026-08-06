@@ -66,17 +66,6 @@ const Home = () => {
 
   const getEnglishDefinition = async (word: string): Promise<string | null> => {
     try {
-      const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
-      if (response.ok) {
-        const data = await response.json();
-        const definition = data?.[0]?.meanings?.[0]?.definitions?.[0]?.definition;
-        if (typeof definition === "string" && definition.length > 0) {
-          return definition;
-        }
-      }
-    } catch {}
-
-    try {
       const response = await fetch(`https://api.datamuse.com/words?sp=${encodeURIComponent(word)}&md=d&max=10`);
       if (!response.ok) {
         return null;
