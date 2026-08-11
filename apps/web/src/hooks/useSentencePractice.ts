@@ -84,6 +84,7 @@ export const useSentencePractice = () => {
   const generate = useCallback(async () => {
     setError(null);
     setFeedback(null);
+    setQuestion(null);
 
     const targetWords = pickWords();
     if (targetWords.length < MIN_WORDS) {
