@@ -232,9 +232,8 @@ const WordsPractice = observer(() => {
                           }}
                         />
                       ) : (
-                        <button
-                          type="button"
-                          className={`h-9 px-3 py-1 flex items-center justify-end whitespace-pre-line text-right ${chineseTranslation ? "font-semibold" : "text-gray-400 italic"} cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:rounded`}
+                        <div
+                          className={`h-9 px-3 py-1 flex items-center justify-end whitespace-pre-line ${chineseTranslation ? "font-semibold" : "text-gray-400 italic"} cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:rounded`}
                           onDoubleClick={() => startEditingTranslation(word, englishDefinition, chineseTranslation)}
                           onKeyDown={(e) => {
                             if (e.key === "Enter" || e.key === " ") {
@@ -243,10 +242,9 @@ const WordsPractice = observer(() => {
                             }
                           }}
                           title={t("home.editTranslationHint")}
-                          aria-label={t("home.editTranslationHint")}
                         >
                           {chineseTranslation || t("home.addChineseTranslation")}
-                        </button>
+                        </div>
                       )}
                     </div>
                     <div className="flex items-center space-x-2">
