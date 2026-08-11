@@ -40,12 +40,6 @@ variable "google_oauth_client_secret" {
   sensitive   = true
 }
 
-variable "preview_authorized_domains" {
-  description = "Preview domains to be added into Firebase authorized domains"
-  type        = list(string)
-  default     = []
-}
-
 provider "google" {
   project               = local.project_id
   region                = local.region
@@ -70,5 +64,4 @@ module "firebase" {
 
   google_oauth_client_id     = var.google_oauth_client_id
   google_oauth_client_secret = var.google_oauth_client_secret
-  preview_authorized_domains = var.preview_authorized_domains
 }

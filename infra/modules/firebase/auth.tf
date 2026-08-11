@@ -26,7 +26,7 @@ resource "google_identity_platform_config" "this" {
 
   sign_in {
     anonymous {
-      enabled = false
+      enabled = true
     }
 
     email {
@@ -40,10 +40,7 @@ resource "google_identity_platform_config" "this" {
     }
   }
 
-  authorized_domains = sort(distinct(concat(
-    local.base_authorized_domains,
-    [for domain in var.preview_authorized_domains : trimsuffix(replace(replace(domain, "https://", ""), "http://", ""), "/")]
-  )))
+  authorized_domains = sort(local.base_authorized_domains)
 
   depends_on = [
     google_firebase_project.this,
