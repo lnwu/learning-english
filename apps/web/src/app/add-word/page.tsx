@@ -176,9 +176,9 @@ const Home = () => {
         <Button asChild type="button">
           <Link href="/home">{t('practiceHub.back')}</Link>
         </Button>
-        <Link href="/profile">
-          <Button type="button">{t('menu.profile')}</Button>
-        </Link>
+        <Button asChild type="button">
+          <Link href="/profile">{t('menu.profile')}</Link>
+        </Button>
       </form>
     </main>
   );

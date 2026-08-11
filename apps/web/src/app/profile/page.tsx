@@ -334,12 +334,12 @@ const Profile = observer(() => {
 
         {/* Navigation */}
         <div className="flex space-x-4">
-          <Link href="/words">
-            <Button>{t('profile.practiceWords')}</Button>
-          </Link>
-          <Link href="/add-word">
-            <Button variant="outline">{t('addWord.title')}</Button>
-          </Link>
+          <Button asChild>
+            <Link href="/words">{t('profile.practiceWords')}</Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href="/add-word">{t('addWord.title')}</Link>
+          </Button>
         </div>
 
         {/* Reset Confirmation Dialog */}

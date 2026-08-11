@@ -61,9 +61,9 @@ const Sentence = observer(() => {
         {noWords ? (
           <div className="text-center space-y-4">
             <p className="text-gray-500">{t("sentence.needMoreWords")}</p>
-            <Link href="/add-word">
-              <Button>{t("addWord.title")}</Button>
-            </Link>
+            <Button asChild>
+              <Link href="/add-word">{t("addWord.title")}</Link>
+            </Button>
           </div>
         ) : (
           <div className="space-y-4">

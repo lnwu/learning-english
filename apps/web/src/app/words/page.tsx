@@ -183,9 +183,9 @@ const WordsPractice = observer(() => {
           {t("common.error")}: {error}
         </div>
         <div className="text-center mt-4">
-          <Link href="/add-word">
-            <Button>{t("addWord.title")}</Button>
-          </Link>
+          <Button asChild>
+            <Link href="/add-word">{t("addWord.title")}</Link>
+          </Button>
         </div>
       </main>
     );
@@ -335,9 +335,9 @@ const WordsPractice = observer(() => {
               <Button type="submit" disabled={!isCorrect()}>
                 {t("home.refresh")}
               </Button>
-              <Link href="/add-word">
-                <Button type="button" variant="outline">{t("addWord.title")}</Button>
-              </Link>
+              <Button asChild type="button" variant="outline">
+                <Link href="/add-word">{t("addWord.title")}</Link>
+              </Button>
               <Button asChild type="button" variant="outline">
                 <Link href="/home">{t("practiceHub.back")}</Link>
               </Button>
