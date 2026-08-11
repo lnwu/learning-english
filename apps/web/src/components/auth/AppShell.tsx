@@ -3,6 +3,7 @@
 import { FC, ReactNode } from "react";
 import { useAuth } from "@/hooks";
 import { UserMenu } from "@/components/auth";
+import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect } from "react";
 
@@ -34,9 +35,9 @@ export const AppShell: FC<{ children: ReactNode }> = ({ children }) => {
       {user && (
         <header className="border-b">
           <div className="container mx-auto flex items-center justify-between p-4">
-            <a href="/home" className="text-xl font-bold hover:text-blue-600 transition-colors cursor-pointer">
+            <Link href="/home" className="text-xl font-bold hover:text-blue-600 transition-colors cursor-pointer">
               Learning English
-            </a>
+            </Link>
             <UserMenu user={user} />
           </div>
         </header>
