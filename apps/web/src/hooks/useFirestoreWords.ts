@@ -12,7 +12,7 @@ import {
   writeBatch,
   type WriteBatch,
 } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { db, getEffectiveUserId } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
 import { makeAutoObservable } from "mobx";
 import { SyncQueueManager } from "@/lib/syncQueue";
@@ -315,7 +315,7 @@ export const useFirestoreWords = () => {
     setError(null);
 
     try {
-      const userId = user.uid;
+      const userId = getEffectiveUserId(user);
       const wordsCollection = collection(db, "users", userId, "words");
 
       return onSnapshot(
@@ -389,7 +389,7 @@ export const useFirestoreWords = () => {
     }
 
     try {
-      const userId = user.uid;
+      const userId = getEffectiveUserId(user);
       const wordsCollection = collection(db, "users", userId, "words");
 
       await addDoc(wordsCollection, {
@@ -419,7 +419,7 @@ export const useFirestoreWords = () => {
     }
 
     try {
-      const userId = user.uid;
+      const userId = getEffectiveUserId(user);
       await deleteDoc(doc(db, "users", userId, "words", wordId));
     } catch (err) {
       console.error("Failed to delete word:", err);
@@ -438,7 +438,7 @@ export const useFirestoreWords = () => {
     }
 
     try {
-      const userId = user.uid;
+      const userId = getEffectiveUserId(user);
       const wordDocRef = doc(db, "users", userId, "words", wordId);
       await updateDoc(wordDocRef, {
         translation,
@@ -456,7 +456,7 @@ export const useFirestoreWords = () => {
       throw new Error("User not authenticated");
     }
 
-    const userId = user.uid;
+    const userId = getEffectiveUserId(user);
     const wordsCollection = collection(db, "users", userId, "words");
 
     try {
@@ -527,7 +527,7 @@ export const useFirestoreWords = () => {
     console.log(`Syncing ${queue.length} items to Firestore...`);
 
     try {
-      const userId = user.uid;
+      const userId = getEffectiveUserId(user);
 
       const updates: Map<
         string,
@@ -661,7 +661,7 @@ export const useFirestoreWords = () => {
     }
 
     try {
-      const userId = user.uid;
+      const userId = getEffectiveUserId(user);
 
       words.wordData.forEach((data) => {
         data.correctCount = 0;
