@@ -132,9 +132,9 @@ const Sentence = observer(() => {
         )}
 
         <div className="flex justify-center mt-6">
-          <Link href="/home">
-            <Button type="button" variant="outline">{t("practiceHub.back")}</Button>
-          </Link>
+          <Button asChild type="button" variant="outline">
+            <Link href="/home">{t("practiceHub.back")}</Link>
+          </Button>
         </div>
       </main>
     </>

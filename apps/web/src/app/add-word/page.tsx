@@ -158,9 +158,9 @@ const Home = () => {
       <main className="space-y-4">
         <div className="text-center text-red-500">{t('common.error')}: {wordsError}</div>
         <div className="text-center">
-          <Link href="/">
-            <Button>{t('practiceHub.back')}</Button>
-          </Link>
+          <Button asChild>
+            <Link href="/home">{t('practiceHub.back')}</Link>
+          </Button>
         </div>
       </main>
     );
@@ -173,9 +173,9 @@ const Home = () => {
         <Button onClick={handleAddWord} disabled={loading}>
           {t('addWord.add')}
         </Button>
-        <Link href="/">
-          <Button type="button">{t('practiceHub.back')}</Button>
-        </Link>
+        <Button asChild type="button">
+          <Link href="/home">{t('practiceHub.back')}</Link>
+        </Button>
         <Link href="/profile">
           <Button type="button">{t('menu.profile')}</Button>
         </Link>

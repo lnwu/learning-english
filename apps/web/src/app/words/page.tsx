@@ -336,9 +336,9 @@ const WordsPractice = observer(() => {
               <Link href="/add-word">
                 <Button type="button" variant="outline">{t("addWord.title")}</Button>
               </Link>
-              <Link href="/home">
-                <Button type="button" variant="outline">{t("practiceHub.back")}</Button>
-              </Link>
+              <Button asChild type="button" variant="outline">
+                <Link href="/home">{t("practiceHub.back")}</Link>
+              </Button>
             </div>
           </form>
         </main>
