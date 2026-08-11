@@ -60,6 +60,11 @@ export const signInWithGoogle = async () => {
 
 export const isPreviewEnv = process.env.NEXT_PUBLIC_VERCEL_ENV === "preview";
 
+export const PREVIEW_USER_ID = "preview";
+
+export const getEffectiveUserId = (user: User): string =>
+  isPreviewEnv ? PREVIEW_USER_ID : user.uid;
+
 export const signInAnonymously = async () => {
   return firebaseSignInAnonymously(auth);
 };

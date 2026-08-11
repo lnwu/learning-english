@@ -3,12 +3,16 @@
   "packageManager": "bun@1.3.10",
   "private": true,
   "scripts": {
-    "dev": "vercel link --cwd apps/web && turbo dev"
+    "dev": "vercel link --cwd apps/web && turbo dev",
+    "sync:preview": "bun run scripts/sync-preview-words.mjs"
   },
   "workspaces": [
     "apps/*"
   ],
   "dependencies": {
     "turbo": "^2.8.11"
+  },
+  "devDependencies": {
+    "firebase-admin": "^13.0.0"
   }
 }
