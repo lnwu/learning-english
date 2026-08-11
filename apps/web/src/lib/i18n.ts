@@ -60,7 +60,34 @@ export const translations = {
     'home.translationUpdated': '中文翻译已更新',
     'home.translationEmpty': '中文翻译不能为空',
     'home.translationUpdateFailed': '更新翻译失败，请重试',
-    
+
+    // Sentence practice
+    'sentence.title': '造句练习',
+    'sentence.start': '开始练习',
+    'sentence.generating': '正在生成题目...',
+    'sentence.checking': '批改中...',
+    'sentence.submit': '提交',
+    'sentence.next': '下一题',
+    'sentence.words': '目标单词',
+    'sentence.grammarPoint': '语法点',
+    'sentence.answerPlaceholder': '用英文写出这句话',
+    'sentence.resultCorrect': '正确',
+    'sentence.resultIncorrect': '有待改进',
+    'sentence.score': '得分',
+    'sentence.reference': '参考答案',
+    'sentence.needMoreWords': '词汇库单词不足，请先添加至少 2 个单词。',
+    'sentence.backHome': '返回练习中心',
+    'sentence.entry': '造句练习',
+
+    // Practice hub (home)
+    'practiceHub.title': '练习中心',
+    'practiceHub.subtitle': '选择一种练习方式开始学习',
+    'practiceHub.words.title': '单词练习',
+    'practiceHub.words.description': '根据中文提示拼写单词，巩固词汇记忆',
+    'practiceHub.sentence.title': '造句练习',
+    'practiceHub.sentence.description': '用词汇库的单词造句，练习语法与表达',
+    'practiceHub.back': '返回练习中心',
+
     // Profile page
     'profile.title': '用户资料',
     'profile.loading': '加载您的资料...',
@@ -113,13 +140,13 @@ export const translations = {
     'addWord.translation': '翻译',
     'addWord.add': '添加',
     'addWord.viewAll': '查看所有单词',
-    'addWord.home': '首页',
+    'addWord.home': '返回练习中心',
     'addWord.wordExists': '单词 "{word}" 已存在于列表中。',
     'addWord.invalidChars': '单词 "{word}" 包含无效字符或是拼写错误。',
     'addWord.notRecognized': '单词 "{word}" 未被识别为有效单词。',
     'addWord.translationFailed': '无法获取 "{word}" 的翻译，请重试。',
     'addWord.addFailed': '添加单词到云端失败：',
-    'addWord.goHome': '返回首页',
+    'addWord.goHome': '返回练习中心',
     
     // Sync indicator
     'sync.pending': '个单词待同步',
@@ -174,7 +201,34 @@ export const translations = {
     'home.translationUpdated': 'Chinese translation updated',
     'home.translationEmpty': 'Chinese translation cannot be empty',
     'home.translationUpdateFailed': 'Failed to update translation. Please try again.',
-    
+
+    // Sentence practice
+    'sentence.title': 'Sentence Practice',
+    'sentence.start': 'Start Practice',
+    'sentence.generating': 'Generating question...',
+    'sentence.checking': 'Checking...',
+    'sentence.submit': 'Submit',
+    'sentence.next': 'Next',
+    'sentence.words': 'Target Words',
+    'sentence.grammarPoint': 'Grammar Point',
+    'sentence.answerPlaceholder': 'Write this sentence in English',
+    'sentence.resultCorrect': 'Correct',
+    'sentence.resultIncorrect': 'Needs Improvement',
+    'sentence.score': 'Score',
+    'sentence.reference': 'Reference',
+    'sentence.needMoreWords': 'Not enough words. Please add at least 2 words first.',
+    'sentence.backHome': 'Back to Practice Hub',
+    'sentence.entry': 'Sentence Practice',
+
+    // Practice hub (home)
+    'practiceHub.title': 'Practice Hub',
+    'practiceHub.subtitle': 'Choose a practice mode to start learning',
+    'practiceHub.words.title': 'Word Practice',
+    'practiceHub.words.description': 'Spell words from Chinese hints to reinforce vocabulary',
+    'practiceHub.sentence.title': 'Sentence Practice',
+    'practiceHub.sentence.description': 'Build sentences with your words to practice grammar',
+    'practiceHub.back': 'Back to Hub',
+
     // Profile page
     'profile.title': 'User Profile',
     'profile.loading': 'Loading your profile...',
@@ -227,13 +281,13 @@ export const translations = {
     'addWord.translation': 'Translation',
     'addWord.add': 'Add',
     'addWord.viewAll': 'View All Words',
-    'addWord.home': 'Home',
+    'addWord.home': 'Back to Practice Hub',
     'addWord.wordExists': 'The word "{word}" already exists in the list.',
     'addWord.invalidChars': 'The word "{word}" contains invalid characters or is a typo.',
     'addWord.notRecognized': 'The word "{word}" is not recognized as a real word.',
     'addWord.translationFailed': 'Could not get translation for "{word}". Please try again.',
     'addWord.addFailed': 'Failed to add word to cloud: ',
-    'addWord.goHome': 'Go Home',
+    'addWord.goHome': 'Back to Practice Hub',
     
     // Sync indicator
     'sync.pending': 'words pending',
