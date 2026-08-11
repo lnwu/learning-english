@@ -16,6 +16,13 @@ interface CheckResult {
   issues: string[];
 }
 
+const normalizeForComparison = (value: string) =>
+  value
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
 export async function POST(request: Request) {
   let body: CheckRequest;
   try {
@@ -43,13 +50,28 @@ export async function POST(request: Request) {
       {
         role: "system",
         content:
-          "你是一位严谨的英语语法批改老师。给定一句中文、需要使用的目标单词，以及学生写的英文译句，请判断该英文译句在语法、词汇使用、以及是否正确使用了目标单词方面是否存在问题。只返回 JSON，字段为：correct（布尔值，是否完全正确）、score（0-100 的整数评分）、feedback（用中文给出总体点评与建议）、corrected（修改后的正确英文句子）、issues（字符串数组，逐条列出发现的问题，用中文；若无问题则为空数组）。不要添加其它字段或解释。",
+          "你是一位严谨的英语语法批改老师。给定一句中文、需要使用的目标单词，以及学生写的英文译句，请判断该英文译句在语法、词汇使用、以及是否正确使用了目标单词方面是否存在问题。评分时大小写差异不计入错误。只返回 JSON，字段为：correct（布尔值，是否完全正确）、score（0-100 的整数评分）、feedback（用中文给出总体点评与建议）、corrected（修改后的正确英文句子）、issues（字符串数组，逐条列出发现的问题，用中文；若无问题则为空数组）。不要添加其它字段或解释。",
       },
       {
         role: "user",
         content: `中文句子：${chinese}\n目标单词：${words.join(", ")}\n参考译文：${reference}\n学生译文：${userAnswer}`,
       },
     ]);
+
+    const caseInsensitiveMatch =
+      reference.length > 0 &&
+      normalizeForComparison(userAnswer).length > 0 &&
+      normalizeForComparison(userAnswer) === normalizeForComparison(reference);
+
+    if (caseInsensitiveMatch) {
+      return NextResponse.json({
+        correct: true,
+        score: 100,
+        feedback: "答案正确，评分已按大小写不敏感处理。",
+        corrected: reference,
+        issues: [],
+      });
+    }
 
     return NextResponse.json({
       correct: Boolean(result.correct),

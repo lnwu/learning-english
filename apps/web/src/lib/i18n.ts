@@ -76,7 +76,7 @@ export const translations = {
     'sentence.score': '得分',
     'sentence.reference': '参考答案',
     'sentence.needMoreWords': '词汇库单词不足，请先添加至少 2 个单词。',
-    'sentence.backHome': '返回首页',
+    'sentence.backHome': '返回练习中心',
     'sentence.entry': '造句练习',
 
     // Practice hub (home)
@@ -140,13 +140,13 @@ export const translations = {
     'addWord.translation': '翻译',
     'addWord.add': '添加',
     'addWord.viewAll': '查看所有单词',
-    'addWord.home': '首页',
+    'addWord.home': '返回练习中心',
     'addWord.wordExists': '单词 "{word}" 已存在于列表中。',
     'addWord.invalidChars': '单词 "{word}" 包含无效字符或是拼写错误。',
     'addWord.notRecognized': '单词 "{word}" 未被识别为有效单词。',
     'addWord.translationFailed': '无法获取 "{word}" 的翻译，请重试。',
     'addWord.addFailed': '添加单词到云端失败：',
-    'addWord.goHome': '返回首页',
+    'addWord.goHome': '返回练习中心',
     
     // Sync indicator
     'sync.pending': '个单词待同步',
@@ -217,7 +217,7 @@ export const translations = {
     'sentence.score': 'Score',
     'sentence.reference': 'Reference',
     'sentence.needMoreWords': 'Not enough words. Please add at least 2 words first.',
-    'sentence.backHome': 'Back to Home',
+    'sentence.backHome': 'Back to Practice Hub',
     'sentence.entry': 'Sentence Practice',
 
     // Practice hub (home)
@@ -281,13 +281,13 @@ export const translations = {
     'addWord.translation': 'Translation',
     'addWord.add': 'Add',
     'addWord.viewAll': 'View All Words',
-    'addWord.home': 'Home',
+    'addWord.home': 'Back to Practice Hub',
     'addWord.wordExists': 'The word "{word}" already exists in the list.',
     'addWord.invalidChars': 'The word "{word}" contains invalid characters or is a typo.',
     'addWord.notRecognized': 'The word "{word}" is not recognized as a real word.',
     'addWord.translationFailed': 'Could not get translation for "{word}". Please try again.',
     'addWord.addFailed': 'Failed to add word to cloud: ',
-    'addWord.goHome': 'Go Home',
+    'addWord.goHome': 'Back to Practice Hub',
     
     // Sync indicator
     'sync.pending': 'words pending',

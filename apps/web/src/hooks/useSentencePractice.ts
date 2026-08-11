@@ -21,6 +21,7 @@ export interface SentenceFeedback {
 
 const MIN_WORDS = 2;
 const MAX_WORDS = 3;
+const PRIORITIZED_MIN_ATTEMPTS = 3;
 
 async function postJson<T>(url: string, payload: unknown): Promise<T> {
   const response = await fetch(url, {
@@ -47,10 +48,38 @@ export const useSentencePractice = () => {
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const pickPrioritizedWords = useCallback(
+    (count: number) => {
+      const entries = Array.from(words.wordData.entries());
+      if (entries.length === 0) return [];
+
+      const practiced = entries.filter(([, data]) => data.totalAttempts >= PRIORITIZED_MIN_ATTEMPTS);
+      const lessPracticed = entries.filter(([, data]) => data.totalAttempts < PRIORITIZED_MIN_ATTEMPTS);
+
+      const shuffledPracticed = [...practiced].sort(() => Math.random() - 0.5);
+      const prioritizedWords = shuffledPracticed.slice(0, count).map(([word]) => word);
+
+      if (prioritizedWords.length >= count) {
+        return prioritizedWords;
+      }
+
+      const remaining = count - prioritizedWords.length;
+      const shuffledLessPracticed = [...lessPracticed].sort(() => Math.random() - 0.5);
+      const fallbackWords = shuffledLessPracticed.slice(0, remaining).map(([word]) => word);
+
+      return [...prioritizedWords, ...fallbackWords];
+    },
+    [words]
+  );
+
   const pickWords = useCallback(() => {
     const count = Math.floor(Math.random() * (MAX_WORDS - MIN_WORDS + 1)) + MIN_WORDS;
+    const prioritized = pickPrioritizedWords(count);
+    if (prioritized.length >= MIN_WORDS) {
+      return prioritized;
+    }
     return words.getRandomWords(count).map(([word]) => word);
-  }, [words]);
+  }, [pickPrioritizedWords, words]);
 
   const generate = useCallback(async () => {
     setError(null);
@@ -77,7 +106,7 @@ export const useSentencePractice = () => {
 
   const check = useCallback(
     async (userAnswer: string) => {
-      if (!question) return;
+      if (!question) return null;
 
       setError(null);
       setChecking(true);
@@ -97,8 +126,10 @@ export const useSentencePractice = () => {
             recordIncorrectAttempt(word);
           }
         });
+        return result;
       } catch (err) {
         setError(err instanceof Error ? err.message : "批改失败，请稍后重试");
+        return null;
       } finally {
         setChecking(false);
       }

@@ -11,15 +11,28 @@ const Sentence = observer(() => {
   const { t } = useLocale();
   const [answer, setAnswer] = useState("");
   const [isClient, setIsClient] = useState(false);
+  const [hasTriedInitialGenerate, setHasTriedInitialGenerate] = useState(false);
+  const noWords = words.allWords.size < 2;
 
   useEffect(() => {
     setIsClient(true);
   }, []);
 
+  useEffect(() => {
+    if (!isClient || loading || noWords || question || generating || hasTriedInitialGenerate) {
+      return;
+    }
+    setHasTriedInitialGenerate(true);
+    generate();
+  }, [generate, generating, hasTriedInitialGenerate, isClient, loading, noWords, question]);
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!answer.trim() || checking) return;
-    await check(answer.trim());
+    const result = await check(answer.trim());
+    if (result?.score === 100) {
+      await handleNext();
+    }
   };
 
   const handleNext = async () => {
@@ -39,8 +52,6 @@ const Sentence = observer(() => {
     return null;
   }
 
-  const noWords = words.allWords.size < 2;
-
   return (
     <>
       <SyncIndicator syncing={syncing} pendingCount={pendingCount} onManualSync={syncToFirestore} />
@@ -56,9 +67,9 @@ const Sentence = observer(() => {
           </div>
         ) : (
           <div className="space-y-4">
-            {!question && !generating && (
+            {!question && !generating && error && (
               <div className="text-center">
-                <Button onClick={handleNext}>{t("sentence.start")}</Button>
+                <Button onClick={handleNext}>{t("sentence.next")}</Button>
               </div>
             )}
 
@@ -122,7 +133,7 @@ const Sentence = observer(() => {
 
         <div className="flex justify-center mt-6">
           <Link href="/home">
-            <Button type="button" variant="outline">{t("sentence.backHome")}</Button>
+            <Button type="button" variant="outline">{t("practiceHub.back")}</Button>
           </Link>
         </div>
       </main>

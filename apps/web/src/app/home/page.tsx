@@ -45,13 +45,6 @@ const Home = () => {
         ))}
       </div>
 
-      <div className="flex justify-center mt-8">
-        <Link href="/add-word">
-          <Button type="button" variant="outline">
-            {t("addWord.title")}
-          </Button>
-        </Link>
-      </div>
     </main>
   );
 };

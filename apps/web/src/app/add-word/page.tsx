@@ -159,7 +159,7 @@ const Home = () => {
         <div className="text-center text-red-500">{t('common.error')}: {wordsError}</div>
         <div className="text-center">
           <Link href="/">
-            <Button>{t('addWord.goHome')}</Button>
+            <Button>{t('practiceHub.back')}</Button>
           </Link>
         </div>
       </main>
@@ -174,7 +174,7 @@ const Home = () => {
           {t('addWord.add')}
         </Button>
         <Link href="/">
-          <Button type="button">{t('addWord.home')}</Button>
+          <Button type="button">{t('practiceHub.back')}</Button>
         </Link>
         <Link href="/profile">
           <Button type="button">{t('menu.profile')}</Button>
