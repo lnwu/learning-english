@@ -4,6 +4,7 @@ import {
   getAuth,
   GoogleAuthProvider,
   signInWithPopup,
+  signInAnonymously as firebaseSignInAnonymously,
   signOut as firebaseSignOut,
   onAuthStateChanged,
   type User,
@@ -55,6 +56,12 @@ const googleProvider = new GoogleAuthProvider();
 
 export const signInWithGoogle = async () => {
   return signInWithPopup(auth, googleProvider);
+};
+
+export const isPreviewEnv = process.env.NEXT_PUBLIC_VERCEL_ENV === "preview";
+
+export const signInAnonymously = async () => {
+  return firebaseSignInAnonymously(auth);
 };
 
 export const signOut = async () => {
