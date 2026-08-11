@@ -1,6 +1,5 @@
 "use client";
 
-import { Button } from "@/components/ui";
 import { useLocale } from "@/hooks";
 import Link from "next/link";
 
