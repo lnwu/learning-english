@@ -26,6 +26,9 @@ import {
   formatLocalPracticeDate,
   getLocalPracticeDate,
 } from "@/lib/practiceDate";
+import { getCurrentLocale, t } from "@/lib/i18n";
+
+const tError = (key: string) => t(key, getCurrentLocale());
 
 interface WordData {
   word: string;
@@ -372,20 +375,20 @@ export const useFirestoreWords = () => {
         },
         (err) => {
           console.error("Firestore error:", err);
-          setError("Failed to load words from cloud");
+          setError(tError("error.loadWordsFailed"));
           setLoading(false);
         }
       );
     } catch (err) {
       console.error("Firebase Auth error:", err);
-      setError("Failed to authenticate with Firebase");
+      setError(tError("error.authFailed"));
       setLoading(false);
     }
   }, [user]);
 
   const addWord = async (word: string, translation: string) => {
     if (!user) {
-      throw new Error("User not authenticated");
+      throw new Error(tError("error.notAuthenticated"));
     }
 
     try {
@@ -404,18 +407,18 @@ export const useFirestoreWords = () => {
       });
     } catch (err) {
       console.error("Failed to add word:", err);
-      throw new Error(`Failed to add word to cloud: ${err}`);
+      throw new Error(`${tError("addWord.addFailed")}${err}`);
     }
   };
 
   const deleteWord = async (word: string) => {
     if (!user) {
-      throw new Error("User not authenticated");
+      throw new Error(tError("error.notAuthenticated"));
     }
 
     const wordId = words.getWordId(word);
     if (!wordId) {
-      throw new Error("Word not found");
+      throw new Error(tError("error.wordNotFound"));
     }
 
     try {
@@ -423,18 +426,18 @@ export const useFirestoreWords = () => {
       await deleteDoc(doc(db, "users", userId, "words", wordId));
     } catch (err) {
       console.error("Failed to delete word:", err);
-      throw new Error("Failed to delete word from cloud");
+      throw new Error(tError("error.deleteWordFailed"));
     }
   };
 
   const updateTranslation = async (word: string, translation: string) => {
     if (!user) {
-      throw new Error("User not authenticated");
+      throw new Error(tError("error.notAuthenticated"));
     }
 
     const wordId = words.getWordId(word);
     if (!wordId) {
-      throw new Error("Word not found");
+      throw new Error(tError("error.wordNotFound"));
     }
 
     try {
@@ -447,13 +450,13 @@ export const useFirestoreWords = () => {
       words.updateTranslation(word, translation);
     } catch (err) {
       console.error("Failed to update translation:", err);
-      throw new Error("Failed to update translation");
+      throw new Error(tError("error.updateTranslationFailed"));
     }
   };
 
   const removeAllWords = async () => {
     if (!user) {
-      throw new Error("User not authenticated");
+      throw new Error(tError("error.notAuthenticated"));
     }
 
     const userId = getEffectiveUserId(user);
@@ -466,7 +469,7 @@ export const useFirestoreWords = () => {
       );
     } catch (err) {
       console.error("Failed to remove all words:", err);
-      throw new Error("Failed to remove words from cloud");
+      throw new Error(tError("error.removeWordsFailed"));
     }
   };
 
@@ -657,7 +660,7 @@ export const useFirestoreWords = () => {
 
   const resetPracticeRecords = async () => {
     if (!user) {
-      throw new Error("User not authenticated");
+      throw new Error(tError("error.notAuthenticated"));
     }
 
     try {
@@ -690,7 +693,7 @@ export const useFirestoreWords = () => {
       console.log("Practice records reset successfully");
     } catch (err) {
       console.error("Failed to reset practice records:", err);
-      throw new Error("Failed to reset practice records");
+      throw new Error(tError("error.resetFailed"));
     }
   };
 

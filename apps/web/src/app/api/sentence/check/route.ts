@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { chatCompletionJson, DeepSeekError } from "@/lib/deepseek";
+import { verifyFirebaseIdToken } from "@/lib/serverAuth";
 
 interface CheckRequest {
   chinese?: string;
@@ -24,6 +25,9 @@ const normalizeForComparison = (value: string) =>
     .trim();
 
 export async function POST(request: Request) {
+  const authError = await verifyFirebaseIdToken(request);
+  if (authError) return authError;
+
   let body: CheckRequest;
   try {
     body = await request.json();

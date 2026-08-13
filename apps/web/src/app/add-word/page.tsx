@@ -82,11 +82,6 @@ const Home = () => {
     }
   };
 
-  const validateWord = async (word: string): Promise<boolean> => {
-    const definition = await getEnglishDefinition(word);
-    return !!definition;
-  };
-
   const handleAddWord = async () => {
     if (!word) return;
 
@@ -108,29 +103,23 @@ const Home = () => {
       return;
     }
 
-    const isValidEnglishWord = await validateWord(word);
-    if (!isValidEnglishWord) {
+    const [chineseTranslation, englishDefinition] = await Promise.all([
+      translateToChinese(word),
+      getEnglishDefinition(word),
+    ]);
+
+    if (!englishDefinition) {
       alert(t('addWord.notRecognized').replace('{word}', word));
       clear();
       setLoading(false);
       return;
     }
 
-    const chineseTranslation = await translateToChinese(word);
-    const englishDefinition = await getEnglishDefinition(word);
-
     let combinedTranslation = "";
-    if (chineseTranslation && englishDefinition) {
+    if (chineseTranslation) {
       combinedTranslation = `${englishDefinition}\n${chineseTranslation}`;
-    } else if (chineseTranslation) {
-      combinedTranslation = chineseTranslation;
-    } else if (englishDefinition) {
-      combinedTranslation = englishDefinition;
     } else {
-      alert(t('addWord.translationFailed').replace('{word}', word));
-      clear();
-      setLoading(false);
-      return;
+      combinedTranslation = englishDefinition;
     }
 
     try {
@@ -139,7 +128,7 @@ const Home = () => {
       clear();
     } catch (error) {
       console.error("Failed to add word:", error);
-      alert(t('addWord.addFailed') + error);
+      alert(error instanceof Error ? error.message : t('addWord.addFailed'));
     } finally {
       setLoading(false);
     }
