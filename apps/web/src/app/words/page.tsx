@@ -301,17 +301,18 @@ const WordsPractice = observer(() => {
                         disabled={inputValue === word}
                         className={`${inputValue === word ? "" : "cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:rounded"} px-1 relative group disabled:cursor-default`}
                         onMouseEnter={() => {
-                          if (inputValue !== word) {
+                          if (inputValue !== "" && inputValue !== word) {
                             handleHintReveal(word);
                           }
                         }}
                         onFocus={() => {
-                          if (inputValue !== word) {
+                          if (inputValue !== "" && inputValue !== word) {
                             handleHintReveal(word);
                           }
                         }}
                         onClick={() => {
                           if (inputValue !== word) {
+                            handleHintReveal(word);
                             const utterance = new SpeechSynthesisUtterance(word);
                             utterance.lang = "en-US";
                             speechSynthesis.speak(utterance);
