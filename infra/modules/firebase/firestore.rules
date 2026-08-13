@@ -6,7 +6,8 @@ service cloud.firestore {
     }
 
     match /users/preview/words/{wordId} {
-      allow read, write: if request.auth != null;
+      allow read: if request.auth != null;
+      allow write: if request.auth.token.firebase.sign_in_provider == 'anonymous';
     }
 
     match /users/{userId} {
@@ -14,7 +15,8 @@ service cloud.firestore {
     }
 
     match /users/preview {
-      allow read, write: if request.auth != null;
+      allow read: if request.auth != null;
+      allow write: if request.auth.token.firebase.sign_in_provider == 'anonymous';
     }
     
     match /{document=**} {
