@@ -1,4 +1,3 @@
-export * from "./useWords";
 export { useFirestoreWords } from "./useFirestoreWords";
 export { useSentencePractice } from "./useSentencePractice";
 export { useLocale } from "./useLocale";

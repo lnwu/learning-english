@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { chatCompletionJson, DeepSeekError } from "@/lib/deepseek";
+import { verifyFirebaseIdToken } from "@/lib/serverAuth";
 
 interface GenerateRequest {
   words?: string[];
@@ -15,6 +16,9 @@ const MAX_WORDS = 3;
 const MIN_WORDS = 1;
 
 export async function POST(request: Request) {
+  const authError = await verifyFirebaseIdToken(request);
+  if (authError) return authError;
+
   let body: GenerateRequest;
   try {
     body = await request.json();

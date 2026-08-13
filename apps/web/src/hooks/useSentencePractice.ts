@@ -3,6 +3,7 @@
 import { useCallback, useState } from "react";
 import { useFirestoreWords } from "@/hooks/useFirestoreWords";
 import { getExpectedInputTime } from "@/lib/masteryCalculator";
+import { auth } from "@/lib/firebase";
 
 export interface SentenceQuestion {
   chinese: string;
@@ -24,9 +25,17 @@ const MAX_WORDS = 3;
 const PRIORITIZED_MIN_ATTEMPTS = 3;
 
 async function postJson<T>(url: string, payload: unknown): Promise<T> {
+  const idToken = await auth.currentUser?.getIdToken();
+  if (!idToken) {
+    throw new Error("用户未登录");
+  }
+
   const response = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${idToken}`,
+    },
     body: JSON.stringify(payload),
   });
 
