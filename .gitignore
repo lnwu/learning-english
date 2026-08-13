@@ -4,6 +4,8 @@
 node_modules
 .pnp
 .pnp.js
+package-lock.json
+npm-shrinkwrap.json
 
 # Local env files
 .env
