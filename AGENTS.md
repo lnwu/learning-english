@@ -15,6 +15,10 @@
 - 在 `infra` 改代码时，遵循 `infra/AGENTS.md` 与本文件。
 - 就近规则优先（子目录 `AGENTS.md` 优先于根目录）。
 
+## 工具链
+
+- 本项目使用 bun（turbo monorepo，根目录有 `bun.lock`）。本机环境没有 node/npm/npx，运行脚本、安装依赖、执行测试一律用 `bun` / `bun x <命令>`。
+
 ## 预览环境与 sync-preview-words
 
 - Vercel preview 环境使用匿名登录，`getEffectiveUserId` 会把所有用户映射到 `preview` 用户，读写 `users/preview/*`。
