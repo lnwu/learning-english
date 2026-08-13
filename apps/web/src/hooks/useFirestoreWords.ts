@@ -26,9 +26,9 @@ import {
   formatLocalPracticeDate,
   getLocalPracticeDate,
 } from "@/lib/practiceDate";
-import { getCurrentLocale, t } from "@/lib/i18n";
+import { getCurrentLocale, t, type TranslationKey } from "@/lib/i18n";
 
-const tError = (key: string) => t(key, getCurrentLocale());
+const tError = (key: TranslationKey) => t(key, getCurrentLocale());
 
 interface WordData {
   word: string;
@@ -49,13 +49,19 @@ class Words {
 
   wordData: Map<string, WordData> = new Map();
   userInputs: Map<string, string> = new Map();
+  #priorityCache = new Map<string, { masteryScore: number; priority: number }>();
 
   constructor() {
     makeAutoObservable(this);
   }
 
+  invalidateCaches() {
+    this.#priorityCache.clear();
+  }
+
   setWords(words: WordData[]) {
     this.wordData = new Map(words.map((w) => [w.word, w]));
+    this.#priorityCache.clear();
   }
 
   addWord(word: string, translation: string, id: string) {
@@ -106,6 +112,7 @@ class Words {
     }
 
     data.lastPracticedAt = now;
+    this.#priorityCache.delete(word);
   }
 
   // Record an incorrect attempt (hint revealed)
@@ -115,6 +122,7 @@ class Words {
 
     data.totalAttempts += 1;
     data.lastPracticedAt = new Date();
+    this.#priorityCache.delete(word);
   }
 
   // Get mastery score for a word (0-100)
@@ -240,15 +248,20 @@ class Words {
       return [];
     }
 
-    // Calculate priority for each word
+    // Calculate priority for each word (cached)
     const wordsWithPriority = wordEntries.map(([word, data]) => {
-      const masteryScore = calculateMasteryScore(data).score;
-      const priority = calculatePriority(
-        masteryScore,
-        data.lastPracticedAt,
-        data.totalAttempts
-      );
-      return { word, translation: data.translation, priority };
+      let entry = this.#priorityCache.get(word);
+      if (!entry) {
+        const masteryScore = calculateMasteryScore(data).score;
+        const priority = calculatePriority(
+          masteryScore,
+          data.lastPracticedAt,
+          data.totalAttempts
+        );
+        entry = { masteryScore, priority };
+        this.#priorityCache.set(word, entry);
+      }
+      return { word, translation: data.translation, priority: entry.priority };
     });
 
     const selected: [string, string][] = [];
@@ -281,6 +294,36 @@ class Words {
     }
 
     return selected;
+  }
+
+  get practiceStats() {
+    const stats: Array<{
+      word: string;
+      avgTime: number;
+      count: number;
+      masteryScore: number;
+      correctCount: number;
+      totalAttempts: number;
+    }> = [];
+
+    this.wordData.forEach((data, word) => {
+      const times = data.inputTimes;
+      const avg =
+        times.length > 0
+          ? times.reduce((sum, t) => sum + t, 0) / times.length
+          : 0;
+      stats.push({
+        word,
+        avgTime: avg,
+        count: times.length,
+        masteryScore: calculateMasteryScore(data).score,
+        correctCount: data.correctCount,
+        totalAttempts: data.totalAttempts,
+      });
+    });
+
+    stats.sort((a, b) => a.masteryScore - b.masteryScore);
+    return stats;
   }
 }
 
@@ -527,7 +570,6 @@ export const useFirestoreWords = () => {
     }
 
     setSyncing(true);
-    console.log(`Syncing ${queue.length} items to Firestore...`);
 
     try {
       const userId = getEffectiveUserId(user);
@@ -590,7 +632,6 @@ export const useFirestoreWords = () => {
       }
 
       setPendingCount(SyncQueueManager.getUniqueWordCount());
-      console.log("Sync completed");
     } catch (error) {
       console.error("Sync failed:", error);
       setPendingCount(SyncQueueManager.getUniqueWordCount());
@@ -636,7 +677,6 @@ export const useFirestoreWords = () => {
   useEffect(() => {
     const handleOnline = () => {
       if (user) {
-        console.log("Network restored, syncing...");
         syncToFirestore();
       }
     };
@@ -645,18 +685,6 @@ export const useFirestoreWords = () => {
     return () => window.removeEventListener("online", handleOnline);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.uid]);
-
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      if (SyncQueueManager.getQueueLength() > 0) {
-        syncToFirestore();
-      }
-    };
-
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const resetPracticeRecords = async () => {
     if (!user) {
@@ -673,6 +701,7 @@ export const useFirestoreWords = () => {
         data.lastPracticedAt = null;
         data.correctPracticeDates = [];
       });
+      words.invalidateCaches();
 
       await commitBatchOperations(
         Array.from(words.wordData.values()).map((data) => (batch) => {
@@ -689,8 +718,6 @@ export const useFirestoreWords = () => {
 
       SyncQueueManager.clearQueue();
       setPendingCount(0);
-
-      console.log("Practice records reset successfully");
     } catch (err) {
       console.error("Failed to reset practice records:", err);
       throw new Error(tError("error.resetFailed"));

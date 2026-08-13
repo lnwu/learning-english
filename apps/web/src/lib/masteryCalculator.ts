@@ -1,3 +1,5 @@
+import { getLocalPracticeDate } from "@/lib/practiceDate";
+
 export interface WordMetrics {
   word: string;
   correctCount: number;
@@ -30,8 +32,6 @@ const ACCURACY_WEIGHT = 0.5;
 const SPEED_WEIGHT = 0.15;
 const CONSISTENCY_WEIGHT = 0.2;
 const REVIEW_WEIGHT = 0.15;
-
-import { getLocalPracticeDate } from "@/lib/practiceDate";
 
 export type MasteryLevel =
   | "new"
