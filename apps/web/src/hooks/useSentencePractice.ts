@@ -150,6 +150,7 @@ export const useSentencePractice = () => {
   return {
     words,
     loading: firestore.loading,
+    loadError: firestore.error,
     question,
     feedback,
     generating,
