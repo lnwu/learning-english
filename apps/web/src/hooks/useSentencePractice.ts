@@ -104,7 +104,7 @@ export const useSentencePractice = () => {
     setGenerating(true);
     try {
       const result = await postJson<SentenceQuestion>("/api/sentence/generate", {
-        words: targetWords,
+        words: targetWords.map((word) => ({ word, translation: words.getTranslation(word) ?? "" })),
       });
       setQuestion(result);
     } catch (err) {
@@ -112,7 +112,7 @@ export const useSentencePractice = () => {
     } finally {
       setGenerating(false);
     }
-  }, [pickWords]);
+  }, [pickWords, words]);
 
   const check = useCallback(
     async (userAnswer: string) => {
