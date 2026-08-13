@@ -3,7 +3,8 @@
 import { Input, Button } from "@/components/ui";
 import { useRef, useState } from "react";
 import Link from "next/link";
-import { useFirestoreWords, useLocale } from "@/hooks";
+import { useFirestoreWords, useLocale, toast } from "@/hooks";
+import { auth } from "@/lib/firebase";
 
 const Home = () => {
   const { words, addWord, loading: wordsLoading, error: wordsError } = useFirestoreWords();
@@ -17,118 +18,66 @@ const Home = () => {
     inputRef.current?.focus();
   };
 
-  // Fallback dictionary for common English words
-  const fallbackDictionary: Record<string, string> = {
-    hello: "你好",
-    world: "世界",
-    love: "爱",
-    water: "水",
-    food: "食物",
-    house: "房子",
-    car: "汽车",
-    book: "书",
-    computer: "电脑",
-    friend: "朋友",
-    family: "家庭",
-    work: "工作",
-    school: "学校",
-    time: "时间",
-    money: "钱",
-    happy: "快乐",
-    good: "好",
-    bad: "坏",
-    big: "大",
-    small: "小",
-  };
-
-  const translateToChinese = async (word: string): Promise<string | null> => {
-    try {
-      // Try Google Translate API first
-      const response = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=zh-CN&dt=t&q=${encodeURIComponent(word)}`);
-
-      if (!response.ok) {
-        throw new Error("Translation failed");
-      }
-
-      const data = await response.json();
-      const translation = data[0][0][0];
-
-      if (translation && translation !== word) {
-        return translation;
-      }
-      throw new Error("No translation found");
-    } catch (error) {
-      console.error("Translation API error:", error);
-      // Fallback to local dictionary
-      return fallbackDictionary[word.toLowerCase()] || null;
-    }
-  };
-
-  const getEnglishDefinition = async (word: string): Promise<string | null> => {
-    try {
-      const response = await fetch(`https://api.datamuse.com/words?sp=${encodeURIComponent(word)}&md=d&max=10`);
-      if (!response.ok) {
-        return null;
-      }
-      const data: Array<{ word?: string; defs?: string[] }> = await response.json();
-      const exactWord = word.toLowerCase();
-      const exactMatch = data.find((item) => item.word?.toLowerCase() === exactWord);
-      if (!exactMatch?.defs?.length) {
-        return null;
-      }
-      return exactMatch.defs[0].replace(/^[a-z]\t/, "");
-    } catch {
-      return null;
-    }
-  };
-
   const handleAddWord = async () => {
     if (!word) return;
 
     setLoading(true);
 
-    const existingWord = words.allWords.has(word);
-    if (existingWord) {
-      alert(t('addWord.wordExists').replace('{word}', word));
+    if (words.allWords.has(word)) {
+      toast({ title: t('addWord.wordExists').replace('{word}', word), variant: "destructive" });
       clear();
       setLoading(false);
       return;
     }
 
-    const isValidWord = /^[a-zA-Z]+$/.test(word);
-    if (!isValidWord) {
-      alert(t('addWord.invalidChars').replace('{word}', word));
+    if (!/^[a-zA-Z]+$/.test(word)) {
+      toast({ title: t('addWord.invalidChars').replace('{word}', word), variant: "destructive" });
       clear();
       setLoading(false);
       return;
-    }
-
-    const [chineseTranslation, englishDefinition] = await Promise.all([
-      translateToChinese(word),
-      getEnglishDefinition(word),
-    ]);
-
-    if (!englishDefinition) {
-      alert(t('addWord.notRecognized').replace('{word}', word));
-      clear();
-      setLoading(false);
-      return;
-    }
-
-    let combinedTranslation = "";
-    if (chineseTranslation) {
-      combinedTranslation = `${englishDefinition}\n${chineseTranslation}`;
-    } else {
-      combinedTranslation = englishDefinition;
     }
 
     try {
+      const idToken = await auth.currentUser?.getIdToken();
+      if (!idToken) {
+        throw new Error(t('error.notAuthenticated'));
+      }
+
+      const response = await fetch('/api/translate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({ word }),
+      });
+
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data && typeof data.error === 'string' ? data.error : t('addWord.addFailed'));
+      }
+
+      const { chineseTranslation, englishDefinition } = data as {
+        chineseTranslation: string | null;
+        englishDefinition: string | null;
+      };
+
+      if (!englishDefinition) {
+        toast({ title: t('addWord.notRecognized').replace('{word}', word), variant: "destructive" });
+        clear();
+        setLoading(false);
+        return;
+      }
+
+      const combinedTranslation = chineseTranslation
+        ? `${englishDefinition}\n${chineseTranslation}`
+        : englishDefinition;
+
       await addWord(word, combinedTranslation);
-      // Success - just clear the input, no alert needed
       clear();
     } catch (error) {
       console.error("Failed to add word:", error);
-      alert(error instanceof Error ? error.message : t('addWord.addFailed'));
+      toast({ title: error instanceof Error ? error.message : t('addWord.addFailed'), variant: "destructive" });
     } finally {
       setLoading(false);
     }

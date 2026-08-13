@@ -7,6 +7,27 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { type Locale } from "@/lib/i18n";
 
+const getWordLengthCategory = (word: string): number => {
+  if (word.length <= 5) return 0;
+  if (word.length <= 10) return 1;
+  return 2;
+};
+
+const COLOR_CLASSES = {
+  blue: {
+    header: "bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-300",
+    border: "border-blue-200 dark:border-blue-700",
+  },
+  yellow: {
+    header: "bg-yellow-50 dark:bg-yellow-900 text-yellow-600 dark:text-yellow-300",
+    border: "border-yellow-200 dark:border-yellow-700",
+  },
+  red: {
+    header: "bg-red-50 dark:bg-red-900 text-red-600 dark:text-red-300",
+    border: "border-red-200 dark:border-red-700",
+  },
+} as const;
+
 const Profile = observer(() => {
   const { user } = useAuth();
   const { words, resetPracticeRecords, loading, error } = useFirestoreWords();
@@ -20,44 +41,10 @@ const Profile = observer(() => {
     setIsClient(true);
   }, []);
 
-  // Group words by length category
-  const getWordLengthCategory = (word: string): number => {
-    if (word.length <= 5) return 0; // short
-    if (word.length <= 10) return 1; // medium
-    return 2; // long
-  };
-
-  // Calculate statistics directly (MobX will track dependencies)
   const totalWords = words.allWords.size;
   const overallAverageTime = words.getOverallAverageInputTime();
-  
-  const wordsWithStats: Array<{ 
-    word: string; 
-    avgTime: number; 
-    count: number;
-    masteryScore: number;
-    correctCount: number;
-    totalAttempts: number;
-  }> = [];
-  
-  words.allWords.forEach((translation, word) => {
-    const times = words.getInputTimes(word);
-    const masteryScore = words.getMasteryScore(word);
-    const avg = times.length > 0 
-      ? times.reduce((sum, t) => sum + t, 0) / times.length 
-      : 0;
-    wordsWithStats.push({ 
-      word, 
-      avgTime: avg, 
-      count: times.length,
-      masteryScore,
-      correctCount: words.getCorrectCount(word),
-      totalAttempts: words.getTotalAttempts(word),
-    });
-  });
 
-  // Sort by mastery score (lowest first - needs most practice)
-  wordsWithStats.sort((a, b) => a.masteryScore - b.masteryScore);
+  const wordsWithStats = words.practiceStats;
 
   const wordsByCategory: Record<number, typeof wordsWithStats> = {
     0: [], // short words
@@ -249,28 +236,14 @@ const Profile = observer(() => {
           </div>
           
           <div className="space-y-6">
-            {[
+            {([
               { category: 0, labelKey: "profile.shortWords", color: "blue" },
               { category: 1, labelKey: "profile.mediumWords", color: "yellow" },
-              { category: 2, labelKey: "profile.longWords", color: "red" }
-            ].map(({ category, labelKey, color }) => {
+              { category: 2, labelKey: "profile.longWords", color: "red" },
+            ] as const).map(({ category, labelKey, color }) => {
               const avgTime = words.getAverageTimeByLengthCategory(category);
               const categoryWords = filteredWordsByCategory[category];
-              const colorClasses = {
-                blue: {
-                  header: "bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-300",
-                  border: "border-blue-200 dark:border-blue-700"
-                },
-                yellow: {
-                  header: "bg-yellow-50 dark:bg-yellow-900 text-yellow-600 dark:text-yellow-300",
-                  border: "border-yellow-200 dark:border-yellow-700"
-                },
-                red: {
-                  header: "bg-red-50 dark:bg-red-900 text-red-600 dark:text-red-300",
-                  border: "border-red-200 dark:border-red-700"
-                }
-              };
-              const classes = colorClasses[color as keyof typeof colorClasses];
+              const classes = COLOR_CLASSES[color as keyof typeof COLOR_CLASSES];
               
               return (
                 <div key={category} className={`border rounded-lg overflow-hidden ${classes.border}`}>

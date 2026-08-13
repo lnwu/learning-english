@@ -254,9 +254,12 @@ export const translations = {
   },
 };
 
+export type TranslationKey = keyof typeof translations["zh"];
+
 // 获取翻译文本
-export function t(key: string, locale: Locale = 'zh'): string {
-  return translations[locale][key as keyof typeof translations['zh']] || key;
+export function t(key: TranslationKey, locale: Locale = "zh"): string {
+  const table = translations[locale] as unknown as Record<TranslationKey, string>;
+  return table[key] ?? translations.zh[key];
 }
 
 // 获取当前语言
