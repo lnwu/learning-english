@@ -7,6 +7,7 @@ import type { Metadata } from "next";
 import { FC, ReactNode } from "react";
 import { AuthProvider } from "@/components/auth";
 import { AppShell } from "@/components/auth/AppShell";
+import { WordsProvider } from "@/hooks";
 import { Toaster } from "@/components/ui";
 import { detectLocaleFromAcceptLanguage, localeToHtmlLang } from "@/lib/i18n";
 
@@ -30,10 +31,12 @@ const RootLayout: FC<{ children: ReactNode }> = async ({ children }) => {
     <html lang={localeToHtmlLang(locale)} className={`${inter.variable} ${notoSansSC.variable}`}>
       <body className="flex min-h-screen flex-col antialiased">
         <AuthProvider>
-          <AppShell>
-            {children}
-          </AppShell>
-          <Toaster />
+          <WordsProvider>
+            <AppShell>
+              {children}
+            </AppShell>
+            <Toaster />
+          </WordsProvider>
         </AuthProvider>
         <Analytics />
       </body>

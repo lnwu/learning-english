@@ -1,10 +1,156 @@
 "use client";
 
 import { Input, Button, MasteryBar, SyncIndicator } from "@/components/ui";
-import { useEffect, useState, useRef, type FormEvent } from "react";
+import { useCallback, useEffect, useState, useRef, type FormEvent, type RefObject } from "react";
 import { observer } from "mobx-react-lite";
 import Link from "next/link";
 import { useFirestoreWords, useLocale, toast } from "@/hooks";
+import type { Words } from "@/hooks/useFirestoreWords";
+import type { TranslationKey } from "@/lib/i18n";
+
+const parseTranslation = (translation: string) => {
+  const segments = translation
+    .split("\n")
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+
+  if (segments.length === 0) {
+    return { englishDefinition: "", chineseTranslation: "" };
+  }
+
+  if (segments.length === 1) {
+    const single = segments[0];
+    const hasChinese = /[\u4e00-\u9fff]/.test(single);
+    return hasChinese ? { englishDefinition: "", chineseTranslation: single } : { englishDefinition: single, chineseTranslation: "" };
+  }
+
+  return {
+    englishDefinition: segments[0],
+    chineseTranslation: segments.slice(1).join("\n"),
+  };
+};
+
+interface WordRowProps {
+  word: string;
+  translation: string;
+  words: Words;
+  isEditing: boolean;
+  editingValue: string;
+  onEditingValueChange: (value: string) => void;
+  onStartEdit: (word: string, englishDefinition: string, chineseTranslation: string) => void;
+  onCommitEdit: () => void;
+  onCancelEdit: () => void;
+  onInputChange: (word: string, value: string) => void;
+  onHintReveal: (word: string) => void;
+  inputRefs: RefObject<Map<string, HTMLInputElement>>;
+  t: (key: TranslationKey) => string;
+}
+
+const WordRow = observer(({ word, translation, words, isEditing, editingValue, onEditingValueChange, onStartEdit, onCommitEdit, onCancelEdit, onInputChange, onHintReveal, inputRefs, t }: WordRowProps) => {
+  const inputValue = words.userInputs.get(word) || "";
+  const { englishDefinition, chineseTranslation } = parseTranslation(translation);
+
+  return (
+    <li className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1">
+      <div className="max-w-xs w-full text-right justify-self-end">
+        {isEditing ? (
+          <Input
+            className="w-full text-right"
+            type="text"
+            value={editingValue}
+            autoFocus
+            onChange={(e) => onEditingValueChange(e.target.value)}
+            onBlur={() => {
+              onCommitEdit();
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                if (e.nativeEvent.isComposing) {
+                  return;
+                }
+                e.preventDefault();
+                onCommitEdit();
+              }
+
+              if (e.key === "Escape") {
+                e.preventDefault();
+                onCancelEdit();
+              }
+            }}
+          />
+        ) : (
+          <div
+            className={`h-9 px-3 py-1 flex items-center justify-end whitespace-pre-line ${chineseTranslation ? "font-semibold" : "text-gray-400 italic"} cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:rounded`}
+            onDoubleClick={() => onStartEdit(word, englishDefinition, chineseTranslation)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onStartEdit(word, englishDefinition, chineseTranslation);
+              }
+            }}
+            title={t("home.editTranslationHint")}
+          >
+            {chineseTranslation || t("home.addChineseTranslation")}
+          </div>
+        )}
+      </div>
+      <div className="flex items-center space-x-2">
+        <Input
+          className="w-xs"
+          type="text"
+          id={word}
+          ref={(el) => {
+            if (el) {
+              inputRefs.current.set(word, el);
+            }
+          }}
+          onChange={(e) => onInputChange(word, e.target.value.toLowerCase())}
+          value={inputValue}
+        />
+        <button
+          type="button"
+          title={word}
+          aria-label={`${t("home.hint")}: ${word}`}
+          disabled={inputValue === word}
+          className={`${inputValue === word ? "" : "cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:rounded"} px-1 relative group disabled:cursor-default`}
+          onMouseEnter={() => {
+            if (inputValue !== "" && inputValue !== word) {
+              onHintReveal(word);
+            }
+          }}
+          onFocus={() => {
+            if (inputValue !== "" && inputValue !== word) {
+              onHintReveal(word);
+            }
+          }}
+          onClick={() => {
+            if (inputValue !== word) {
+              onHintReveal(word);
+              const utterance = new SpeechSynthesisUtterance(word);
+              utterance.lang = "en-US";
+              speechSynthesis.speak(utterance);
+            }
+          }}
+        >
+          {inputValue === word ? "✅" : "❌"}
+          {inputValue !== word && <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-800 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">{word}</div>}
+        </button>
+        <MasteryBar score={words.getMasteryScore(word)} />
+      </div>
+      {englishDefinition && <div className="max-w-xs w-full text-right text-sm text-gray-500 whitespace-pre-line justify-self-end">{englishDefinition}</div>}
+      {englishDefinition && <div />}
+    </li>
+  );
+});
+
+const SubmitButton = observer(({ randomWords, words, label }: { randomWords: [string, string][]; words: Words; label: string }) => {
+  const allCorrect = randomWords.length > 0 && randomWords.every(([word]) => words.userInputs.get(word) === word);
+  return (
+    <Button type="submit" disabled={!allCorrect}>
+      {label}
+    </Button>
+  );
+});
 
 const WordsPractice = observer(() => {
   const { words, recordCorrectAttempt, recordIncorrectAttempt, syncToFirestore, syncing, pendingCount, loading, error, updateTranslation } = useFirestoreWords();
@@ -35,11 +181,11 @@ const WordsPractice = observer(() => {
 
   // Initialize random words when words are loaded
   useEffect(() => {
-    if (!loading && words.allWords.size > 0 && randomWords.length === 0) {
+    if (!loading && words.wordData.size > 0 && randomWords.length === 0) {
       setRandomWords(words.getRandomWords());
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, words.allWords.size, randomWords.length]);
+  }, [loading, words.wordData.size, randomWords.length]);
 
   useEffect(() => {
     if (shouldFocusFirst && randomWords.length > 0) {
@@ -62,29 +208,7 @@ const WordsPractice = observer(() => {
     setShouldFocusFirst(true);
   };
 
-  const parseTranslation = (translation: string) => {
-    const segments = translation
-      .split("\n")
-      .map((segment) => segment.trim())
-      .filter(Boolean);
-
-    if (segments.length === 0) {
-      return { englishDefinition: "", chineseTranslation: "" };
-    }
-
-    if (segments.length === 1) {
-      const single = segments[0];
-      const hasChinese = /[\u4e00-\u9fff]/.test(single);
-      return hasChinese ? { englishDefinition: "", chineseTranslation: single } : { englishDefinition: single, chineseTranslation: "" };
-    }
-
-    return {
-      englishDefinition: segments[0],
-      chineseTranslation: segments.slice(1).join("\n"),
-    };
-  };
-
-  const startEditingTranslation = (word: string, englishDefinition: string, chineseTranslation: string) => {
+  const startEditingTranslation = useCallback((word: string, englishDefinition: string, chineseTranslation: string) => {
     setEditingWord(word);
     setEditingValue(chineseTranslation);
     editSessionRef.current = {
@@ -93,9 +217,9 @@ const WordsPractice = observer(() => {
       englishDefinition,
       committed: false,
     };
-  };
+  }, []);
 
-  const cancelEditingTranslation = () => {
+  const cancelEditingTranslation = useCallback(() => {
     setEditingWord(null);
     setEditingValue("");
     editSessionRef.current = {
@@ -104,9 +228,9 @@ const WordsPractice = observer(() => {
       englishDefinition: "",
       committed: false,
     };
-  };
+  }, []);
 
-  const commitEditingTranslation = async () => {
+  const commitEditingTranslation = useCallback(async () => {
     const session = editSessionRef.current;
     if (!session.word || session.committed) {
       return;
@@ -145,27 +269,54 @@ const WordsPractice = observer(() => {
         variant: "destructive",
       });
     }
-  };
+  }, [editingValue, t, updateTranslation, cancelEditingTranslation]);
 
-  const isCorrect = () => {
-    return randomWords.length > 0 && randomWords.every(([word]) => words.userInputs.get(word) === word);
-  };
-
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!isCorrect()) {
-      return;
+  const handleInputChange = useCallback((word: string, value: string) => {
+    // Start timer on first character typed
+    if (value.length === 1) {
+      timerStartRef.current.set(word, Date.now());
     }
 
-    refreshWords();
-  };
+    // Clear timer if user clears input
+    if (value.length === 0) {
+      timerStartRef.current.delete(word);
+    }
 
-  const handleHintReveal = (word: string) => {
+    words.setUserInput(word, value);
+
+    if (value.length >= word.length && value !== word && !incorrectRecordedRef.current.has(word)) {
+      incorrectRecordedRef.current.add(word);
+      recordIncorrectAttempt(word);
+    }
+
+    // If word is now correct, record the attempt
+    if (value === word) {
+      const startTime = timerStartRef.current.get(word);
+
+      if (startTime) {
+        const inputTimeSeconds = (Date.now() - startTime) / 1000;
+        recordCorrectAttempt(word, inputTimeSeconds);
+        timerStartRef.current.delete(word);
+      }
+    }
+  }, [words, recordCorrectAttempt, recordIncorrectAttempt]);
+
+  const handleHintReveal = useCallback((word: string) => {
     // Only record incorrect attempt once per word per session
     if (!incorrectRecordedRef.current.has(word)) {
       incorrectRecordedRef.current.add(word);
       recordIncorrectAttempt(word);
     }
+  }, [recordIncorrectAttempt]);
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const allCorrect = randomWords.length > 0 && randomWords.every(([word]) => words.userInputs.get(word) === word);
+    if (!allCorrect) {
+      return;
+    }
+
+    refreshWords();
   };
 
   if (loading) {
@@ -198,142 +349,27 @@ const WordsPractice = observer(() => {
         <main>
           <form onSubmit={handleSubmit} className="flex flex-col space-y-2">
             <ul className="space-y-2">
-              {randomWords.map(([word, translation]) => {
-                const inputValue = words.userInputs.get(word) || "";
-                const { englishDefinition, chineseTranslation } = parseTranslation(translation);
-                const isEditingTranslation = editingWord === word;
-
-                return (
-                  <li key={word} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1">
-                    <div className="max-w-xs w-full text-right justify-self-end">
-                      {isEditingTranslation ? (
-                        <Input
-                          className="w-full text-right"
-                          type="text"
-                          value={editingValue}
-                          autoFocus
-                          onChange={(e) => setEditingValue(e.target.value)}
-                          onBlur={() => {
-                            commitEditingTranslation();
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              if (e.nativeEvent.isComposing) {
-                                return;
-                              }
-                              e.preventDefault();
-                              commitEditingTranslation();
-                            }
-
-                            if (e.key === "Escape") {
-                              e.preventDefault();
-                              cancelEditingTranslation();
-                            }
-                          }}
-                        />
-                      ) : (
-                        <div
-                          className={`h-9 px-3 py-1 flex items-center justify-end whitespace-pre-line ${chineseTranslation ? "font-semibold" : "text-gray-400 italic"} cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:rounded`}
-                          onDoubleClick={() => startEditingTranslation(word, englishDefinition, chineseTranslation)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === " ") {
-                              e.preventDefault();
-                              startEditingTranslation(word, englishDefinition, chineseTranslation);
-                            }
-                          }}
-                          title={t("home.editTranslationHint")}
-                        >
-                          {chineseTranslation || t("home.addChineseTranslation")}
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Input
-                        className="w-xs"
-                        type="text"
-                        id={word}
-                        ref={(el) => {
-                          if (el) {
-                            inputRefs.current.set(word, el);
-                          }
-                        }}
-                        onChange={(e) => {
-                          const value = e.target.value.toLowerCase();
-
-                          // Start timer on first character typed
-                          if (value.length === 1) {
-                            timerStartRef.current.set(word, Date.now());
-                          }
-
-                          // Clear timer if user clears input
-                          if (value.length === 0) {
-                            timerStartRef.current.delete(word);
-                          }
-
-                          words.setUserInput(word, value);
-
-                          if (value.length >= word.length && value !== word && !incorrectRecordedRef.current.has(word)) {
-                            incorrectRecordedRef.current.add(word);
-                            recordIncorrectAttempt(word);
-                          }
-
-                          // If word is now correct, record the attempt
-                          if (value === word) {
-                            const startTime = timerStartRef.current.get(word);
-
-                            if (startTime) {
-                              const endTime = Date.now();
-                              const inputTimeSeconds = (endTime - startTime) / 1000;
-
-                              // Record correct attempt with input time
-                              recordCorrectAttempt(word, inputTimeSeconds);
-
-                              timerStartRef.current.delete(word);
-                            }
-                          }
-                        }}
-                        value={inputValue}
-                      />
-                      <button
-                        type="button"
-                        title={word}
-                        aria-label={`${t("home.hint")}: ${word}`}
-                        disabled={inputValue === word}
-                        className={`${inputValue === word ? "" : "cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:rounded"} px-1 relative group disabled:cursor-default`}
-                        onMouseEnter={() => {
-                          if (inputValue !== "" && inputValue !== word) {
-                            handleHintReveal(word);
-                          }
-                        }}
-                        onFocus={() => {
-                          if (inputValue !== "" && inputValue !== word) {
-                            handleHintReveal(word);
-                          }
-                        }}
-                        onClick={() => {
-                          if (inputValue !== word) {
-                            handleHintReveal(word);
-                            const utterance = new SpeechSynthesisUtterance(word);
-                            utterance.lang = "en-US";
-                            speechSynthesis.speak(utterance);
-                          }
-                        }}
-                      >
-                        {inputValue === word ? "✅" : "❌"}
-                        {inputValue !== word && <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-800 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">{word}</div>}
-                      </button>
-                      <MasteryBar score={words.getMasteryScore(word)} />
-                    </div>
-                    {englishDefinition && <div className="max-w-xs w-full text-right text-sm text-gray-500 whitespace-pre-line justify-self-end">{englishDefinition}</div>}
-                    {englishDefinition && <div />}
-                  </li>
-                );
-              })}
+              {randomWords.map(([word, translation]) => (
+                <WordRow
+                  key={word}
+                  word={word}
+                  translation={translation}
+                  words={words}
+                  isEditing={editingWord === word}
+                  editingValue={editingWord === word ? editingValue : ""}
+                  onEditingValueChange={setEditingValue}
+                  onStartEdit={startEditingTranslation}
+                  onCommitEdit={commitEditingTranslation}
+                  onCancelEdit={cancelEditingTranslation}
+                  onInputChange={handleInputChange}
+                  onHintReveal={handleHintReveal}
+                  inputRefs={inputRefs}
+                  t={t}
+                />
+              ))}
             </ul>
             <div className="flex space-x-2 justify-end">
-              <Button type="submit" disabled={!isCorrect()}>
-                {t("home.refresh")}
-              </Button>
+              <SubmitButton randomWords={randomWords} words={words} label={t("home.refresh")} />
               <Button asChild type="button" variant="outline">
                 <Link href="/add-word">{t("addWord.title")}</Link>
               </Button>

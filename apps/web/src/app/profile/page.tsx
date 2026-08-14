@@ -41,8 +41,8 @@ const Profile = observer(() => {
     setIsClient(true);
   }, []);
 
-  const totalWords = words.allWords.size;
-  const overallAverageTime = words.getOverallAverageInputTime();
+  const totalWords = words.wordData.size;
+  const overallAverageTime = words.overallAverageInputTime;
 
   const wordsWithStats = words.practiceStats;
 
@@ -241,7 +241,7 @@ const Profile = observer(() => {
               { category: 1, labelKey: "profile.mediumWords", color: "yellow" },
               { category: 2, labelKey: "profile.longWords", color: "red" },
             ] as const).map(({ category, labelKey, color }) => {
-              const avgTime = words.getAverageTimeByLengthCategory(category);
+              const avgTime = words.averageTimeByLengthCategory[category];
               const categoryWords = filteredWordsByCategory[category];
               const classes = COLOR_CLASSES[color as keyof typeof COLOR_CLASSES];
               
