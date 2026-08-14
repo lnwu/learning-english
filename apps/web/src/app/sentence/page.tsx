@@ -12,7 +12,7 @@ const Sentence = observer(() => {
   const [answer, setAnswer] = useState("");
   const [isClient, setIsClient] = useState(false);
   const [hasTriedInitialGenerate, setHasTriedInitialGenerate] = useState(false);
-  const noWords = words.allWords.size < 2;
+  const noWords = words.wordData.size < 2;
 
   useEffect(() => {
     setIsClient(true);

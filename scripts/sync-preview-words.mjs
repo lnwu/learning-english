@@ -18,23 +18,48 @@ initializeApp({
 const db = getFirestore();
 
 const sourceCollection = db.collection("users").doc(prodUserId).collection("words");
-const targetDoc = db.collection("users").doc(PREVIEW_USER_ID);
-const targetCollection = targetDoc.collection("words");
+const targetCollection = db.collection("users").doc(PREVIEW_USER_ID).collection("words");
 
-const snapshot = await sourceCollection.get();
-console.log(`Fetched ${snapshot.size} words from users/${prodUserId}/words`);
+const [sourceSnapshot, targetSnapshot] = await Promise.all([
+  sourceCollection.get(),
+  targetCollection.get(),
+]);
+console.log(`Fetched ${sourceSnapshot.size} prod words, ${targetSnapshot.size} preview words`);
 
-await db.recursiveDelete(targetDoc);
-console.log(`Cleared users/${PREVIEW_USER_ID}`);
+const sourceData = new Map(sourceSnapshot.docs.map((doc) => [doc.id, doc.data()]));
+const targetData = new Map(targetSnapshot.docs.map((doc) => [doc.id, doc.data()]));
+
+const toWrite = [];
+const toDelete = [];
+
+for (const [id, data] of sourceData) {
+  const existing = targetData.get(id);
+  if (!existing || JSON.stringify(existing) !== JSON.stringify(data)) {
+    toWrite.push([id, data]);
+  }
+}
+
+for (const id of targetData.keys()) {
+  if (!sourceData.has(id)) {
+    toDelete.push(id);
+  }
+}
+
+console.log(`Diff: ${toWrite.length} to write, ${toDelete.length} to delete`);
 
 const BATCH_SIZE = 500;
-for (let i = 0; i < snapshot.docs.length; i += BATCH_SIZE) {
+const operations = [
+  ...toWrite.map(([id, data]) => (batch) => batch.set(targetCollection.doc(id), data)),
+  ...toDelete.map((id) => (batch) => batch.delete(targetCollection.doc(id))),
+];
+
+for (let i = 0; i < operations.length; i += BATCH_SIZE) {
   const batch = db.batch();
-  for (const doc of snapshot.docs.slice(i, i + BATCH_SIZE)) {
-    batch.set(targetCollection.doc(doc.id), doc.data());
+  for (const apply of operations.slice(i, i + BATCH_SIZE)) {
+    apply(batch);
   }
   await batch.commit();
-  console.log(`Synced ${Math.min(i + BATCH_SIZE, snapshot.size)}/${snapshot.size} words`);
+  console.log(`Committed ${Math.min(i + BATCH_SIZE, operations.length)}/${operations.length} operations`);
 }
 
 console.log("Sync completed");

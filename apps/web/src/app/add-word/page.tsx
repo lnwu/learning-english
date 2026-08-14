@@ -23,7 +23,7 @@ const Home = () => {
 
     setLoading(true);
 
-    if (words.allWords.has(word)) {
+    if (words.wordData.has(word)) {
       toast({ title: t('addWord.wordExists').replace('{word}', word), variant: "destructive" });
       clear();
       setLoading(false);
