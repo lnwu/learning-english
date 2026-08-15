@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { chatCompletionJson, DeepSeekError } from "@/lib/deepseek";
 import { verifyFirebaseIdToken } from "@/lib/serverAuth";
+import { checkRateLimit } from "@/lib/rateLimit";
 
 interface GenerateRequest {
   words?: Array<{ word?: string; translation?: string }>;
@@ -14,10 +15,21 @@ interface GenerateResult {
 
 const MAX_WORDS = 3;
 const MIN_WORDS = 1;
+const MAX_WORD_LENGTH = 50;
+const MAX_TRANSLATION_LENGTH = 200;
+const RATE_LIMIT_PER_MINUTE = 10;
+const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 
 export async function POST(request: Request) {
-  const authError = await verifyFirebaseIdToken(request);
-  if (authError) return authError;
+  const auth = await verifyFirebaseIdToken(request);
+  if (auth instanceof NextResponse) return auth;
+
+  const rateLimitError = checkRateLimit(
+    `${auth.uid}:sentence/generate`,
+    RATE_LIMIT_PER_MINUTE,
+    RATE_LIMIT_WINDOW_MS
+  );
+  if (rateLimitError) return rateLimitError;
 
   let body: GenerateRequest;
   try {
@@ -38,6 +50,16 @@ export async function POST(request: Request) {
 
   if (words.length < MIN_WORDS) {
     return NextResponse.json({ error: "缺少单词" }, { status: 400 });
+  }
+
+  if (
+    words.some(
+      (item) =>
+        item.word.length > MAX_WORD_LENGTH ||
+        item.translation.length > MAX_TRANSLATION_LENGTH
+    )
+  ) {
+    return NextResponse.json({ error: "输入内容过长" }, { status: 400 });
   }
 
   try {

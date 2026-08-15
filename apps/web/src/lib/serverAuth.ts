@@ -7,19 +7,27 @@ const DEFAULT_TOKEN_TTL_MS = 60 * 60 * 1000;
 const CACHE_SKEW_MS = 60 * 1000;
 const tokenCache = new Map<string, number>();
 
-function decodeTokenExpiry(token: string): number | null {
+function decodeTokenPayload(token: string): Record<string, unknown> | null {
   try {
     const parts = token.split(".");
     if (parts.length !== 3) return null;
-    const payload = JSON.parse(
+    return JSON.parse(
       Buffer.from(parts[1], "base64url").toString("utf8")
     );
-    const exp = payload.exp;
-    if (typeof exp !== "number" || !Number.isFinite(exp)) return null;
-    return exp * 1000;
   } catch {
     return null;
   }
+}
+
+function decodeTokenExpiry(token: string): number | null {
+  const exp = decodeTokenPayload(token)?.exp;
+  if (typeof exp !== "number" || !Number.isFinite(exp)) return null;
+  return exp * 1000;
+}
+
+function decodeTokenUid(token: string): string | null {
+  const uid = decodeTokenPayload(token)?.user_id;
+  return typeof uid === "string" && uid ? uid : null;
 }
 
 function evictExpiredTokens() {
@@ -31,7 +39,7 @@ function evictExpiredTokens() {
 
 export async function verifyFirebaseIdToken(
   request: Request
-): Promise<NextResponse | null> {
+): Promise<{ uid: string } | NextResponse> {
   const authorization = request.headers.get("authorization");
   const idToken = authorization?.startsWith("Bearer ")
     ? authorization.slice("Bearer ".length)
@@ -43,7 +51,9 @@ export async function verifyFirebaseIdToken(
 
   const cachedExpiry = tokenCache.get(idToken);
   if (cachedExpiry && cachedExpiry > Date.now()) {
-    return null;
+    const uid = decodeTokenUid(idToken);
+    if (uid) return { uid };
+    return NextResponse.json({ error: "登录状态无效" }, { status: 401 });
   }
 
   const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
@@ -62,6 +72,14 @@ export async function verifyFirebaseIdToken(
       return NextResponse.json({ error: "登录状态无效" }, { status: 401 });
     }
 
+    const payload = (await response.json()) as {
+      users?: Array<{ localId?: string }>;
+    };
+    const uid = payload.users?.[0]?.localId ?? decodeTokenUid(idToken);
+    if (!uid) {
+      return NextResponse.json({ error: "登录状态无效" }, { status: 401 });
+    }
+
     const expiry =
       decodeTokenExpiry(idToken) ?? Date.now() + DEFAULT_TOKEN_TTL_MS;
     const ttl = expiry - Date.now() - CACHE_SKEW_MS;
@@ -70,7 +88,7 @@ export async function verifyFirebaseIdToken(
       tokenCache.set(idToken, Date.now() + ttl);
     }
 
-    return null;
+    return { uid };
   } catch {
     return NextResponse.json({ error: "身份验证失败" }, { status: 401 });
   }
