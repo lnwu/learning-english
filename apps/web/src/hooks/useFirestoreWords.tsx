@@ -6,6 +6,7 @@ import {
   useCallback,
   useMemo,
   useContext,
+  useRef,
   createContext,
   type FC,
   type ReactNode,
@@ -20,6 +21,7 @@ import {
   updateDoc,
   writeBatch,
   type WriteBatch,
+  type DocumentData,
 } from "firebase/firestore";
 import { db, getEffectiveUserId } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
@@ -70,9 +72,11 @@ export class Words {
     this.#masteryCache.clear();
   }
 
-  setWords(words: WordData[]) {
-    this.wordData = new Map(words.map((w) => [w.word, w]));
-    this.invalidateCaches();
+  // 增量更新单个单词的数据（新增或替换），只使该词的缓存失效
+  setWordData(word: string, data: WordData) {
+    this.wordData.set(word, data);
+    this.#priorityCache.delete(word);
+    this.#masteryCache.delete(word);
   }
 
   addWord(word: string, translation: string, id: string) {
@@ -110,12 +114,8 @@ export class Words {
     data.inputTimes.push(inputTimeSeconds);
     const now = new Date();
     const today = formatLocalPracticeDate(now);
-    if (
-      !data.correctPracticeDates.some(
-        (practiceDate) => getLocalPracticeDate(practiceDate) === today
-      )
-    ) {
-      data.correctPracticeDates.push(now.toISOString());
+    if (!data.correctPracticeDates.includes(today)) {
+      data.correctPracticeDates.push(today);
       if (data.correctPracticeDates.length > Words.MAX_CORRECT_PRACTICE_DATES) {
         data.correctPracticeDates = data.correctPracticeDates.slice(-Words.MAX_CORRECT_PRACTICE_DATES);
       }
@@ -247,16 +247,6 @@ export class Words {
     this.userInputs.set(word, value);
   }
 
-  get correct() {
-    const randomWords = this.getRandomWords();
-    return (
-      this.userInputs.size === randomWords.length &&
-      Array.from(this.userInputs.entries()).every(
-        ([word, value]) => word === value
-      )
-    );
-  }
-
   // Get random words weighted by practice priority
   getRandomWords(max: number = Words.MAX_RANDOM_WORDS): [string, string][] {
     const wordEntries = Array.from(this.wordData.entries());
@@ -282,16 +272,12 @@ export class Words {
 
     const selected: [string, string][] = [];
     const available = [...wordsWithPriority];
+    let totalPriority = available.reduce(
+      (sum, item) => sum + item.priority,
+      0
+    );
 
-    for (let i = 0; i < Math.min(max, wordEntries.length); i++) {
-      if (available.length === 0) break;
-
-      // Calculate total priority
-      const totalPriority = available.reduce(
-        (sum, item) => sum + item.priority,
-        0
-      );
-
+    for (let i = 0; i < Math.min(max, available.length); i++) {
       // Random selection based on priority
       let random = Math.random() * totalPriority;
       let selectedIndex = 0;
@@ -307,6 +293,7 @@ export class Words {
       const selectedItem = available[selectedIndex];
       selected.push([selectedItem.word, selectedItem.translation]);
       available.splice(selectedIndex, 1);
+      totalPriority -= selectedItem.priority;
     }
 
     return selected;
@@ -357,6 +344,78 @@ const commitBatchOperations = async (
   }
 };
 
+const parseWordDoc = (id: string, data: DocumentData): WordData => {
+  const inputTimes = data.inputTimes ?? [];
+  const lastPracticedAt = data.lastPracticedAt?.toDate() ?? null;
+
+  return {
+    word: data.word,
+    translation: data.translation,
+    correctCount: data.correctCount ?? 0,
+    totalAttempts: data.totalAttempts ?? 0,
+    inputTimes,
+    lastPracticedAt,
+    correctPracticeDates: (data.correctPracticeDates ?? []).map(
+      getLocalPracticeDate
+    ),
+    createdAt: data.createdAt?.toDate() ?? new Date(),
+    id,
+  };
+};
+
+const isWordDataEqual = (a: WordData, b: WordData) => {
+  if (
+    a.id !== b.id ||
+    a.translation !== b.translation ||
+    a.correctCount !== b.correctCount ||
+    a.totalAttempts !== b.totalAttempts ||
+    a.lastPracticedAt?.getTime() !== b.lastPracticedAt?.getTime() ||
+    a.createdAt?.getTime() !== b.createdAt?.getTime() ||
+    a.inputTimes.length !== b.inputTimes.length ||
+    a.correctPracticeDates.length !== b.correctPracticeDates.length
+  ) {
+    return false;
+  }
+  return (
+    a.inputTimes.every((time, i) => time === b.inputTimes[i]) &&
+    a.correctPracticeDates.every(
+      (date, i) => date === b.correctPracticeDates[i]
+    )
+  );
+};
+
+// 增量合并快照与本地 store，仅更新发生变化的单词，避免全量替换导致所有 observer 重渲染
+const mergeSnapshotIntoStore = (snapshot: {
+  docs: Array<{ id: string; data: () => DocumentData }>;
+}) => {
+  const incoming = new Map<string, WordData>();
+  snapshot.docs.forEach((doc) => {
+    incoming.set(doc.data().word, parseWordDoc(doc.id, doc.data()));
+  });
+
+  let changed = false;
+
+  for (const word of Array.from(words.wordData.keys())) {
+    if (!incoming.has(word)) {
+      words.deleteWord(word);
+      changed = true;
+    }
+  }
+
+  for (const [word, data] of incoming) {
+    const existing = words.wordData.get(word);
+    if (!existing) {
+      words.setWordData(word, data);
+      changed = true;
+    } else if (!isWordDataEqual(existing, data)) {
+      words.setWordData(word, data);
+      changed = true;
+    }
+  }
+
+  if (changed) words.invalidateCaches();
+};
+
 const words = new Words();
 
 interface WordsContextValue {
@@ -383,6 +442,7 @@ export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const [error, setError] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
+  const syncingRef = useRef(false);
 
   useEffect(() => {
     if (!user) {
@@ -400,30 +460,15 @@ export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
       return onSnapshot(
         wordsCollection,
         (snapshot) => {
-          const wordsData: WordData[] = snapshot.docs.map((doc) => {
-            const data = doc.data();
-            const inputTimes = data.inputTimes ?? [];
-            const lastPracticedAt = data.lastPracticedAt?.toDate() ?? null;
-
-            return {
-              word: data.word,
-              translation: data.translation,
-              correctCount: data.correctCount ?? 0,
-              totalAttempts: data.totalAttempts ?? 0,
-              inputTimes,
-              lastPracticedAt,
-              correctPracticeDates: data.correctPracticeDates ?? [],
-              createdAt: data.createdAt?.toDate() ?? new Date(),
-              id: doc.id,
-            };
-          });
-          words.setWords(wordsData);
+          mergeSnapshotIntoStore(snapshot);
 
           // Clean up stale sync queue items
           // If Firestore data matches or exceeds queue data, remove from queue
           const queue = SyncQueueManager.getQueue();
           if (queue.length > 0) {
-            const wordsById = new Map(wordsData.map((w) => [w.id, w]));
+            const wordsById = new Map(
+              snapshot.docs.map((doc) => [doc.id, parseWordDoc(doc.id, doc.data())])
+            );
             const staleIds = new Set<string>();
             queue.forEach((item) => {
               const firestoreWord = wordsById.get(item.wordId);
@@ -608,11 +653,17 @@ export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
       return;
     }
 
+    // 防止定时器/页面可见性/网络恢复/手动触发并发执行导致队列竞争
+    if (syncingRef.current) {
+      return;
+    }
+
     const queue = SyncQueueManager.getQueue();
     if (queue.length === 0) {
       return;
     }
 
+    syncingRef.current = true;
     setSyncing(true);
 
     try {
@@ -668,10 +719,10 @@ export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
         try {
           await batch.commit();
-          queueItemIds.forEach((id) => SyncQueueManager.removeFromQueue(id));
+          SyncQueueManager.removeFromQueue(queueItemIds);
         } catch (error) {
           console.error("Failed to sync batch:", error);
-          queueItemIds.forEach((id) => SyncQueueManager.incrementRetry(id));
+          SyncQueueManager.incrementRetries(queueItemIds);
         }
       }
 
@@ -681,6 +732,7 @@ export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
       setPendingCount(SyncQueueManager.getUniqueWordCount());
     } finally {
       setSyncing(false);
+      syncingRef.current = false;
     }
   }, [user]);
 

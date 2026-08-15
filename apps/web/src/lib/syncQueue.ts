@@ -53,27 +53,33 @@ export class SyncQueueManager {
   }
   
   // 从队列移除
-  static removeFromQueue(id: string): void {
+  static removeFromQueue(ids: string[]): void {
+    if (ids.length === 0) return;
     const queue = this.getQueue();
-    const filtered = queue.filter(item => item.id !== id);
-    this.saveQueue(filtered);
+    const idSet = new Set(ids);
+    const filtered = queue.filter(item => !idSet.has(item.id));
+    if (filtered.length !== queue.length) {
+      this.saveQueue(filtered);
+    }
   }
   
-  // 更新重试次数
-  static incrementRetry(id: string): boolean {
+  // 更新重试次数（达到最大重试次数的自动移除）
+  static incrementRetries(ids: string[]): void {
+    if (ids.length === 0) return;
     const queue = this.getQueue();
-    const item = queue.find(item => item.id === id);
-    if (item) {
-      item.retryCount++;
-      if (item.retryCount >= this.MAX_RETRIES) {
-        // 达到最大重试次数，移除
-        this.removeFromQueue(id);
-        return false;
+    const idSet = new Set(ids);
+    const remaining: SyncQueueItem[] = [];
+    for (const item of queue) {
+      if (idSet.has(item.id)) {
+        item.retryCount++;
+        if (item.retryCount >= this.MAX_RETRIES) {
+          // 达到最大重试次数，移除
+          continue;
+        }
       }
-      this.saveQueue(queue);
-      return true;
+      remaining.push(item);
     }
-    return false;
+    this.saveQueue(remaining);
   }
   
   // 清空队列

@@ -5,7 +5,9 @@
 ## 词库状态管理
 
 - `src/hooks/useFirestoreWords.tsx`：`Words` 是模块级 MobX 单例 store；`WordsProvider`（挂在根 layout）在登录后全局只做一次 `onSnapshot` 订阅，`useFirestoreWords` 只是读 Context，不要在页面里再订阅 Firestore。
-- 熟练度结果通过 `#masteryCache` 缓存（随 `recordCorrect/IncorrectAttempt`、`setWords` 失效），全量统计用 computed getter（`overallAverageInputTime`、`averageTimeByLengthCategory`、`practiceStats`），新增派生数据时优先用 computed getter 而非每次渲染重算。
+- 熟练度结果通过 `#masteryCache` 缓存（随 `recordCorrect/IncorrectAttempt`、`setWordData`/`deleteWord`/`removeAllWords` 失效），全量统计用 computed getter（`overallAverageInputTime`、`averageTimeByLengthCategory`、`practiceStats`），新增派生数据时优先用 computed getter 而非每次渲染重算。
+- Firestore `onSnapshot` 结果通过 `mergeSnapshotIntoStore` 增量合并到 store（仅更新变化的单词、按需使缓存失效），不要改成全量替换 `wordData`，否则会导致所有 observer 组件无谓重渲染。
+- `correctPracticeDates` 存 `YYYY-MM-DD` 本地日期字符串（`formatLocalPracticeDate`），不要存 ISO 时间戳，避免时区解析偏移；`getLocalPracticeDate` 对纯日期字符串短路返回。
 - 练习页的输入值在 `words.userInputs` 中，单词行是独立的 observer 组件（`WordRow`），只有对应行会随击键重渲染，不要在父组件渲染路径里读 `userInputs`。
 
 ## 造句练习与 DeepSeek 集成
@@ -17,4 +19,5 @@
 - API Key 只允许在服务端使用，禁止加 `NEXT_PUBLIC_` 前缀或下发到前端。
 - 造句练习复用 `useFirestoreWords` 的单词库与 `recordCorrectAttempt`/`recordIncorrectAttempt`，练习结果计入单词熟练度并同步到 Firebase。
 - 造句题目界面不直接显示目标单词（答题后的反馈区才显示），这是有意设计：学生凭中文句子推断用词，因此造句请求会把词库中存的中文译法随目标词一并传给模型，prompt 要求中文译文自然地道、使用参考译法且能让学生反推出目标词；批改时对目标词的同义表达不判错、仅提示。
-- 批改接口在调用模型前先对答案与参考译文做规范化判等，完全一致直接返回满分，不消耗模型调用。
+- 批改接口在调用模型前先对答案与参考译文做规范化判等（`src/lib/sentenceCompare.ts` 的 `normalizeForComparison`），完全一致直接返回满分，不消耗模型调用。
+- 纯函数测试用 vitest（`bun run test`，配置在 `vitest.config.mts`），核心算法（熟练度、翻译解析、句意判等、日期处理）新增改动时应同步补测试。
