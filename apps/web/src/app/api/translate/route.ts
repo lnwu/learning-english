@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
 import { verifyFirebaseIdToken } from "@/lib/serverAuth";
+import { checkRateLimit } from "@/lib/rateLimit";
 import { FALLBACK_DICTIONARY } from "@/lib/dictionary";
 
 const WORD_PATTERN = /^[a-z]+$/;
+const MAX_WORD_LENGTH = 50;
+const RATE_LIMIT_PER_MINUTE = 30;
+const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 
 async function translateToChinese(word: string): Promise<string | null> {
   let translation: string | null = null;
@@ -45,8 +49,15 @@ async function getEnglishDefinition(word: string): Promise<string | null> {
 }
 
 export async function POST(request: Request) {
-  const authError = await verifyFirebaseIdToken(request);
-  if (authError) return authError;
+  const auth = await verifyFirebaseIdToken(request);
+  if (auth instanceof NextResponse) return auth;
+
+  const rateLimitError = checkRateLimit(
+    `${auth.uid}:translate`,
+    RATE_LIMIT_PER_MINUTE,
+    RATE_LIMIT_WINDOW_MS
+  );
+  if (rateLimitError) return rateLimitError;
 
   let body: { word?: string };
   try {
@@ -58,7 +69,7 @@ export async function POST(request: Request) {
   const word =
     typeof body.word === "string" ? body.word.trim().toLowerCase() : "";
 
-  if (!WORD_PATTERN.test(word)) {
+  if (!WORD_PATTERN.test(word) || word.length > MAX_WORD_LENGTH) {
     return NextResponse.json({ error: "无效单词" }, { status: 400 });
   }
 

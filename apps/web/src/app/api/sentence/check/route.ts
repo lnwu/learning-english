@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { chatCompletionJson, DeepSeekError } from "@/lib/deepseek";
 import { verifyFirebaseIdToken } from "@/lib/serverAuth";
+import { checkRateLimit } from "@/lib/rateLimit";
 
 interface CheckRequest {
   chinese?: string;
@@ -24,9 +25,22 @@ const normalizeForComparison = (value: string) =>
     .replace(/\s+/g, " ")
     .trim();
 
+const RATE_LIMIT_PER_MINUTE = 20;
+const RATE_LIMIT_WINDOW_MS = 60 * 1000;
+const MAX_SENTENCE_LENGTH = 500;
+const MAX_WORDS = 5;
+const MAX_WORD_LENGTH = 50;
+
 export async function POST(request: Request) {
-  const authError = await verifyFirebaseIdToken(request);
-  if (authError) return authError;
+  const auth = await verifyFirebaseIdToken(request);
+  if (auth instanceof NextResponse) return auth;
+
+  const rateLimitError = checkRateLimit(
+    `${auth.uid}:sentence/check`,
+    RATE_LIMIT_PER_MINUTE,
+    RATE_LIMIT_WINDOW_MS
+  );
+  if (rateLimitError) return rateLimitError;
 
   let body: CheckRequest;
   try {
@@ -43,10 +57,35 @@ export async function POST(request: Request) {
         .filter((word): word is string => typeof word === "string")
         .map((word) => word.trim())
         .filter(Boolean)
+        .slice(0, MAX_WORDS)
     : [];
 
   if (!chinese || !userAnswer) {
     return NextResponse.json({ error: "缺少题目或答案" }, { status: 400 });
+  }
+
+  if (
+    chinese.length > MAX_SENTENCE_LENGTH ||
+    userAnswer.length > MAX_SENTENCE_LENGTH ||
+    reference.length > MAX_SENTENCE_LENGTH ||
+    words.some((word) => word.length > MAX_WORD_LENGTH)
+  ) {
+    return NextResponse.json({ error: "输入内容过长" }, { status: 400 });
+  }
+
+  const exactMatch =
+    reference.length > 0 &&
+    normalizeForComparison(userAnswer).length > 0 &&
+    normalizeForComparison(userAnswer) === normalizeForComparison(reference);
+
+  if (exactMatch) {
+    return NextResponse.json({
+      correct: true,
+      score: 100,
+      feedback: "答案正确，评分已按大小写不敏感处理。",
+      corrected: reference,
+      issues: [],
+    });
   }
 
   try {
@@ -67,21 +106,6 @@ export async function POST(request: Request) {
         content: `中文句子：${chinese}\n目标单词：${words.join(", ")}\n参考译文：${reference}\n学生译文：${userAnswer}`,
       },
     ]);
-
-    const caseInsensitiveMatch =
-      reference.length > 0 &&
-      normalizeForComparison(userAnswer).length > 0 &&
-      normalizeForComparison(userAnswer) === normalizeForComparison(reference);
-
-    if (caseInsensitiveMatch) {
-      return NextResponse.json({
-        correct: true,
-        score: 100,
-        feedback: "答案正确，评分已按大小写不敏感处理。",
-        corrected: reference,
-        issues: [],
-      });
-    }
 
     return NextResponse.json({
       correct: Boolean(result.correct),
