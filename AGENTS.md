@@ -18,6 +18,7 @@
 ## 工具链
 
 - 本项目使用 bun（turbo monorepo，根目录有 `bun.lock`）。本机环境没有 node/npm/npx，运行脚本、安装依赖、执行测试一律用 `bun` / `bun x <命令>`。
+- 单元测试：`apps/web` 使用 vitest，在 `apps/web` 下运行 `bun run test`（即 `vitest run`），测试文件与源码同目录（`*.test.ts`）。
 
 ## 预览环境与 sync-preview-words
 

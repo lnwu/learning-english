@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { chatCompletionJson, DeepSeekError } from "@/lib/deepseek";
 import { verifyFirebaseIdToken } from "@/lib/serverAuth";
 import { checkRateLimit } from "@/lib/rateLimit";
+import { normalizeForComparison } from "@/lib/sentenceCompare";
 
 interface CheckRequest {
   chinese?: string;
@@ -17,13 +18,6 @@ interface CheckResult {
   corrected: string;
   issues: string[];
 }
-
-const normalizeForComparison = (value: string) =>
-  value
-    .toLowerCase()
-    .replace(/[^\p{L}\p{N}\s]/gu, " ")
-    .replace(/\s+/g, " ")
-    .trim();
 
 const RATE_LIMIT_PER_MINUTE = 20;
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
