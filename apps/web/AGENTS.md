@@ -14,10 +14,11 @@
 
 - 造句/批改功能通过服务端 Route Handler（`src/app/api/sentence/*`）代理调用 DeepSeek，浏览器只请求本站 `/api/*`。
 - `/api/*` 要求请求头携带 Firebase ID token（`Authorization: Bearer <token>`），由 `src/lib/serverAuth.ts` 通过 Identity Toolkit REST API 校验；校验通过返回 `{ uid }`，失败返回 401 的 NextResponse（用 `instanceof NextResponse` 区分）。
-- `/api/*` 按 uid 做进程内固定窗口限流（`src/lib/rateLimit.ts`），超限返回 429；新增 API 路由时应加上限流与输入长度上限。
+- `/api/*` 按 uid 限流（`src/lib/rateLimit.ts`），超限返回 429：配置了 `KV_REST_API_URL`/`KV_REST_API_TOKEN`（或 `UPSTASH_REDIS_REST_*`，Vercel Marketplace 装 Upstash Redis 后自动注入）时用 Upstash 全局限流；未配置或 Upstash 请求失败时回退进程内固定窗口限流（本地开发用）。`checkRateLimit` 是 async，调用时必须 await；新增 API 路由时应加上限流与输入长度上限。
 - DeepSeek 封装位于 `src/lib/deepseek.ts`，读取环境变量 `DEEPSEEK_API_KEY`、`DEEPSEEK_BASE_URL`、`DEEPSEEK_MODEL`。
 - API Key 只允许在服务端使用，禁止加 `NEXT_PUBLIC_` 前缀或下发到前端。
-- 造句练习复用 `useFirestoreWords` 的单词库与 `recordCorrectAttempt`/`recordIncorrectAttempt`，练习结果计入单词熟练度并同步到 Firebase。
+- 造句练习复用 `useFirestoreWords` 的单词库与 `recordCorrectAttempt`/`recordIncorrectAttempt`，练习结果计入单词熟练度并同步到 Firebase；造句场景没有真实输入计时，`recordCorrectAttempt(word)` 不传 `inputTimeSeconds`（该参数仅单词拼写练习传入），不要伪造输入时间以免抬高 speedScore。
+- 同步队列（`src/lib/syncQueue.ts`）条目重试达到上限被丢弃时，`incrementRetries` 返回被丢弃条目，`syncToFirestore` 会 toast 提示用户（文案 `sync.dataLost`），不要改回静默丢弃。
 - 造句题目界面不直接显示目标单词（答题后的反馈区才显示），这是有意设计：学生凭中文句子推断用词，因此造句请求会把词库中存的中文译法随目标词一并传给模型，prompt 要求中文译文自然地道、使用参考译法且能让学生反推出目标词；批改时对目标词的同义表达不判错、仅提示。
 - 批改接口在调用模型前先对答案与参考译文做规范化判等（`src/lib/sentenceCompare.ts` 的 `normalizeForComparison`），完全一致直接返回满分，不消耗模型调用。
 - 纯函数测试用 vitest（`bun run test`，配置在 `vitest.config.mts`），核心算法（熟练度、翻译解析、句意判等、日期处理）新增改动时应同步补测试。

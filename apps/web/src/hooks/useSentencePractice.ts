@@ -2,7 +2,6 @@
 
 import { useCallback, useState } from "react";
 import { useFirestoreWords } from "@/hooks/useFirestoreWords";
-import { getExpectedInputTime } from "@/lib/masteryCalculator";
 import { auth } from "@/lib/firebase";
 
 export interface SentenceQuestion {
@@ -131,7 +130,8 @@ export const useSentencePractice = () => {
 
         question.words.forEach((word) => {
           if (result.correct) {
-            recordCorrectAttempt(word, getExpectedInputTime(word.length));
+            // 造句场景没有真实输入计时，不传 inputTimeSeconds，避免伪造时间抬高 speedScore
+            recordCorrectAttempt(word);
           } else {
             recordIncorrectAttempt(word);
           }

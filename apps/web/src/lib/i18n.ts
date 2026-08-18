@@ -129,6 +129,7 @@ export const translations = {
     'sync.pending': '个单词待同步',
     'sync.syncing': '同步中...',
     'sync.syncNow': '立即同步',
+    'sync.dataLost': '部分练习记录多次同步失败，已丢失',
     
     // Mastery levels
     'mastery.new': '新单词',
@@ -244,6 +245,7 @@ export const translations = {
     'sync.pending': 'words pending',
     'sync.syncing': 'Syncing...',
     'sync.syncNow': 'Sync Now',
+    'sync.dataLost': 'Some practice records failed to sync repeatedly and were lost',
     
     // Mastery levels
     'mastery.new': 'New',
