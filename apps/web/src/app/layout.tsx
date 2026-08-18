@@ -1,4 +1,5 @@
 import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./index.css";
 import { Inter, Noto_Sans_SC } from "next/font/google";
 import { headers } from "next/headers";
@@ -39,6 +40,7 @@ const RootLayout: FC<{ children: ReactNode }> = async ({ children }) => {
           </WordsProvider>
         </AuthProvider>
         <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
