@@ -27,6 +27,7 @@ import { db, getEffectiveUserId } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
 import { makeAutoObservable } from "mobx";
 import { SyncQueueManager } from "@/lib/syncQueue";
+import { toast } from "@/hooks/useToast";
 import {
   calculateMasteryScore,
   calculatePriority,
@@ -104,14 +105,16 @@ export class Words {
     this.invalidateCaches();
   }
 
-  // Record a correct attempt with input time
-  recordCorrectAttempt(word: string, inputTimeSeconds: number) {
+  // Record a correct attempt; inputTimeSeconds 仅在真实计时场景（单词拼写练习）传入
+  recordCorrectAttempt(word: string, inputTimeSeconds?: number) {
     const data = this.wordData.get(word);
     if (!data) return;
 
     data.totalAttempts += 1;
     data.correctCount += 1;
-    data.inputTimes.push(inputTimeSeconds);
+    if (inputTimeSeconds !== undefined) {
+      data.inputTimes.push(inputTimeSeconds);
+    }
     const now = new Date();
     const today = formatLocalPracticeDate(now);
     if (!data.correctPracticeDates.includes(today)) {
@@ -424,7 +427,7 @@ interface WordsContextValue {
   deleteWord: (word: string) => Promise<void>;
   updateTranslation: (word: string, translation: string) => Promise<void>;
   removeAllWords: () => Promise<void>;
-  recordCorrectAttempt: (word: string, inputTimeSeconds: number) => void;
+  recordCorrectAttempt: (word: string, inputTimeSeconds?: number) => void;
   recordIncorrectAttempt: (word: string) => void;
   syncToFirestore: () => Promise<void>;
   resetPracticeRecords: () => Promise<void>;
@@ -603,7 +606,7 @@ export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
   }, [user]);
 
   const recordCorrectAttempt = useCallback(
-    (word: string, inputTimeSeconds: number) => {
+    (word: string, inputTimeSeconds?: number) => {
       words.recordCorrectAttempt(word, inputTimeSeconds);
 
       const wordId = words.getWordId(word);
@@ -722,7 +725,13 @@ export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
           SyncQueueManager.removeFromQueue(queueItemIds);
         } catch (error) {
           console.error("Failed to sync batch:", error);
-          SyncQueueManager.incrementRetries(queueItemIds);
+          const discarded = SyncQueueManager.incrementRetries(queueItemIds);
+          if (discarded.length > 0) {
+            toast({
+              title: tError("sync.dataLost"),
+              variant: "destructive",
+            });
+          }
         }
       }
 

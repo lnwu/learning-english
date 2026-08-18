@@ -71,7 +71,7 @@ export async function POST(request: Request) {
   const auth = await verifyFirebaseIdToken(request);
   if (auth instanceof NextResponse) return auth;
 
-  const rateLimitError = checkRateLimit(
+  const rateLimitError = await checkRateLimit(
     `${auth.uid}:translate`,
     RATE_LIMIT_PER_MINUTE,
     RATE_LIMIT_WINDOW_MS

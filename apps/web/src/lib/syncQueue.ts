@@ -63,9 +63,10 @@ export class SyncQueueManager {
     }
   }
   
-  // 更新重试次数（达到最大重试次数的自动移除）
-  static incrementRetries(ids: string[]): void {
-    if (ids.length === 0) return;
+  // 更新重试次数（达到最大重试次数的自动移除），返回被丢弃的条目
+  static incrementRetries(ids: string[]): SyncQueueItem[] {
+    const discarded: SyncQueueItem[] = [];
+    if (ids.length === 0) return discarded;
     const queue = this.getQueue();
     const idSet = new Set(ids);
     const remaining: SyncQueueItem[] = [];
@@ -73,13 +74,14 @@ export class SyncQueueManager {
       if (idSet.has(item.id)) {
         item.retryCount++;
         if (item.retryCount >= this.MAX_RETRIES) {
-          // 达到最大重试次数，移除
+          discarded.push(item);
           continue;
         }
       }
       remaining.push(item);
     }
     this.saveQueue(remaining);
+    return discarded;
   }
   
   // 清空队列
