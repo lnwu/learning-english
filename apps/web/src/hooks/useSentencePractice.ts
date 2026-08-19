@@ -8,7 +8,6 @@ import { auth } from "@/lib/firebase";
 export interface SentenceQuestion {
   chinese: string;
   english: string;
-  grammarPoint: string;
   words: string[];
 }
 

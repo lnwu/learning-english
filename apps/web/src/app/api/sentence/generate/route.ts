@@ -9,7 +9,6 @@ interface GenerateRequest {
 interface GenerateResult {
   chinese: string;
   english: string;
-  grammarPoint: string;
 }
 
 const MAX_WORDS = 3;
@@ -43,7 +42,7 @@ export async function POST(request: Request) {
       {
         role: "system",
         content:
-          "你是一位英语语法教学助手。根据用户提供的英文单词，造一个自然、地道且必须同时包含所有这些单词的英文句子，用于练习语法。句子应体现一个明确的语法点。只返回 JSON，字段为：english（英文句子）、chinese（该句子的中文翻译）、grammarPoint（该句考察的语法点，用中文简要说明）。不要添加其它字段或解释。",
+          "你是一位英语母语者。根据用户提供的英文单词，写一个自然、地道、像 native speaker 日常会说的英文句子，并且必须自然地使用所有目标单词。重点是目标单词的准确含义、常见搭配、语气和真实使用场景，不要为了练习某个语法点而刻意使用复杂或不自然的时态、语态或句式。优先选择清晰、简洁、符合真实交流的表达。只返回 JSON，字段为：english（英文句子）、chinese（该句子的中文翻译）。不要添加其它字段或解释。",
       },
       {
         role: "user",
@@ -54,7 +53,6 @@ export async function POST(request: Request) {
     return NextResponse.json({
       chinese: result.chinese,
       english: result.english,
-      grammarPoint: result.grammarPoint,
       words,
     });
   } catch (error) {
