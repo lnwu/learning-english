@@ -4,14 +4,8 @@ import { Button, ConfirmDialog, Input, MasteryBar } from "@/components/ui";
 import { useFirestoreWords, useLocale, toast, useAuth } from "@/hooks";
 import { observer } from "mobx-react-lite";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { type Locale } from "@/lib/i18n";
-
-const getWordLengthCategory = (word: string): number => {
-  if (word.length <= 5) return 0;
-  if (word.length <= 10) return 1;
-  return 2;
-};
 
 const COLOR_CLASSES = {
   blue: {
@@ -41,24 +35,25 @@ const Profile = observer(() => {
     setIsClient(true);
   }, []);
 
-  const totalWords = words.allWords.size;
-  const overallAverageTime = words.getOverallAverageInputTime();
+  const totalWords = words.wordData.size;
+  const overallAverageTime = words.overallAverageInputTime;
 
   const wordsWithStats = words.practiceStats;
 
-  const wordsByCategory: Record<number, typeof wordsWithStats> = {
-    0: [], // short words
-    1: [], // medium words
-    2: [], // long words
-  };
-
-  wordsWithStats.forEach((item) => {
-    const category = getWordLengthCategory(item.word);
-    wordsByCategory[category].push(item);
-  });
+  const wordsByCategory = useMemo<Record<number, typeof wordsWithStats>>(() => {
+    const grouped: Record<number, typeof wordsWithStats> = {
+      0: [], // short words
+      1: [], // medium words
+      2: [], // long words
+    };
+    wordsWithStats.forEach((item) => {
+      grouped[words.getWordLengthCategory(item.word)].push(item);
+    });
+    return grouped;
+  }, [wordsWithStats, words]);
 
   // Filter words by search query
-  const getFilteredWordsByCategory = () => {
+  const filteredWordsByCategory = useMemo<Record<number, typeof wordsWithStats>>(() => {
     if (!searchQuery.trim()) {
       return wordsByCategory;
     }
@@ -74,9 +69,7 @@ const Profile = observer(() => {
       );
     });
     return filtered;
-  };
-
-  const filteredWordsByCategory = getFilteredWordsByCategory();
+  }, [searchQuery, wordsByCategory]);
 
   // Calculate average mastery score
   const avgMasteryScore = wordsWithStats.length > 0
@@ -241,7 +234,7 @@ const Profile = observer(() => {
               { category: 1, labelKey: "profile.mediumWords", color: "yellow" },
               { category: 2, labelKey: "profile.longWords", color: "red" },
             ] as const).map(({ category, labelKey, color }) => {
-              const avgTime = words.getAverageTimeByLengthCategory(category);
+              const avgTime = words.averageTimeByLengthCategory[category];
               const categoryWords = filteredWordsByCategory[category];
               const classes = COLOR_CLASSES[color as keyof typeof COLOR_CLASSES];
               

@@ -1,6 +1,10 @@
 resource "google_project" "this" {
   project_id = var.project_id
   name       = var.project_name
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 resource "google_project_service" "firebase" {

@@ -23,6 +23,10 @@ on:
 jobs:
   lint-build:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: web-${{ github.ref }}
+      cancel-in-progress: true
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -37,6 +41,14 @@ jobs:
 
       - name: Lint
         run: bun run lint
+        working-directory: apps/web
+
+      - name: Typecheck
+        run: bun x tsc --noEmit
+        working-directory: apps/web
+
+      - name: Test
+        run: bun run test
         working-directory: apps/web
 
       - name: Build

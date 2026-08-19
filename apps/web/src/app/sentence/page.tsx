@@ -7,12 +7,12 @@ import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
 
 const Sentence = observer(() => {
-  const { loading, question, feedback, generating, checking, error, generate, check, words, syncing, pendingCount, syncToFirestore } = useSentencePractice();
+  const { loading, loadError, question, feedback, generating, checking, error, generate, check, words, syncing, pendingCount, syncToFirestore } = useSentencePractice();
   const { t } = useLocale();
   const [answer, setAnswer] = useState("");
   const [isClient, setIsClient] = useState(false);
   const [hasTriedInitialGenerate, setHasTriedInitialGenerate] = useState(false);
-  const noWords = words.allWords.size < 2;
+  const noWords = words.wordData.size < 2;
 
   useEffect(() => {
     setIsClient(true);
@@ -60,10 +60,16 @@ const Sentence = observer(() => {
 
         {noWords ? (
           <div className="text-center space-y-4">
-            <p className="text-gray-500">{t("sentence.needMoreWords")}</p>
-            <Button asChild>
-              <Link href="/add-word">{t("addWord.title")}</Link>
-            </Button>
+            {loadError ? (
+              <p className="text-red-500">{loadError}</p>
+            ) : (
+              <>
+                <p className="text-gray-500">{t("sentence.needMoreWords")}</p>
+                <Button asChild>
+                  <Link href="/add-word">{t("addWord.title")}</Link>
+                </Button>
+              </>
+            )}
           </div>
         ) : (
           <div className="space-y-4">
@@ -82,7 +88,6 @@ const Sentence = observer(() => {
             {question && (
               <div className="space-y-4">
                 <div className="rounded-lg border p-4 space-y-2">
-                  <div className="text-sm text-gray-500">{t("sentence.words")}: {question.words.join(", ")}</div>
                   <div className="text-lg font-semibold">{question.chinese}</div>
                 </div>
 
@@ -123,6 +128,7 @@ const Sentence = observer(() => {
                         {feedback.corrected}
                       </div>
                     )}
+                    <div className="text-sm text-gray-500">{t("sentence.words")}: {question.words.join(", ")}</div>
                   </div>
                 )}
               </div>

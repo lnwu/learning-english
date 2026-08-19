@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { chatCompletionJson, DeepSeekError } from "@/lib/deepseek";
 import { verifyFirebaseIdToken } from "@/lib/serverAuth";
+import { checkRateLimit } from "@/lib/rateLimit";
 
 interface GenerateRequest {
-  words?: string[];
+  words?: Array<{ word?: string; translation?: string }>;
 }
 
 interface GenerateResult {
@@ -13,10 +14,21 @@ interface GenerateResult {
 
 const MAX_WORDS = 3;
 const MIN_WORDS = 1;
+const MAX_WORD_LENGTH = 50;
+const MAX_TRANSLATION_LENGTH = 200;
+const RATE_LIMIT_PER_MINUTE = 10;
+const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 
 export async function POST(request: Request) {
-  const authError = await verifyFirebaseIdToken(request);
-  if (authError) return authError;
+  const auth = await verifyFirebaseIdToken(request);
+  if (auth instanceof NextResponse) return auth;
+
+  const rateLimitError = await checkRateLimit(
+    `${auth.uid}:sentence/generate`,
+    RATE_LIMIT_PER_MINUTE,
+    RATE_LIMIT_WINDOW_MS
+  );
+  if (rateLimitError) return rateLimitError;
 
   let body: GenerateRequest;
   try {
@@ -27,9 +39,11 @@ export async function POST(request: Request) {
 
   const words = Array.isArray(body.words)
     ? body.words
-        .filter((word): word is string => typeof word === "string")
-        .map((word) => word.trim())
-        .filter(Boolean)
+        .map((item) => ({
+          word: typeof item?.word === "string" ? item.word.trim() : "",
+          translation: typeof item?.translation === "string" ? item.translation.trim() : "",
+        }))
+        .filter((item) => item.word)
         .slice(0, MAX_WORDS)
     : [];
 
@@ -37,23 +51,43 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "缺少单词" }, { status: 400 });
   }
 
+  if (
+    words.some(
+      (item) =>
+        item.word.length > MAX_WORD_LENGTH ||
+        item.translation.length > MAX_TRANSLATION_LENGTH
+    )
+  ) {
+    return NextResponse.json({ error: "输入内容过长" }, { status: 400 });
+  }
+
   try {
     const result = await chatCompletionJson<GenerateResult>([
       {
         role: "system",
-        content:
-          "你是一位英语母语者。根据用户提供的英文单词，写一个自然、地道、像 native speaker 日常会说的英文句子，并且必须自然地使用所有目标单词。重点是目标单词的准确含义、常见搭配、语气和真实使用场景，不要为了练习某个语法点而刻意使用复杂或不自然的时态、语态或句式。优先选择清晰、简洁、符合真实交流的表达。只返回 JSON，字段为：english（英文句子）、chinese（该句子的中文翻译）。不要添加其它字段或解释。",
+        content: [
+          "你是一位英语母语者。请根据用户提供的英文目标单词，造一个自然、地道、像 native speaker 日常会说的英文句子，用于让用户看中文译回英文的练习。",
+          "要求：",
+          "1. 目标单词必须自然地使用，允许自然的语法变形（如时态、单复数变化）。",
+          "2. 句子长度控制在 10-20 个单词。不要为了练习某个语法点而刻意使用复杂或不自然的时态、语态或句式。",
+          "3. 除目标单词外，其余词汇使用常见基础词汇，避免生僻词和专有名词。",
+          "4. chinese 必须是自然地道的现代中文，同时与 english 语义一一对应；不要逐字硬译（翻译腔），也不要意译或添加原文没有的信息。目标词在 chinese 中应使用给定的参考译法，确保学生只看中文（看不到目标单词列表）就能想到并使用这些目标词译回英文。",
+          "5. 即使目标词是书面或学术词汇，句子其余部分的表达也要简单日常。",
+          '只返回 JSON，格式如下，不要添加其它字段或解释：{"english": "...", "chinese": "..."}',
+        ].join("\n"),
       },
       {
         role: "user",
-        content: `请使用以下单词造句：${words.join(", ")}`,
+        content: `请使用以下单词造句（括号内为该词的参考中文译法）：${words
+          .map((item) => (item.translation ? `${item.word}（${item.translation}）` : item.word))
+          .join(", ")}`,
       },
     ]);
 
     return NextResponse.json({
       chinese: result.chinese,
       english: result.english,
-      words,
+      words: words.map((item) => item.word),
     });
   } catch (error) {
     if (error instanceof DeepSeekError) {

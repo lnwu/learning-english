@@ -11,9 +11,11 @@ on:
 jobs:
   plan:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
       id-token: write
+      pull-requests: write
     defaults:
       run:
         working-directory: infra
@@ -46,4 +48,41 @@ jobs:
         run: terraform validate
 
       - name: Terraform Plan
-        run: terraform plan -input=false -lock=false
+        id: plan
+        run: terraform plan -input=false -lock=false -no-color -out=plan.out 2>&1 | tee plan.txt
+
+      - name: Comment Plan
+        if: always()
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const fs = require('fs');
+            const plan = fs.readFileSync('infra/plan.txt', 'utf8');
+            const marker = '<!-- terraform-plan-comment -->';
+            const truncated = plan.length > 60000 ? plan.slice(-60000) : plan;
+            const succeeded = ${{ steps.plan.outcome == 'success' }};
+            const body = `${marker}\n### Terraform Plan ${succeeded ? '✅' : '❌'}\n<details><summary>Show Plan</summary>\n\n\`\`\`\n${truncated}\n\`\`\`\n</details>`;
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find((comment) => comment.body?.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+            if (!succeeded) core.setFailed('Terraform plan failed');

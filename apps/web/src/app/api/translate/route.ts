@@ -1,37 +1,60 @@
 import { NextResponse } from "next/server";
 import { verifyFirebaseIdToken } from "@/lib/serverAuth";
+import { checkRateLimit } from "@/lib/rateLimit";
 import { FALLBACK_DICTIONARY } from "@/lib/dictionary";
 
 const WORD_PATTERN = /^[a-z]+$/;
+const MAX_WORD_LENGTH = 50;
+const RATE_LIMIT_PER_MINUTE = 30;
+const RATE_LIMIT_WINDOW_MS = 60 * 1000;
+const FETCH_TIMEOUT_MS = 8000;
+const MAX_CACHE_ENTRIES = 1000;
+
+interface TranslationCacheEntry {
+  chineseTranslation: string | null;
+  englishDefinition: string | null;
+}
+
+const translationCache = new Map<string, TranslationCacheEntry>();
+
+async function fetchWithTimeout(url: string): Promise<Response | null> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  try {
+    return await fetch(url, { signal: controller.signal });
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
 
 async function translateToChinese(word: string): Promise<string | null> {
-  let translation: string | null = null;
-  try {
-    const response = await fetch(
-      `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=zh-CN&dt=t&q=${encodeURIComponent(word)}`
-    );
-    if (response.ok) {
+  const response = await fetchWithTimeout(
+    `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=zh-CN&dt=t&q=${encodeURIComponent(word)}`
+  );
+  if (response?.ok) {
+    try {
       const data = await response.json();
-      translation = data?.[0]?.[0]?.[0] ?? null;
+      const translation = data?.[0]?.[0]?.[0] ?? null;
+      if (translation && translation !== word) {
+        return translation;
+      }
+    } catch {
+      // fall through to dictionary
     }
-  } catch {
-    translation = null;
-  }
-
-  if (translation && translation !== word) {
-    return translation;
   }
   return FALLBACK_DICTIONARY[word] ?? null;
 }
 
 async function getEnglishDefinition(word: string): Promise<string | null> {
+  const response = await fetchWithTimeout(
+    `https://api.datamuse.com/words?sp=${encodeURIComponent(word)}&md=d&max=10`
+  );
+  if (!response?.ok) {
+    return null;
+  }
   try {
-    const response = await fetch(
-      `https://api.datamuse.com/words?sp=${encodeURIComponent(word)}&md=d&max=10`
-    );
-    if (!response.ok) {
-      return null;
-    }
     const data: Array<{ word?: string; defs?: string[] }> =
       await response.json();
     const exactMatch = data.find((item) => item.word?.toLowerCase() === word);
@@ -45,8 +68,15 @@ async function getEnglishDefinition(word: string): Promise<string | null> {
 }
 
 export async function POST(request: Request) {
-  const authError = await verifyFirebaseIdToken(request);
-  if (authError) return authError;
+  const auth = await verifyFirebaseIdToken(request);
+  if (auth instanceof NextResponse) return auth;
+
+  const rateLimitError = await checkRateLimit(
+    `${auth.uid}:translate`,
+    RATE_LIMIT_PER_MINUTE,
+    RATE_LIMIT_WINDOW_MS
+  );
+  if (rateLimitError) return rateLimitError;
 
   let body: { word?: string };
   try {
@@ -58,8 +88,13 @@ export async function POST(request: Request) {
   const word =
     typeof body.word === "string" ? body.word.trim().toLowerCase() : "";
 
-  if (!WORD_PATTERN.test(word)) {
+  if (!WORD_PATTERN.test(word) || word.length > MAX_WORD_LENGTH) {
     return NextResponse.json({ error: "无效单词" }, { status: 400 });
+  }
+
+  const cached = translationCache.get(word);
+  if (cached) {
+    return NextResponse.json(cached);
   }
 
   const [chineseTranslation, englishDefinition] = await Promise.all([
@@ -67,5 +102,11 @@ export async function POST(request: Request) {
     getEnglishDefinition(word),
   ]);
 
-  return NextResponse.json({ chineseTranslation, englishDefinition });
+  const result: TranslationCacheEntry = { chineseTranslation, englishDefinition };
+  if (translationCache.size >= MAX_CACHE_ENTRIES) {
+    translationCache.clear();
+  }
+  translationCache.set(word, result);
+
+  return NextResponse.json(result);
 }

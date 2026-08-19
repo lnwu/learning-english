@@ -9,4 +9,8 @@ resource "google_firestore_database" "this" {
   point_in_time_recovery_enablement = "POINT_IN_TIME_RECOVERY_DISABLED"
 
   depends_on = [google_project_service.firestore]
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }

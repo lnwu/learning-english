@@ -7,8 +7,17 @@
       "persistent": true
     },
     "build": {
-      "env": ["NEXT_PUBLIC_FIREBASE_*"],
+      "env": [
+        "NEXT_PUBLIC_FIREBASE_*",
+        "NEXT_PUBLIC_VERCEL_ENV",
+        "KV_REST_API_URL",
+        "KV_REST_API_TOKEN",
+        "UPSTASH_REDIS_REST_URL",
+        "UPSTASH_REDIS_REST_TOKEN"
+      ],
       "outputs": ["dist/**", ".next/**"]
-    }
+    },
+    "lint": {},
+    "test": {}
   }
 }
