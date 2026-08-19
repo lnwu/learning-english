@@ -89,7 +89,6 @@ const Sentence = observer(() => {
               <div className="space-y-4">
                 <div className="rounded-lg border p-4 space-y-2">
                   <div className="text-lg font-semibold">{question.chinese}</div>
-                  <div className="text-sm text-gray-500">{t("sentence.grammarPoint")}: {question.grammarPoint}</div>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-2">

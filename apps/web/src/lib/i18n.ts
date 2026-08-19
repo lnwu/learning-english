@@ -66,7 +66,6 @@ export const translations = {
     'sentence.submit': '提交',
     'sentence.next': '下一题',
     'sentence.words': '目标单词',
-    'sentence.grammarPoint': '语法点',
     'sentence.answerPlaceholder': '用英文写出这句话',
     'sentence.resultCorrect': '正确',
     'sentence.resultIncorrect': '有待改进',
@@ -80,7 +79,7 @@ export const translations = {
     'practiceHub.words.title': '单词练习',
     'practiceHub.words.description': '根据中文提示拼写单词，巩固词汇记忆',
     'practiceHub.sentence.title': '造句练习',
-    'practiceHub.sentence.description': '用词汇库的单词造句，练习语法与表达',
+    'practiceHub.sentence.description': '用词汇库的单词造句，练习真实语境中的表达',
     'practiceHub.back': '返回练习中心',
 
     // Profile page
@@ -182,7 +181,6 @@ export const translations = {
     'sentence.submit': 'Submit',
     'sentence.next': 'Next',
     'sentence.words': 'Target Words',
-    'sentence.grammarPoint': 'Grammar Point',
     'sentence.answerPlaceholder': 'Write this sentence in English',
     'sentence.resultCorrect': 'Correct',
     'sentence.resultIncorrect': 'Needs Improvement',
@@ -196,7 +194,7 @@ export const translations = {
     'practiceHub.words.title': 'Word Practice',
     'practiceHub.words.description': 'Spell words from Chinese hints to reinforce vocabulary',
     'practiceHub.sentence.title': 'Sentence Practice',
-    'practiceHub.sentence.description': 'Build sentences with your words to practice grammar',
+    'practiceHub.sentence.description': 'Build sentences with your words in real-life contexts',
     'practiceHub.back': 'Back to Hub',
 
     // Profile page
