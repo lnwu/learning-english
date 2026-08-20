@@ -1,7 +1,13 @@
 "use client";
 
-import { useSyncExternalStore, useCallback, useEffect } from "react";
+import { useSyncExternalStore, useCallback, useEffect, useContext, createContext, type FC, type ReactNode } from "react";
 import { getCurrentLocale, localeToHtmlLang, setLocale as setI18nLocale, t, type Locale, type TranslationKey } from "@/lib/i18n";
+
+const LocaleContext = createContext<Locale>("zh");
+
+export const LocaleProvider: FC<{ initialLocale: Locale; children: ReactNode }> = ({ initialLocale, children }) => {
+  return <LocaleContext.Provider value={initialLocale}>{children}</LocaleContext.Provider>;
+};
 
 function subscribe(listener: () => void) {
   window.addEventListener('localechange', listener);
@@ -14,11 +20,9 @@ function getSnapshot(): Locale {
   return getCurrentLocale();
 }
 
-function getServerSnapshot(): Locale {
-  return 'zh';
-}
-
 export const useLocale = () => {
+  const initialLocale = useContext(LocaleContext);
+  const getServerSnapshot = useCallback((): Locale => initialLocale, [initialLocale]);
   const locale = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
   useEffect(() => {

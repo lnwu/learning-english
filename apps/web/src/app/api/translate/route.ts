@@ -17,6 +17,23 @@ interface TranslationCacheEntry {
 
 const translationCache = new Map<string, TranslationCacheEntry>();
 
+function getCached(word: string): TranslationCacheEntry | undefined {
+  const entry = translationCache.get(word);
+  if (entry) {
+    translationCache.delete(word);
+    translationCache.set(word, entry);
+  }
+  return entry;
+}
+
+function setCached(word: string, entry: TranslationCacheEntry): void {
+  if (translationCache.size >= MAX_CACHE_ENTRIES) {
+    const oldest = translationCache.keys().next().value;
+    if (oldest !== undefined) translationCache.delete(oldest);
+  }
+  translationCache.set(word, entry);
+}
+
 async function fetchWithTimeout(url: string): Promise<Response | null> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
@@ -92,7 +109,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "无效单词" }, { status: 400 });
   }
 
-  const cached = translationCache.get(word);
+  const cached = getCached(word);
   if (cached) {
     return NextResponse.json(cached);
   }
@@ -103,10 +120,7 @@ export async function POST(request: Request) {
   ]);
 
   const result: TranslationCacheEntry = { chineseTranslation, englishDefinition };
-  if (translationCache.size >= MAX_CACHE_ENTRIES) {
-    translationCache.clear();
-  }
-  translationCache.set(word, result);
+  setCached(word, result);
 
   return NextResponse.json(result);
 }

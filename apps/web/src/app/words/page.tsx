@@ -6,7 +6,7 @@ import { observer } from "mobx-react-lite";
 import Link from "next/link";
 import { useFirestoreWords, useLocale, toast } from "@/hooks";
 import { parseTranslation } from "@/lib/parseTranslation";
-import type { Words } from "@/hooks/useFirestoreWords";
+import type { Words } from "@/lib/wordsStore";
 import type { TranslationKey } from "@/lib/i18n";
 
 interface WordRowProps {
