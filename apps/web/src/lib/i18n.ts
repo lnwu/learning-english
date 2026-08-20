@@ -262,18 +262,27 @@ export function t(key: TranslationKey, locale: Locale = "zh"): string {
   return table[key] ?? translations.zh[key];
 }
 
-// 获取当前语言
+const LOCALE_COOKIE = 'locale';
+
+function readLocaleCookie(): Locale | null {
+  if (typeof document === 'undefined') return null;
+  const match = document.cookie.match(/(?:^|; )locale=(zh|en)(?:;|$)/);
+  return match ? (match[1] as Locale) : null;
+}
+
 export function getCurrentLocale(): Locale {
   if (typeof window === 'undefined') return 'zh';
-  const stored = localStorage.getItem('locale');
-  if (stored === 'zh' || stored === 'en') return stored;
+  const fromCookie = readLocaleCookie();
+  if (fromCookie) return fromCookie;
+  const legacy = localStorage.getItem(LOCALE_COOKIE);
+  if (legacy === 'zh' || legacy === 'en') return legacy;
   return detectBrowserLocale();
 }
 
-// 设置语言
 export function setLocale(locale: Locale): void {
   if (typeof window !== 'undefined') {
-    localStorage.setItem('locale', locale);
+    document.cookie = `${LOCALE_COOKIE}=${locale}; path=/; max-age=31536000; samesite=lax`;
+    localStorage.removeItem(LOCALE_COOKIE);
     window.dispatchEvent(new Event('localechange'));
   }
 }

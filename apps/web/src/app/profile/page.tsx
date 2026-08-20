@@ -84,7 +84,7 @@ const Profile = observer(() => {
         title: t('profile.resetSuccess'),
         variant: "success",
       });
-      setTimeout(() => window.location.reload(), 1000);
+      setResetting(false);
     } catch (err) {
       console.error("Reset failed:", err);
       toast({

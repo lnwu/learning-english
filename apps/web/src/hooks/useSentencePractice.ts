@@ -16,11 +16,21 @@ export interface SentenceFeedback {
   feedback: string;
   corrected: string;
   issues: string[];
+  usedWords?: string[];
 }
 
 const MIN_WORDS = 2;
 const MAX_WORDS = 3;
 const PRIORITIZED_MIN_ATTEMPTS = 3;
+
+function shuffle<T>(items: T[]): T[] {
+  const result = [...items];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
 
 async function postJson<T>(url: string, payload: unknown): Promise<T> {
   const idToken = await auth.currentUser?.getIdToken();
@@ -63,7 +73,7 @@ export const useSentencePractice = () => {
       const practiced = entries.filter(([, data]) => data.totalAttempts >= PRIORITIZED_MIN_ATTEMPTS);
       const lessPracticed = entries.filter(([, data]) => data.totalAttempts < PRIORITIZED_MIN_ATTEMPTS);
 
-      const shuffledPracticed = [...practiced].sort(() => Math.random() - 0.5);
+      const shuffledPracticed = shuffle(practiced);
       const prioritizedWords = shuffledPracticed.slice(0, count).map(([word]) => word);
 
       if (prioritizedWords.length >= count) {
@@ -71,7 +81,7 @@ export const useSentencePractice = () => {
       }
 
       const remaining = count - prioritizedWords.length;
-      const shuffledLessPracticed = [...lessPracticed].sort(() => Math.random() - 0.5);
+      const shuffledLessPracticed = shuffle(lessPracticed);
       const fallbackWords = shuffledLessPracticed.slice(0, remaining).map(([word]) => word);
 
       return [...prioritizedWords, ...fallbackWords];
@@ -127,7 +137,8 @@ export const useSentencePractice = () => {
         });
         setFeedback(result);
 
-        question.words.forEach((word) => {
+        const attemptedWords = result.usedWords ?? question.words;
+        attemptedWords.forEach((word) => {
           if (result.correct) {
             // 造句场景没有真实输入计时，不传 inputTimeSeconds，避免伪造时间抬高 speedScore
             recordCorrectAttempt(word);

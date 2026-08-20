@@ -13,8 +13,8 @@
 - `correctCount`：正确输入次数。
 - `totalAttempts`：总尝试次数，只在一次输入已经完成时统计；正确输入、看提示、输入长度达到单词长度但仍不匹配都会计入，尚未输完的中间状态不会计入。
 - `inputTimes`：最近若干次正确输入耗时，单位为秒。
-- `lastPracticedAt`：最近一次练习时间，以 UTC 时间保存。
-- `correctPracticeDates`：发生过正确输入的 UTC 时间列表，保存为 ISO 字符串；计算跨天复习时按用户本地日期去重。
+- `lastPracticedAt`：最近一次练习时间。
+- `correctPracticeDates`：发生过正确输入的本地日期列表，保存为 `YYYY-MM-DD` 格式的本地日期字符串（`formatLocalPracticeDate`），不存 ISO 时间戳，避免时区解析偏移；计算跨天复习时按本地自然日去重。
 
 ## 熟练度分数
 
