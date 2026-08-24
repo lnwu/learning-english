@@ -5,4 +5,4 @@ export * from "./frequency-bar";
 export * from "./sync-indicator";
 export * from "./dialog";
 export * from "./confirm-dialog";
-export * from "./toaster";
+export * from "./sonner";
