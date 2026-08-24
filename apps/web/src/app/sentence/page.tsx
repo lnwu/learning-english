@@ -65,8 +65,8 @@ const Sentence = observer(() => {
             ) : (
               <>
                 <p className="text-gray-500">{t("sentence.needMoreWords")}</p>
-                <Button asChild>
-                  <Link href="/add-word">{t("addWord.title")}</Link>
+                <Button render={<Link href="/add-word" />} nativeButton={false}>
+                  {t("addWord.title")}
                 </Button>
               </>
             )}
@@ -137,8 +137,8 @@ const Sentence = observer(() => {
         )}
 
         <div className="flex justify-center mt-6">
-          <Button asChild type="button" variant="outline">
-            <Link href="/home">{t("practiceHub.back")}</Link>
+          <Button render={<Link href="/home" />} nativeButton={false} variant="outline">
+            {t("practiceHub.back")}
           </Button>
         </div>
       </main>

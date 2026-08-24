@@ -313,8 +313,8 @@ const WordsPractice = observer(() => {
           {t("common.error")}: {error}
         </div>
         <div className="text-center mt-4">
-          <Button asChild>
-            <Link href="/add-word">{t("addWord.title")}</Link>
+          <Button render={<Link href="/add-word" />} nativeButton={false}>
+            {t("addWord.title")}
           </Button>
         </div>
       </main>
@@ -349,11 +349,11 @@ const WordsPractice = observer(() => {
             </ul>
             <div className="flex space-x-2 justify-end">
               <SubmitButton randomWords={randomWords} words={words} label={t("home.refresh")} />
-              <Button asChild type="button" variant="outline">
-                <Link href="/add-word">{t("addWord.title")}</Link>
+              <Button render={<Link href="/add-word" />} nativeButton={false} variant="outline">
+                {t("addWord.title")}
               </Button>
-              <Button asChild type="button" variant="outline">
-                <Link href="/home">{t("practiceHub.back")}</Link>
+              <Button render={<Link href="/home" />} nativeButton={false} variant="outline">
+                {t("practiceHub.back")}
               </Button>
             </div>
           </form>

@@ -300,11 +300,11 @@ const Profile = observer(() => {
 
         {/* Navigation */}
         <div className="flex space-x-4">
-          <Button asChild>
-            <Link href="/words">{t('profile.practiceWords')}</Link>
+          <Button render={<Link href="/words" />} nativeButton={false}>
+            {t('profile.practiceWords')}
           </Button>
-          <Button asChild variant="outline">
-            <Link href="/add-word">{t('addWord.title')}</Link>
+          <Button render={<Link href="/add-word" />} nativeButton={false} variant="outline">
+            {t('addWord.title')}
           </Button>
         </div>
 
