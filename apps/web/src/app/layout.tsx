@@ -40,7 +40,7 @@ const RootLayout: FC<{ children: ReactNode }> = async ({ children }) => {
               <AppShell>
                 {children}
               </AppShell>
-              <Toaster />
+              <Toaster position="bottom-right" duration={5000} richColors />
             </WordsProvider>
           </AuthProvider>
         </LocaleProvider>

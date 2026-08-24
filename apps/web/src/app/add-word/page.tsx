@@ -96,8 +96,8 @@ const Home = () => {
       <main className="space-y-4">
         <div className="text-center text-red-500">{t('common.error')}: {wordsError}</div>
         <div className="text-center">
-          <Button asChild>
-            <Link href="/home">{t('practiceHub.back')}</Link>
+          <Button render={<Link href="/home" />} nativeButton={false}>
+            {t('practiceHub.back')}
           </Button>
         </div>
       </main>
@@ -111,11 +111,11 @@ const Home = () => {
         <Button onClick={handleAddWord} disabled={loading}>
           {t('addWord.add')}
         </Button>
-        <Button asChild type="button">
-          <Link href="/home">{t('practiceHub.back')}</Link>
+        <Button render={<Link href="/home" />} nativeButton={false}>
+          {t('practiceHub.back')}
         </Button>
-        <Button asChild type="button">
-          <Link href="/profile">{t('menu.profile')}</Link>
+        <Button render={<Link href="/profile" />} nativeButton={false}>
+          {t('menu.profile')}
         </Button>
       </form>
     </main>
