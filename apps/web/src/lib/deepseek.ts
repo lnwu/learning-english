@@ -27,7 +27,14 @@ function getConfig() {
   return { apiKey, baseUrl, model };
 }
 
-export async function chatCompletionJson<T>(messages: ChatMessage[]): Promise<T> {
+export interface ChatCompletionOptions {
+  temperature?: number;
+}
+
+export async function chatCompletionJson<T>(
+  messages: ChatMessage[],
+  options?: ChatCompletionOptions
+): Promise<T> {
   const { apiKey, baseUrl, model } = getConfig();
 
   const controller = new AbortController();
@@ -44,7 +51,7 @@ export async function chatCompletionJson<T>(messages: ChatMessage[]): Promise<T>
       body: JSON.stringify({
         model,
         messages,
-        temperature: 0.7,
+        temperature: options?.temperature ?? 0.7,
         response_format: { type: "json_object" },
       }),
       signal: controller.signal,
