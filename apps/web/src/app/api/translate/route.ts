@@ -1,18 +1,25 @@
 import { NextResponse } from "next/server";
 import { verifyFirebaseIdToken } from "@/lib/serverAuth";
 import { checkRateLimit } from "@/lib/rateLimit";
-import { FALLBACK_DICTIONARY } from "@/lib/dictionary";
+import { chatCompletionJson, DeepSeekError } from "@/lib/deepseek";
 
 const WORD_PATTERN = /^[a-z]+$/;
 const MAX_WORD_LENGTH = 50;
 const RATE_LIMIT_PER_MINUTE = 30;
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
-const FETCH_TIMEOUT_MS = 8000;
 const MAX_CACHE_ENTRIES = 1000;
+const MAX_DEFINITION_LENGTH = 200;
+const MAX_TRANSLATION_LENGTH = 200;
 
 interface TranslationCacheEntry {
   chineseTranslation: string | null;
   englishDefinition: string | null;
+}
+
+interface WordLookupResult {
+  isWord: boolean;
+  englishDefinition: string;
+  chineseTranslation: string;
 }
 
 const translationCache = new Map<string, TranslationCacheEntry>();
@@ -27,6 +34,13 @@ function getCached(word: string): TranslationCacheEntry | undefined {
 }
 
 function setCached(word: string, entry: TranslationCacheEntry): void {
+  if (
+    !entry.chineseTranslation ||
+    !entry.englishDefinition ||
+    translationCache.has(word)
+  ) {
+    return;
+  }
   if (translationCache.size >= MAX_CACHE_ENTRIES) {
     const oldest = translationCache.keys().next().value;
     if (oldest !== undefined) translationCache.delete(oldest);
@@ -34,54 +48,48 @@ function setCached(word: string, entry: TranslationCacheEntry): void {
   translationCache.set(word, entry);
 }
 
-async function fetchWithTimeout(url: string): Promise<Response | null> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-  try {
-    return await fetch(url, { signal: controller.signal });
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
-async function translateToChinese(word: string): Promise<string | null> {
-  const response = await fetchWithTimeout(
-    `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=zh-CN&dt=t&q=${encodeURIComponent(word)}`
+async function lookupWord(word: string): Promise<TranslationCacheEntry> {
+  const result = await chatCompletionJson<WordLookupResult>(
+    [
+      {
+        role: "system",
+        content: [
+          "你是一位英语词典编辑。用户会给出一个英文单词。",
+          "如果它是真实存在的英文单词，isWord 为 true，并返回：",
+          "1. englishDefinition：最常见义项的简短英文释义，学习型词典风格，一句话，不超过 20 个单词；",
+          "2. chineseTranslation：该义项最常用的中文译法，简洁（不超过 6 个字，有多个常用译法时用顿号分隔）。",
+          "如果不是有效英文单词（拼写错误或生造词），isWord 为 false，两个字段均为空字符串。",
+          '只返回 JSON，不要添加其它字段或解释：{"isWord": true|false, "englishDefinition": "...", "chineseTranslation": "..."}',
+        ].join("\n"),
+      },
+      { role: "user", content: word },
+    ],
+    { temperature: 0.2 }
   );
-  if (response?.ok) {
-    try {
-      const data = await response.json();
-      const translation = data?.[0]?.[0]?.[0] ?? null;
-      if (translation && translation !== word) {
-        return translation;
-      }
-    } catch {
-      // fall through to dictionary
-    }
-  }
-  return FALLBACK_DICTIONARY[word] ?? null;
-}
 
-async function getEnglishDefinition(word: string): Promise<string | null> {
-  const response = await fetchWithTimeout(
-    `https://api.datamuse.com/words?sp=${encodeURIComponent(word)}&md=d&max=10`
-  );
-  if (!response?.ok) {
-    return null;
+  if (!result?.isWord) {
+    return { chineseTranslation: null, englishDefinition: null };
   }
-  try {
-    const data: Array<{ word?: string; defs?: string[] }> =
-      await response.json();
-    const exactMatch = data.find((item) => item.word?.toLowerCase() === word);
-    if (!exactMatch?.defs?.length) {
-      return null;
-    }
-    return exactMatch.defs[0].replace(/^[a-z]\t/, "");
-  } catch {
-    return null;
+
+  const englishDefinition =
+    typeof result.englishDefinition === "string"
+      ? result.englishDefinition.trim()
+      : "";
+  const chineseTranslation =
+    typeof result.chineseTranslation === "string"
+      ? result.chineseTranslation.trim()
+      : "";
+
+  if (
+    !englishDefinition ||
+    englishDefinition.length > MAX_DEFINITION_LENGTH ||
+    !chineseTranslation ||
+    chineseTranslation.length > MAX_TRANSLATION_LENGTH
+  ) {
+    throw new DeepSeekError("AI 服务返回内容异常", 502);
   }
+
+  return { chineseTranslation, englishDefinition };
 }
 
 export async function POST(request: Request) {
@@ -114,13 +122,15 @@ export async function POST(request: Request) {
     return NextResponse.json(cached);
   }
 
-  const [chineseTranslation, englishDefinition] = await Promise.all([
-    translateToChinese(word),
-    getEnglishDefinition(word),
-  ]);
-
-  const result: TranslationCacheEntry = { chineseTranslation, englishDefinition };
-  setCached(word, result);
-
-  return NextResponse.json(result);
+  try {
+    const result = await lookupWord(word);
+    setCached(word, result);
+    return NextResponse.json(result);
+  } catch (error) {
+    console.error("translate lookup failed:", error);
+    if (error instanceof DeepSeekError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    return NextResponse.json({ error: "翻译失败，请稍后重试" }, { status: 500 });
+  }
 }
