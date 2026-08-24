@@ -2,6 +2,11 @@
 
 本文件包含 AI 在本项目中工作时必须遵守的规则和项目信息。
 
+## UI 组件
+
+- `src/components/ui` 是 shadcn/ui 风格组件，但底层原语是 **Base UI**（`@base-ui/react`，2026-08 从 Radix 迁移完成，报告在仓库根 `.migration/`），toast 用 sonner。`components.json` 的 style 仍是 legacy `new-york`（无 base 变体）：不要直接跑 `shadcn add`，它会下发 Radix 底层组件；新组件按 Base UI 写法手动添加。
+- Base UI 惯例：多态用 `render` prop（不用 radix 的 `asChild`）；render 到非 button 元素时传 `nativeButton={false}`；动画用 `data-starting-style:`/`data-ending-style:` transition 写法（不是 `animate-in/out` keyframe + `data-[state=...]`）。
+
 ## 词库状态管理
 
 - `src/lib/wordsStore.ts`：`Words` MobX store 类与 `mergeSnapshotIntoStore`/`parseWordDoc`/`isWordDataEqual` 等纯逻辑，不依赖 Firebase 运行时，配套测试 `wordsStore.test.ts`；`src/hooks/useFirestoreWords.tsx` 持有模块级单例并负责 Firestore 订阅与同步。`WordsProvider`（挂在根 layout）在登录后全局只做一次 `onSnapshot` 订阅，`useFirestoreWords` 只是读 Context，不要在页面里再订阅 Firestore。
