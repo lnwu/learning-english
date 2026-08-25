@@ -1,21 +1,51 @@
 "use client";
 
-import { Input, Button } from "@/components/ui";
+import { Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Input } from "@/components/ui";
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { useFirestoreWords, useLocale, toast } from "@/hooks";
 import { auth } from "@/lib/firebase";
+
+interface PendingWord {
+  word: string;
+  englishDefinition: string;
+  chineseTranslation: string;
+}
 
 const Home = () => {
   const { words, addWord, loading: wordsLoading, error: wordsError } = useFirestoreWords();
   const { t } = useLocale();
   const [word, setWord] = useState("");
   const [loading, setLoading] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [pending, setPending] = useState<PendingWord | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const clear = () => {
     setWord("");
     inputRef.current?.focus();
+  };
+
+  const handleConfirmAdd = async () => {
+    if (!pending) return;
+
+    setConfirming(true);
+    const combinedTranslation = pending.chineseTranslation
+      ? `${pending.englishDefinition}\n${pending.chineseTranslation}`
+      : pending.englishDefinition;
+
+    try {
+      await addWord(pending.word, combinedTranslation);
+      setDialogOpen(false);
+      setPending(null);
+      clear();
+    } catch (error) {
+      console.error("Failed to add word:", error);
+      toast({ title: error instanceof Error ? error.message : t('addWord.addFailed'), variant: "destructive" });
+    } finally {
+      setConfirming(false);
+    }
   };
 
   const handleAddWord = async () => {
@@ -69,12 +99,12 @@ const Home = () => {
         return;
       }
 
-      const combinedTranslation = chineseTranslation
-        ? `${englishDefinition}\n${chineseTranslation}`
-        : englishDefinition;
-
-      await addWord(word, combinedTranslation);
-      clear();
+      setPending({
+        word,
+        englishDefinition,
+        chineseTranslation: chineseTranslation || "",
+      });
+      setDialogOpen(true);
     } catch (error) {
       console.error("Failed to add word:", error);
       toast({ title: error instanceof Error ? error.message : t('addWord.addFailed'), variant: "destructive" });
@@ -108,7 +138,7 @@ const Home = () => {
     <main className="space-y-4">
       <form className="flex space-x-2" onSubmit={(e) => e.preventDefault()}>
         <Input className="w-48" placeholder={t('addWord.word')} value={word} onChange={(e) => setWord(e.target.value.toLowerCase())} ref={inputRef} />
-        <Button onClick={handleAddWord} disabled={loading}>
+        <Button onClick={handleAddWord} disabled={loading || dialogOpen}>
           {t('addWord.add')}
         </Button>
         <Button render={<Link href="/home" />} nativeButton={false}>
@@ -118,6 +148,35 @@ const Home = () => {
           {t('menu.profile')}
         </Button>
       </form>
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {t('addWord.confirmTitle')}: {pending?.word}
+            </DialogTitle>
+          </DialogHeader>
+          {pending && (
+            <div className="space-y-3">
+              <div>
+                <div className="text-sm font-medium">{t('addWord.confirmEnglish')}</div>
+                <div className="text-sm text-muted-foreground">{pending.englishDefinition}</div>
+              </div>
+              <div>
+                <div className="text-sm font-medium">{t('addWord.confirmChinese')}</div>
+                <div className="text-sm text-muted-foreground">{pending.chineseTranslation}</div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>
+              {t('addWord.cancel')}
+            </Button>
+            <Button onClick={handleConfirmAdd} disabled={confirming}>
+              {t('addWord.confirmAdd')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 };

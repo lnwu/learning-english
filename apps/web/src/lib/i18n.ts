@@ -123,6 +123,11 @@ export const translations = {
     'addWord.invalidChars': '单词 "{word}" 包含无效字符或是拼写错误。',
     'addWord.notRecognized': '单词 "{word}" 未被识别为有效单词。',
     'addWord.addFailed': '添加单词到云端失败：',
+    'addWord.confirmTitle': '确认添加单词',
+    'addWord.confirmEnglish': '英文释义',
+    'addWord.confirmChinese': '中文译法',
+    'addWord.confirmAdd': '确认添加',
+    'addWord.cancel': '取消',
 
     // Sync indicator
     'sync.pending': '个单词待同步',
@@ -238,6 +243,11 @@ export const translations = {
     'addWord.invalidChars': 'The word "{word}" contains invalid characters or is a typo.',
     'addWord.notRecognized': 'The word "{word}" is not recognized as a real word.',
     'addWord.addFailed': 'Failed to add word to cloud: ',
+    'addWord.confirmTitle': 'Confirm Word',
+    'addWord.confirmEnglish': 'English Definition',
+    'addWord.confirmChinese': 'Chinese Translation',
+    'addWord.confirmAdd': 'Add',
+    'addWord.cancel': 'Cancel',
 
     // Sync indicator
     'sync.pending': 'words pending',
