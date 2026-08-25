@@ -136,7 +136,13 @@ const Home = () => {
 
   return (
     <main className="space-y-4">
-      <form className="flex space-x-2" onSubmit={(e) => e.preventDefault()}>
+      <form
+        className="flex space-x-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          handleAddWord();
+        }}
+      >
         <Input className="w-48" placeholder={t('addWord.word')} value={word} onChange={(e) => setWord(e.target.value.toLowerCase())} ref={inputRef} />
         <Button onClick={handleAddWord} disabled={loading || dialogOpen}>
           {t('addWord.add')}
