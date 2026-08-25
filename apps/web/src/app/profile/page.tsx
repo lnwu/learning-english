@@ -24,12 +24,15 @@ const COLOR_CLASSES = {
 
 const Profile = observer(() => {
   const { user } = useAuth();
-  const { words, resetPracticeRecords, loading, error } = useFirestoreWords();
+  const { words, deleteWord, resetPracticeRecords, loading, error } =
+    useFirestoreWords();
   const [isClient, setIsClient] = useState(false);
   const { locale, setLocale, t } = useLocale();
   const [resetting, setResetting] = useState(false);
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [wordToDelete, setWordToDelete] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
@@ -97,6 +100,27 @@ const Profile = observer(() => {
 
   const handleLanguageChange = (newLocale: Locale) => {
     setLocale(newLocale);
+  };
+
+  const handleDeleteWord = async () => {
+    if (!wordToDelete) return;
+    setDeleting(true);
+    try {
+      await deleteWord(wordToDelete);
+      toast({
+        title: t('profile.deleteSuccess'),
+        variant: "success",
+      });
+    } catch (err) {
+      console.error("Delete word failed:", err);
+      toast({
+        title: t('profile.deleteError'),
+        variant: "destructive",
+      });
+    } finally {
+      setDeleting(false);
+      setWordToDelete(null);
+    }
   };
 
   if (loading) {
@@ -272,6 +296,15 @@ const Profile = observer(() => {
                             <div className="text-xs text-gray-500 dark:text-gray-400 w-10 text-right">
                               {masteryScore}%
                             </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 px-2"
+                              onClick={() => setWordToDelete(word)}
+                              aria-label={t('profile.deleteWord')}
+                            >
+                              {t('profile.deleteWord')}
+                            </Button>
                           </div>
                         </div>
                       ))}
@@ -317,6 +350,20 @@ const Profile = observer(() => {
           confirmText={t('common.confirm')}
           cancelText={t('common.cancel')}
           onConfirm={handleResetRecords}
+          variant="destructive"
+        />
+
+        {/* Delete Word Confirmation Dialog */}
+        <ConfirmDialog
+          open={wordToDelete !== null}
+          onOpenChange={(open) => {
+            if (!open) setWordToDelete(null);
+          }}
+          title={t('profile.deleteConfirm').replace('{word}', wordToDelete ?? '')}
+          description={t('profile.deleteConfirmDesc')}
+          confirmText={deleting ? t('common.loading') : t('common.confirm')}
+          cancelText={t('common.cancel')}
+          onConfirm={handleDeleteWord}
           variant="destructive"
         />
       </main>

@@ -109,6 +109,11 @@ export const translations = {
     'profile.mastery': '熟练度',
     'profile.searchWord': '搜索单词...',
     'profile.correct': '正确',
+    'profile.deleteWord': '删除',
+    'profile.deleteConfirm': '确定删除「{word}」吗？',
+    'profile.deleteConfirmDesc': '这将同时删除该单词的所有练习记录，此操作不可撤销。',
+    'profile.deleteSuccess': '单词已删除',
+    'profile.deleteError': '删除失败，请重试',
 
     // Add Word page
     'addWord.title': '添加单词',
@@ -223,6 +228,11 @@ export const translations = {
     'profile.mastery': 'Mastery',
     'profile.searchWord': 'Search word...',
     'profile.correct': 'correct',
+    'profile.deleteWord': 'Delete',
+    'profile.deleteConfirm': 'Delete "{word}"?',
+    'profile.deleteConfirmDesc': 'This will also delete all practice records for this word. This action cannot be undone.',
+    'profile.deleteSuccess': 'Word deleted',
+    'profile.deleteError': 'Failed to delete, please try again',
 
     // Add Word page
     'addWord.title': 'Add Word',
