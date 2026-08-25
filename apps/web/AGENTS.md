@@ -27,7 +27,7 @@
 - `/api/*` 要求请求头携带 Firebase ID token（`Authorization: Bearer <token>`），由 `src/lib/serverAuth.ts` 通过 Identity Toolkit REST API 校验；校验通过返回 `{ uid }`，失败返回 401 的 NextResponse（用 `instanceof NextResponse` 区分）。
 - `/api/*` 按 uid 限流（`src/lib/rateLimit.ts`），超限返回 429：配置了 `KV_REST_API_URL`/`KV_REST_API_TOKEN`（或 `UPSTASH_REDIS_REST_*`，Vercel Marketplace 装 Upstash Redis 后自动注入）时用 Upstash 全局限流；未配置或 Upstash 请求失败时回退进程内固定窗口限流（本地开发用）。`checkRateLimit` 是 async，调用时必须 await；新增 API 路由时应加上限流与输入长度上限。
 - DeepSeek 封装位于 `src/lib/deepseek.ts`，读取环境变量 `DEEPSEEK_API_KEY`、`DEEPSEEK_BASE_URL`、`DEEPSEEK_MODEL`；`chatCompletionJson` 支持可选 `temperature`（默认 0.7）。
-- `/api/translate` 的英文释义与中文译法由 DeepSeek 一次调用生成，不再使用 Google Translate/Datamuse 等外部免费源或回退词典（`lib/dictionary.ts` 已删除）；模型判定非有效单词时返回两字段 null（前端提示未识别），调用失败时返回错误且前端不落库；内存 LRU 缓存只存两字段非空的成功结果。
+- `/api/translate` 由 DeepSeek 一次调用生成结构化义项数组 `senses: [{ pos, chinese, english }]`（2~4 个义项，最常用在前），不再使用 Google Translate/Datamuse 等外部免费源或回退词典（`lib/dictionary.ts` 已删除）；模型判定非有效单词时返回 `senses: null`（前端提示未识别），调用失败时返回错误且前端不落库；内存 LRU 缓存只存 `senses` 非空数组的成功结果。前端用 `src/lib/parseTranslation.ts` 的 `formatSenses` 把 `senses` 拼成「每义项一行（词性+中文 — 英文）」存入 `translation` 字段，`parseTranslation` 兼容旧格式（首行英文、其余中文）。
 - API Key 只允许在服务端使用，禁止加 `NEXT_PUBLIC_` 前缀或下发到前端。
 - 造句练习复用 `useFirestoreWords` 的单词库与 `recordCorrectAttempt`/`recordIncorrectAttempt`，练习结果计入单词熟练度并同步到 Firebase；造句场景没有真实输入计时，`recordCorrectAttempt(word)` 不传 `inputTimeSeconds`（该参数仅单词拼写练习传入），不要伪造输入时间以免抬高 speedScore。
 - 批改接口返回 `usedWords`（用户实际用到的目标词，同义表达替代也算），客户端只对 `usedWords` 中的词调用 `recordCorrect/IncorrectAttempt`，未用到的目标词不记分；模型未返回该字段时回退为全部目标词。

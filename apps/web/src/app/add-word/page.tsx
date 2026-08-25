@@ -5,11 +5,11 @@ import { useRef, useState } from "react";
 import Link from "next/link";
 import { useFirestoreWords, useLocale, toast } from "@/hooks";
 import { auth } from "@/lib/firebase";
+import { formatSenses, type WordSense } from "@/lib/parseTranslation";
 
 interface PendingWord {
   word: string;
-  englishDefinition: string;
-  chineseTranslation: string;
+  senses: WordSense[];
 }
 
 const Home = () => {
@@ -31,9 +31,7 @@ const Home = () => {
     if (!pending) return;
 
     setConfirming(true);
-    const combinedTranslation = pending.chineseTranslation
-      ? `${pending.englishDefinition}\n${pending.chineseTranslation}`
-      : pending.englishDefinition;
+    const combinedTranslation = formatSenses(pending.senses);
 
     try {
       await addWord(pending.word, combinedTranslation);
@@ -87,12 +85,11 @@ const Home = () => {
         throw new Error(data && typeof data.error === 'string' ? data.error : t('addWord.addFailed'));
       }
 
-      const { chineseTranslation, englishDefinition } = data as {
-        chineseTranslation: string | null;
-        englishDefinition: string | null;
+      const { senses } = data as {
+        senses: WordSense[] | null;
       };
 
-      if (!englishDefinition) {
+      if (!senses || senses.length === 0) {
         toast({ title: t('addWord.notRecognized').replace('{word}', word), variant: "destructive" });
         clear();
         setLoading(false);
@@ -101,8 +98,7 @@ const Home = () => {
 
       setPending({
         word,
-        englishDefinition,
-        chineseTranslation: chineseTranslation || "",
+        senses,
       });
       setDialogOpen(true);
     } catch (error) {
@@ -164,12 +160,8 @@ const Home = () => {
           {pending && (
             <div className="space-y-3">
               <div>
-                <div className="text-sm font-medium">{t('addWord.confirmEnglish')}</div>
-                <div className="text-sm text-muted-foreground">{pending.englishDefinition}</div>
-              </div>
-              <div>
-                <div className="text-sm font-medium">{t('addWord.confirmChinese')}</div>
-                <div className="text-sm text-muted-foreground">{pending.chineseTranslation}</div>
+                <div className="text-sm font-medium">{t('addWord.confirmSenses')}</div>
+                <div className="text-sm text-muted-foreground whitespace-pre-line">{formatSenses(pending.senses)}</div>
               </div>
             </div>
           )}

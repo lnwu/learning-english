@@ -18,7 +18,6 @@ import {
   doc,
   onSnapshot,
   getDocs,
-  updateDoc,
   writeBatch,
   type WriteBatch,
 } from "firebase/firestore";
@@ -55,7 +54,6 @@ interface WordsContextValue {
   words: Words;
   addWord: (word: string, translation: string) => Promise<void>;
   deleteWord: (word: string) => Promise<void>;
-  updateTranslation: (word: string, translation: string) => Promise<void>;
   removeAllWords: () => Promise<void>;
   recordCorrectAttempt: (word: string, inputTimeSeconds?: number) => void;
   recordIncorrectAttempt: (word: string) => void;
@@ -184,33 +182,6 @@ export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
       } catch (err) {
         console.error("Failed to delete word:", err);
         throw new Error(tError("error.deleteWordFailed"));
-      }
-    },
-    [user]
-  );
-
-  const updateTranslation = useCallback(
-    async (word: string, translation: string) => {
-      if (!user) {
-        throw new Error(tError("error.notAuthenticated"));
-      }
-
-      const wordId = words.getWordId(word);
-      if (!wordId) {
-        throw new Error(tError("error.wordNotFound"));
-      }
-
-      try {
-        const userId = getEffectiveUserId(user);
-        const wordDocRef = doc(db, "users", userId, "words", wordId);
-        await updateDoc(wordDocRef, {
-          translation,
-        });
-
-        words.updateTranslation(word, translation);
-      } catch (err) {
-        console.error("Failed to update translation:", err);
-        throw new Error(tError("error.updateTranslationFailed"));
       }
     },
     [user]
@@ -455,7 +426,6 @@ export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
       words,
       addWord,
       deleteWord,
-      updateTranslation,
       removeAllWords,
       recordCorrectAttempt,
       recordIncorrectAttempt,
@@ -469,7 +439,6 @@ export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
     [
       addWord,
       deleteWord,
-      updateTranslation,
       removeAllWords,
       recordCorrectAttempt,
       recordIncorrectAttempt,

@@ -199,7 +199,12 @@ describe("mergeSnapshotIntoStore", () => {
   const makeSnapshot = (entries: Array<[string, Partial<WordData>]>) => ({
     docs: entries.map(([word, overrides]) => ({
       id: overrides.id ?? `id-${word}`,
-      data: () => ({ word, translation: overrides.translation ?? `${word}译`, ...overrides }),
+      data: () => ({
+        word,
+        translation: overrides.translation ?? `${word}译`,
+        ...overrides,
+        createdAt: overrides.createdAt ?? { toDate: () => new Date("2026-01-01T00:00:00") },
+      }),
     })),
   });
 

@@ -48,16 +48,11 @@ export const translations = {
     'error.removeWordsFailed': '从云端删除单词失败',
     'error.resetFailed': '重置练习记录失败',
     'error.wordNotFound': '未找到单词',
-    'error.updateTranslationFailed': '更新翻译失败',
     
     // Home page
     'home.refresh': '刷新单词',
     'home.hint': '提示',
-    'home.editTranslationHint': '双击编辑中文翻译',
-    'home.addChineseTranslation': '双击添加中文翻译',
-    'home.translationUpdated': '中文翻译已更新',
-    'home.translationEmpty': '中文翻译不能为空',
-    'home.translationUpdateFailed': '更新翻译失败，请重试',
+    'home.noTranslation': '暂无中文翻译',
 
     // Sentence practice
     'sentence.title': '造句练习',
@@ -124,8 +119,7 @@ export const translations = {
     'addWord.notRecognized': '单词 "{word}" 未被识别为有效单词。',
     'addWord.addFailed': '添加单词到云端失败：',
     'addWord.confirmTitle': '确认添加单词',
-    'addWord.confirmEnglish': '英文释义',
-    'addWord.confirmChinese': '中文译法',
+    'addWord.confirmSenses': '词义',
     'addWord.confirmAdd': '确认添加',
     'addWord.cancel': '取消',
 
@@ -168,16 +162,11 @@ export const translations = {
     'error.removeWordsFailed': 'Failed to remove words from cloud',
     'error.resetFailed': 'Failed to reset practice records',
     'error.wordNotFound': 'Word not found',
-    'error.updateTranslationFailed': 'Failed to update translation',
     
     // Home page
     'home.refresh': 'Refresh Words',
     'home.hint': 'Hint',
-    'home.editTranslationHint': 'Double-click to edit Chinese translation',
-    'home.addChineseTranslation': 'Double-click to add Chinese translation',
-    'home.translationUpdated': 'Chinese translation updated',
-    'home.translationEmpty': 'Chinese translation cannot be empty',
-    'home.translationUpdateFailed': 'Failed to update translation. Please try again.',
+    'home.noTranslation': 'No Chinese translation',
 
     // Sentence practice
     'sentence.title': 'Sentence Practice',
@@ -244,8 +233,7 @@ export const translations = {
     'addWord.notRecognized': 'The word "{word}" is not recognized as a real word.',
     'addWord.addFailed': 'Failed to add word to cloud: ',
     'addWord.confirmTitle': 'Confirm Word',
-    'addWord.confirmEnglish': 'English Definition',
-    'addWord.confirmChinese': 'Chinese Translation',
+    'addWord.confirmSenses': 'Senses',
     'addWord.confirmAdd': 'Add',
     'addWord.cancel': 'Cancel',
 

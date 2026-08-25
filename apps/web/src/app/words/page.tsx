@@ -4,7 +4,7 @@ import { Input, Button, MasteryBar, SyncIndicator } from "@/components/ui";
 import { useCallback, useEffect, useState, useRef, type FormEvent, type RefObject } from "react";
 import { observer } from "mobx-react-lite";
 import Link from "next/link";
-import { useFirestoreWords, useLocale, toast } from "@/hooks";
+import { useFirestoreWords, useLocale } from "@/hooks";
 import { parseTranslation } from "@/lib/parseTranslation";
 import type { Words } from "@/lib/wordsStore";
 import type { TranslationKey } from "@/lib/i18n";
@@ -13,65 +13,34 @@ interface WordRowProps {
   word: string;
   translation: string;
   words: Words;
-  isEditing: boolean;
-  editingValue: string;
-  onEditingValueChange: (value: string) => void;
-  onStartEdit: (word: string, englishDefinition: string, chineseTranslation: string) => void;
-  onCommitEdit: () => void;
-  onCancelEdit: () => void;
   onInputChange: (word: string, value: string) => void;
   onHintReveal: (word: string) => void;
   inputRefs: RefObject<Map<string, HTMLInputElement>>;
   t: (key: TranslationKey) => string;
 }
 
-const WordRow = observer(({ word, translation, words, isEditing, editingValue, onEditingValueChange, onStartEdit, onCommitEdit, onCancelEdit, onInputChange, onHintReveal, inputRefs, t }: WordRowProps) => {
+const WordRow = observer(({ word, translation, words, onInputChange, onHintReveal, inputRefs, t }: WordRowProps) => {
   const inputValue = words.userInputs.get(word) || "";
-  const { englishDefinition, chineseTranslation } = parseTranslation(translation);
+  const { senses } = parseTranslation(translation);
+  const hasSense = senses.some((sense) => sense.chinese);
 
   return (
-    <li className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1">
+    <li className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-2 gap-y-1">
       <div className="max-w-xs w-full text-right justify-self-end">
-        {isEditing ? (
-          <Input
-            className="w-full text-right"
-            type="text"
-            value={editingValue}
-            autoFocus
-            onChange={(e) => onEditingValueChange(e.target.value)}
-            onBlur={() => {
-              onCommitEdit();
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                if (e.nativeEvent.isComposing) {
-                  return;
-                }
-                e.preventDefault();
-                onCommitEdit();
-              }
-
-              if (e.key === "Escape") {
-                e.preventDefault();
-                onCancelEdit();
-              }
-            }}
-          />
-        ) : (
-          <div
-            className={`h-9 px-3 py-1 flex items-center justify-end whitespace-pre-line ${chineseTranslation ? "font-semibold" : "text-gray-400 italic"} cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:rounded`}
-            onDoubleClick={() => onStartEdit(word, englishDefinition, chineseTranslation)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                onStartEdit(word, englishDefinition, chineseTranslation);
-              }
-            }}
-            title={t("home.editTranslationHint")}
-          >
-            {chineseTranslation || t("home.addChineseTranslation")}
-          </div>
-        )}
+        <div
+          className={`min-h-9 px-3 py-1 flex flex-col items-end justify-start whitespace-pre-line ${hasSense ? "font-semibold" : "text-gray-400 italic"}`}
+        >
+          {hasSense ? (
+            senses.map((sense, index) => (
+              <span key={index}>
+                {[sense.pos, sense.chinese].filter(Boolean).join(" ")}
+                {sense.english && <span className="text-sm font-normal text-gray-500"> — {sense.english}</span>}
+              </span>
+            ))
+          ) : (
+            t("home.noTranslation")
+          )}
+        </div>
       </div>
       <div className="flex items-center space-x-2">
         <Input
@@ -116,8 +85,6 @@ const WordRow = observer(({ word, translation, words, isEditing, editingValue, o
         </button>
         <MasteryBar score={words.getMasteryScore(word)} />
       </div>
-      {englishDefinition && <div className="max-w-xs w-full text-right text-sm text-gray-500 whitespace-pre-line justify-self-end">{englishDefinition}</div>}
-      {englishDefinition && <div />}
     </li>
   );
 });
@@ -132,27 +99,14 @@ const SubmitButton = observer(({ randomWords, words, label }: { randomWords: [st
 });
 
 const WordsPractice = observer(() => {
-  const { words, recordCorrectAttempt, recordIncorrectAttempt, syncToFirestore, syncing, pendingCount, loading, error, updateTranslation } = useFirestoreWords();
+  const { words, recordCorrectAttempt, recordIncorrectAttempt, syncToFirestore, syncing, pendingCount, loading, error } = useFirestoreWords();
   const { t } = useLocale();
   const [isClient, setIsClient] = useState(false);
   const [shouldFocusFirst, setShouldFocusFirst] = useState(false);
   const [randomWords, setRandomWords] = useState<[string, string][]>([]);
-  const [editingWord, setEditingWord] = useState<string | null>(null);
-  const [editingValue, setEditingValue] = useState("");
   const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
   const incorrectRecordedRef = useRef<Set<string>>(new Set());
   const timerStartRef = useRef<Map<string, number>>(new Map());
-  const editSessionRef = useRef<{
-    word: string | null;
-    originalChinese: string;
-    englishDefinition: string;
-    committed: boolean;
-  }>({
-    word: null,
-    originalChinese: "",
-    englishDefinition: "",
-    committed: false,
-  });
 
   useEffect(() => {
     setIsClient(true);
@@ -186,69 +140,6 @@ const WordsPractice = observer(() => {
     setRandomWords(words.getRandomWords());
     setShouldFocusFirst(true);
   };
-
-  const startEditingTranslation = useCallback((word: string, englishDefinition: string, chineseTranslation: string) => {
-    setEditingWord(word);
-    setEditingValue(chineseTranslation);
-    editSessionRef.current = {
-      word,
-      originalChinese: chineseTranslation,
-      englishDefinition,
-      committed: false,
-    };
-  }, []);
-
-  const cancelEditingTranslation = useCallback(() => {
-    setEditingWord(null);
-    setEditingValue("");
-    editSessionRef.current = {
-      word: null,
-      originalChinese: "",
-      englishDefinition: "",
-      committed: false,
-    };
-  }, []);
-
-  const commitEditingTranslation = useCallback(async () => {
-    const session = editSessionRef.current;
-    if (!session.word || session.committed) {
-      return;
-    }
-
-    const trimmed = editingValue.trim();
-    if (!trimmed) {
-      toast({
-        title: t("home.translationEmpty"),
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (trimmed === session.originalChinese) {
-      cancelEditingTranslation();
-      return;
-    }
-
-    session.committed = true;
-
-    try {
-      const newTranslation = session.englishDefinition ? `${session.englishDefinition}\n${trimmed}` : trimmed;
-      await updateTranslation(session.word, newTranslation);
-      setRandomWords((prev) => prev.map(([itemWord, itemTranslation]) => (itemWord === session.word ? [itemWord, newTranslation] : [itemWord, itemTranslation])));
-      toast({
-        title: t("home.translationUpdated"),
-        variant: "success",
-      });
-      cancelEditingTranslation();
-    } catch (err) {
-      console.error("Failed to update translation:", err);
-      session.committed = false;
-      toast({
-        title: t("home.translationUpdateFailed"),
-        variant: "destructive",
-      });
-    }
-  }, [editingValue, t, updateTranslation, cancelEditingTranslation]);
 
   const handleInputChange = useCallback((word: string, value: string) => {
     // Start timer on first character typed
@@ -334,12 +225,6 @@ const WordsPractice = observer(() => {
                   word={word}
                   translation={translation}
                   words={words}
-                  isEditing={editingWord === word}
-                  editingValue={editingWord === word ? editingValue : ""}
-                  onEditingValueChange={setEditingValue}
-                  onStartEdit={startEditingTranslation}
-                  onCommitEdit={commitEditingTranslation}
-                  onCancelEdit={cancelEditingTranslation}
                   onInputChange={handleInputChange}
                   onHintReveal={handleHintReveal}
                   inputRefs={inputRefs}

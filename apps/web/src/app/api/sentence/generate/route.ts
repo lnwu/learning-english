@@ -15,7 +15,7 @@ interface GenerateResult {
 const MAX_WORDS = 3;
 const MIN_WORDS = 1;
 const MAX_WORD_LENGTH = 50;
-const MAX_TRANSLATION_LENGTH = 200;
+const MAX_TRANSLATION_LENGTH = 2000;
 const RATE_LIMIT_PER_MINUTE = 10;
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 
