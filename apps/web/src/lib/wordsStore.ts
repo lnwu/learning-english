@@ -195,12 +195,6 @@ export class Words {
     return this.wordData.get(word)?.translation;
   }
 
-  updateTranslation(word: string, translation: string) {
-    const data = this.wordData.get(word);
-    if (!data) return;
-    data.translation = translation;
-  }
-
   setUserInput(word: string, value: string) {
     this.userInputs.set(word, value);
   }

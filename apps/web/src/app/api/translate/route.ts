@@ -8,18 +8,24 @@ const MAX_WORD_LENGTH = 50;
 const RATE_LIMIT_PER_MINUTE = 30;
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const MAX_CACHE_ENTRIES = 1000;
-const MAX_DEFINITION_LENGTH = 200;
-const MAX_TRANSLATION_LENGTH = 200;
+const MAX_SENSES = 4;
+const MAX_POS_LENGTH = 10;
+const MAX_DEFINITION_LENGTH = 150;
+const MAX_TRANSLATION_LENGTH = 50;
+
+interface WordSense {
+  pos: string;
+  chinese: string;
+  english: string;
+}
 
 interface TranslationCacheEntry {
-  chineseTranslation: string | null;
-  englishDefinition: string | null;
+  senses: WordSense[] | null;
 }
 
 interface WordLookupResult {
   isWord: boolean;
-  englishDefinition: string;
-  chineseTranslation: string;
+  senses: WordSense[];
 }
 
 const translationCache = new Map<string, TranslationCacheEntry>();
@@ -34,11 +40,7 @@ function getCached(word: string): TranslationCacheEntry | undefined {
 }
 
 function setCached(word: string, entry: TranslationCacheEntry): void {
-  if (
-    !entry.chineseTranslation ||
-    !entry.englishDefinition ||
-    translationCache.has(word)
-  ) {
+  if (!entry.senses || entry.senses.length === 0 || translationCache.has(word)) {
     return;
   }
   if (translationCache.size >= MAX_CACHE_ENTRIES) {
@@ -55,11 +57,13 @@ async function lookupWord(word: string): Promise<TranslationCacheEntry> {
         role: "system",
         content: [
           "你是一位英语词典编辑。用户会给出一个英文单词。",
-          "如果它是真实存在的英文单词，isWord 为 true，并返回：",
-          "1. englishDefinition：最常见义项的简短英文释义，学习型词典风格，一句话，不超过 20 个单词；",
-          "2. chineseTranslation：该义项最常用的中文译法，简洁（不超过 6 个字，有多个常用译法时用顿号分隔）。",
-          "如果不是有效英文单词（拼写错误或生造词），isWord 为 false，两个字段均为空字符串。",
-          '只返回 JSON，不要添加其它字段或解释：{"isWord": true|false, "englishDefinition": "...", "chineseTranslation": "..."}',
+          "如果它是真实存在的英文单词，isWord 为 true，并返回 senses 数组：按词性/义项列出该词最常见到较常见的多个义项（通常 2-4 个），最常用的义项排在最前面。",
+          "每个义项包含：",
+          "1. pos：简短词性标注（如 n.、v.、adj.、adv. 等）；",
+          "2. chinese：该义项最常用的中文译法，简洁（不超过 10 个字，有多个常用译法时用顿号分隔）；",
+          "3. english：该义项的学习型词典风格简短英文释义，一句话，不超过 15 个单词。",
+          "如果不是有效英文单词（拼写错误或生造词），isWord 为 false，senses 为空数组。",
+          '只返回 JSON，不要添加其它字段或解释：{"isWord": true|false, "senses": [{"pos": "...", "chinese": "...", "english": "..."}]}',
         ].join("\n"),
       },
       { role: "user", content: word },
@@ -68,28 +72,33 @@ async function lookupWord(word: string): Promise<TranslationCacheEntry> {
   );
 
   if (!result?.isWord) {
-    return { chineseTranslation: null, englishDefinition: null };
+    return { senses: null };
   }
 
-  const englishDefinition =
-    typeof result.englishDefinition === "string"
-      ? result.englishDefinition.trim()
-      : "";
-  const chineseTranslation =
-    typeof result.chineseTranslation === "string"
-      ? result.chineseTranslation.trim()
-      : "";
+  const senses = Array.isArray(result.senses)
+    ? result.senses
+        .slice(0, MAX_SENSES)
+        .map((sense) => ({
+          pos: typeof sense?.pos === "string" ? sense.pos.trim() : "",
+          chinese: typeof sense?.chinese === "string" ? sense.chinese.trim() : "",
+          english: typeof sense?.english === "string" ? sense.english.trim() : "",
+        }))
+        .filter(
+          (sense) =>
+            sense.pos &&
+            sense.pos.length <= MAX_POS_LENGTH &&
+            sense.chinese &&
+            sense.chinese.length <= MAX_TRANSLATION_LENGTH &&
+            sense.english &&
+            sense.english.length <= MAX_DEFINITION_LENGTH
+        )
+    : [];
 
-  if (
-    !englishDefinition ||
-    englishDefinition.length > MAX_DEFINITION_LENGTH ||
-    !chineseTranslation ||
-    chineseTranslation.length > MAX_TRANSLATION_LENGTH
-  ) {
+  if (senses.length === 0) {
     throw new DeepSeekError("AI 服务返回内容异常", 502);
   }
 
-  return { chineseTranslation, englishDefinition };
+  return { senses };
 }
 
 export async function POST(request: Request) {
