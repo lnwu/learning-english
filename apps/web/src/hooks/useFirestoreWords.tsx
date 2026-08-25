@@ -179,6 +179,13 @@ export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
       try {
         const userId = getEffectiveUserId(user);
         await deleteDoc(doc(db, "users", userId, "words", wordId));
+
+        const queue = SyncQueueManager.getQueue();
+        const remaining = queue.filter((item) => item.wordId !== wordId);
+        if (remaining.length !== queue.length) {
+          SyncQueueManager.saveQueue(remaining);
+          setPendingCount(SyncQueueManager.getUniqueWordCount());
+        }
       } catch (err) {
         console.error("Failed to delete word:", err);
         throw new Error(tError("error.deleteWordFailed"));
