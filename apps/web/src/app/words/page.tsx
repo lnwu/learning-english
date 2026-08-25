@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState, useRef, type FormEvent, type RefObjec
 import { observer } from "mobx-react-lite";
 import Link from "next/link";
 import { useFirestoreWords, useLocale } from "@/hooks";
-import { formatSenses, parseTranslation } from "@/lib/parseTranslation";
+import { parseTranslation } from "@/lib/parseTranslation";
 import type { Words } from "@/lib/wordsStore";
 import type { TranslationKey } from "@/lib/i18n";
 
@@ -28,9 +28,18 @@ const WordRow = observer(({ word, translation, words, onInputChange, onHintRevea
     <li className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1">
       <div className="max-w-xs w-full text-right justify-self-end">
         <div
-          className={`min-h-9 px-3 py-1 flex items-center justify-end whitespace-pre-line ${hasSense ? "font-semibold" : "text-gray-400 italic"}`}
+          className={`min-h-9 px-3 py-1 flex flex-col items-end justify-center whitespace-pre-line ${hasSense ? "font-semibold" : "text-gray-400 italic"}`}
         >
-          {hasSense ? formatSenses(senses) : t("home.noTranslation")}
+          {hasSense ? (
+            senses.map((sense, index) => (
+              <span key={index}>
+                {[sense.pos, sense.chinese].filter(Boolean).join(" ")}
+                {sense.english && <span className="text-sm font-normal text-gray-500"> — {sense.english}</span>}
+              </span>
+            ))
+          ) : (
+            t("home.noTranslation")
+          )}
         </div>
       </div>
       <div className="flex items-center space-x-2">
