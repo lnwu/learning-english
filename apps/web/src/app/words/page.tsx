@@ -25,10 +25,10 @@ const WordRow = observer(({ word, translation, words, onInputChange, onHintRevea
   const hasSense = senses.some((sense) => sense.chinese);
 
   return (
-    <li className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1">
+    <li className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-2 gap-y-1">
       <div className="max-w-xs w-full text-right justify-self-end">
         <div
-          className={`min-h-9 px-3 py-1 flex flex-col items-end justify-center whitespace-pre-line ${hasSense ? "font-semibold" : "text-gray-400 italic"}`}
+          className={`min-h-9 px-3 py-1 flex flex-col items-end justify-start whitespace-pre-line ${hasSense ? "font-semibold" : "text-gray-400 italic"}`}
         >
           {hasSense ? (
             senses.map((sense, index) => (
