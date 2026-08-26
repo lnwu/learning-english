@@ -4,8 +4,14 @@ import { Button, ConfirmDialog, Input, MasteryBar } from "@/components/ui";
 import { useFirestoreWords, useLocale, toast, useAuth } from "@/hooks";
 import { observer } from "mobx-react-lite";
 import Link from "next/link";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { type Locale } from "@/lib/i18n";
+import { auth } from "@/lib/firebase";
+import { formatSenses } from "@/lib/parseTranslation";
+import {
+  MAX_REGENERATE_BATCH_SIZE,
+  type RegenerateResult,
+} from "@/lib/regenerateDefinitions";
 
 const COLOR_CLASSES = {
   blue: {
@@ -24,7 +30,7 @@ const COLOR_CLASSES = {
 
 const Profile = observer(() => {
   const { user } = useAuth();
-  const { words, deleteWord, resetPracticeRecords, loading, error } =
+  const { words, deleteWord, resetPracticeRecords, updateTranslations, loading, error } =
     useFirestoreWords();
   const [isClient, setIsClient] = useState(false);
   const { locale, setLocale, t } = useLocale();
@@ -33,6 +39,10 @@ const Profile = observer(() => {
   const [searchQuery, setSearchQuery] = useState("");
   const [wordToDelete, setWordToDelete] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [showRegenerateDialog, setShowRegenerateDialog] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
+  const [regenerateProgress, setRegenerateProgress] = useState(0);
+  const regeneratingRef = useRef(false);
 
   useEffect(() => {
     setIsClient(true);
@@ -123,6 +133,106 @@ const Profile = observer(() => {
     }
   };
 
+  const handleRegenerateAll = async () => {
+    if (regeneratingRef.current) return;
+    regeneratingRef.current = true;
+
+    const allWords = Array.from(words.wordData.keys());
+    if (allWords.length === 0) {
+      regeneratingRef.current = false;
+      return;
+    }
+
+    setRegenerating(true);
+    setRegenerateProgress(0);
+    const total = allWords.length;
+    let success = 0;
+    let skipped = 0;
+    let batchFailed = 0;
+    const batches: string[][] = [];
+
+    try {
+      const idToken = await auth.currentUser?.getIdToken();
+      if (!idToken) {
+        throw new Error(t('error.notAuthenticated'));
+      }
+
+      for (let i = 0; i < total; i += MAX_REGENERATE_BATCH_SIZE) {
+        batches.push(allWords.slice(i, i + MAX_REGENERATE_BATCH_SIZE));
+      }
+
+      for (const batch of batches) {
+        let batchSuccess = 0;
+        try {
+          const response = await fetch("/api/regenerate-definitions", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${idToken}`,
+            },
+            body: JSON.stringify({ words: batch }),
+          });
+
+          const data = await response.json().catch(() => null);
+          if (!response.ok) {
+            throw new Error(
+              data && typeof data.error === "string"
+                ? data.error
+                : t('profile.regenerateFailed')
+            );
+          }
+
+          const results = (data as { results?: RegenerateResult[] } | null)?.results ?? [];
+          const updates: Array<{ word: string; translation: string }> = [];
+          for (const item of results) {
+            if (item.senses && item.senses.length > 0) {
+              updates.push({ word: item.word, translation: formatSenses(item.senses) });
+              batchSuccess += 1;
+            }
+          }
+          if (updates.length > 0) {
+            await updateTranslations(updates);
+          }
+          success += batchSuccess;
+          skipped += batch.length - batchSuccess;
+        } catch (err) {
+          console.error("Regenerate batch failed:", err);
+          batchFailed += batch.length;
+          skipped += batch.length;
+        }
+        setRegenerateProgress((prev) => prev + batch.length);
+      }
+
+      if (batchFailed === total) {
+        toast({
+          title: t('profile.regenerateFailed'),
+          variant: "destructive",
+        });
+      } else if (skipped > 0) {
+        toast({
+          title: t('profile.regeneratePartial').replace('{success}', String(success)).replace('{skipped}', String(skipped)),
+          variant: "success",
+        });
+      } else {
+        toast({
+          title: t('profile.regenerateSuccess').replace('{success}', String(success)),
+          variant: "success",
+        });
+      }
+    } catch (err) {
+      console.error("Regenerate all failed:", err);
+      toast({
+        title:
+          err instanceof Error ? err.message : t('profile.regenerateFailed'),
+        variant: "destructive",
+      });
+    } finally {
+      regeneratingRef.current = false;
+      setRegenerating(false);
+      setShowRegenerateDialog(false);
+    }
+  };
+
   if (loading) {
     return (
       <main>
@@ -184,6 +294,23 @@ const Profile = observer(() => {
                 English
               </button>
             </div>
+          </div>
+
+          {/* AI Regenerate Definitions */}
+          <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+            <h3 className="text-lg font-semibold mb-2">{t('profile.regenerateTitle')}</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              {t('profile.regenerateDesc')}
+            </p>
+            <Button
+              variant="outline"
+              onClick={() => setShowRegenerateDialog(true)}
+              disabled={regenerating || totalWords === 0}
+            >
+              {regenerating
+                ? `${t('common.loading')} ${regenerateProgress}/${totalWords}`
+                : t('profile.regenerateButton')}
+            </Button>
           </div>
 
           {/* Reset Practice Records */}
@@ -351,6 +478,18 @@ const Profile = observer(() => {
           cancelText={t('common.cancel')}
           onConfirm={handleResetRecords}
           variant="destructive"
+        />
+
+        {/* Regenerate Definitions Confirmation Dialog */}
+        <ConfirmDialog
+          open={showRegenerateDialog}
+          onOpenChange={setShowRegenerateDialog}
+          title={t('profile.regenerateConfirm')}
+          description={t('profile.regenerateConfirmDesc')}
+          confirmText={t('common.confirm')}
+          cancelText={t('common.cancel')}
+          onConfirm={handleRegenerateAll}
+          variant="default"
         />
 
         {/* Delete Word Confirmation Dialog */}
