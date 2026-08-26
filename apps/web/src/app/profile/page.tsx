@@ -297,7 +297,7 @@ const Profile = observer(() => {
           </div>
 
           {/* AI Regenerate Definitions */}
-          <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+          <div className="border-t border-gray-200 dark:border-gray-700 pt-6 mb-6">
             <h3 className="text-lg font-semibold mb-2">{t('profile.regenerateTitle')}</h3>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
               {t('profile.regenerateDesc')}
