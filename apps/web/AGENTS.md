@@ -17,6 +17,12 @@
 - `syncToFirestore` 落库的 `lastPracticedAt` 取同步队列条目的 `timestamp`（即真实练习时刻），不要用同步时的 `new Date()`。
 - 练习页的输入值在 `words.userInputs` 中，单词行是独立的 observer 组件（`WordRow`），只有对应行会随击键重渲染，不要在父组件渲染路径里读 `userInputs`。
 
+## 双击选词添加（Word Picker）
+
+- 全站任意页面双击英文单词会弹出添加确认弹窗（`src/components/word-picker/WordPicker.tsx` 在根 layout 挂载监听 `dblclick`，用 `window.getSelection()` 取词）。交互与词库校验的纯逻辑在 `src/lib/wordSelection.ts`（`extractWordFromSelection`/`checkWordAddable`，配套测试）。
+- 添加弹窗复用共享组件 `src/components/word-picker/AddWordDialog.tsx`（翻译 → 展示义项 → 确认落库），`/add-word` 页面与全局双击入口共用，不要在别处再复制「调 `/api/translate` + 确认弹窗」逻辑。弹窗内部只做翻译与落库，已存在/非法字符的预校验由调用方（页面或 `WordPicker`）先用 `checkWordAddable` 完成。
+- 双击监听需跳过 `input/textarea/select/[contenteditable]` 与弹窗自身（`[data-slot="dialog-content"]`），未登录时忽略；不要在这些区域或未登录场景触发。
+
 ## 多语言
 
 - locale 持久化在 cookie（`locale=zh|en`）：`layout.tsx` 服务端读 cookie（无 cookie 时回退 `accept-language`）决定 `<html lang>` 并通过 `LocaleProvider` 下发初始 locale；`useLocale` 的 `getServerSnapshot` 用该初始值，保证 SSR 与客户端一致。不要再从 localStorage 或硬编码读取 locale。

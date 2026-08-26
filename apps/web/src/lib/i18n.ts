@@ -127,6 +127,7 @@ export const translations = {
     'addWord.confirmSenses': '词义',
     'addWord.confirmAdd': '确认添加',
     'addWord.cancel': '取消',
+    'addWord.addSuccess': '单词已添加',
 
     // Sync indicator
     'sync.pending': '个单词待同步',
@@ -246,6 +247,7 @@ export const translations = {
     'addWord.confirmSenses': 'Senses',
     'addWord.confirmAdd': 'Add',
     'addWord.cancel': 'Cancel',
+    'addWord.addSuccess': 'Word added',
 
     // Sync indicator
     'sync.pending': 'words pending',

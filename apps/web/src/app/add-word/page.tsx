@@ -1,25 +1,17 @@
 "use client";
 
-import { Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Input } from "@/components/ui";
+import { Button, Input } from "@/components/ui";
+import { AddWordDialog } from "@/components/word-picker";
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { useFirestoreWords, useLocale, toast } from "@/hooks";
-import { auth } from "@/lib/firebase";
-import { formatSenses, type WordSense } from "@/lib/parseTranslation";
-
-interface PendingWord {
-  word: string;
-  senses: WordSense[];
-}
+import { checkWordAddable } from "@/lib/wordSelection";
 
 const Home = () => {
-  const { words, addWord, loading: wordsLoading, error: wordsError } = useFirestoreWords();
+  const { words, loading: wordsLoading, error: wordsError } = useFirestoreWords();
   const { t } = useLocale();
   const [word, setWord] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [confirming, setConfirming] = useState(false);
-  const [pending, setPending] = useState<PendingWord | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [pendingWord, setPendingWord] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const clear = () => {
@@ -27,86 +19,22 @@ const Home = () => {
     inputRef.current?.focus();
   };
 
-  const handleConfirmAdd = async () => {
-    if (!pending) return;
-
-    setConfirming(true);
-    const combinedTranslation = formatSenses(pending.senses);
-
-    try {
-      await addWord(pending.word, combinedTranslation);
-      setDialogOpen(false);
-      setPending(null);
-      clear();
-    } catch (error) {
-      console.error("Failed to add word:", error);
-      toast({ title: error instanceof Error ? error.message : t('addWord.addFailed'), variant: "destructive" });
-    } finally {
-      setConfirming(false);
-    }
-  };
-
-  const handleAddWord = async () => {
+  const handleAddWord = () => {
     if (!word) return;
 
-    setLoading(true);
-
-    if (words.wordData.has(word)) {
+    const status = checkWordAddable(words, word);
+    if (status === "exists") {
       toast({ title: t('addWord.wordExists').replace('{word}', word), variant: "destructive" });
       clear();
-      setLoading(false);
       return;
     }
-
-    if (!/^[a-zA-Z]+$/.test(word)) {
+    if (status === "invalid") {
       toast({ title: t('addWord.invalidChars').replace('{word}', word), variant: "destructive" });
       clear();
-      setLoading(false);
       return;
     }
 
-    try {
-      const idToken = await auth.currentUser?.getIdToken();
-      if (!idToken) {
-        throw new Error(t('error.notAuthenticated'));
-      }
-
-      const response = await fetch('/api/translate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${idToken}`,
-        },
-        body: JSON.stringify({ word }),
-      });
-
-      const data = await response.json().catch(() => null);
-      if (!response.ok) {
-        throw new Error(data && typeof data.error === 'string' ? data.error : t('addWord.addFailed'));
-      }
-
-      const { senses } = data as {
-        senses: WordSense[] | null;
-      };
-
-      if (!senses || senses.length === 0) {
-        toast({ title: t('addWord.notRecognized').replace('{word}', word), variant: "destructive" });
-        clear();
-        setLoading(false);
-        return;
-      }
-
-      setPending({
-        word,
-        senses,
-      });
-      setDialogOpen(true);
-    } catch (error) {
-      console.error("Failed to add word:", error);
-      toast({ title: error instanceof Error ? error.message : t('addWord.addFailed'), variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
+    setPendingWord(word);
   };
 
   if (wordsLoading) {
@@ -140,7 +68,7 @@ const Home = () => {
         }}
       >
         <Input className="w-48" placeholder={t('addWord.word')} value={word} onChange={(e) => setWord(e.target.value.toLowerCase())} ref={inputRef} />
-        <Button onClick={handleAddWord} disabled={loading || dialogOpen}>
+        <Button onClick={handleAddWord}>
           {t('addWord.add')}
         </Button>
         <Button render={<Link href="/home" />} nativeButton={false}>
@@ -150,31 +78,14 @@ const Home = () => {
           {t('menu.profile')}
         </Button>
       </form>
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {t('addWord.confirmTitle')}: {pending?.word}
-            </DialogTitle>
-          </DialogHeader>
-          {pending && (
-            <div className="space-y-3">
-              <div>
-                <div className="text-sm font-medium">{t('addWord.confirmSenses')}</div>
-                <div className="text-sm text-muted-foreground whitespace-pre-line">{formatSenses(pending.senses)}</div>
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>
-              {t('addWord.cancel')}
-            </Button>
-            <Button onClick={handleConfirmAdd} disabled={confirming}>
-              {t('addWord.confirmAdd')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <AddWordDialog
+        word={pendingWord}
+        onClose={() => setPendingWord(null)}
+        onFinished={() => {
+          setPendingWord(null);
+          clear();
+        }}
+      />
     </main>
   );
 };
