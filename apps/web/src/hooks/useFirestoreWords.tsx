@@ -59,6 +59,9 @@ interface WordsContextValue {
   recordIncorrectAttempt: (word: string) => void;
   syncToFirestore: () => Promise<void>;
   resetPracticeRecords: () => Promise<void>;
+  updateTranslations: (
+    updates: Array<{ word: string; translation: string }>
+  ) => Promise<void>;
   loading: boolean;
   error: string | null;
   syncing: boolean;
@@ -390,6 +393,48 @@ export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
     return () => window.removeEventListener("online", handleOnline);
   }, [syncToFirestore]);
 
+  const updateTranslations = useCallback(
+    async (updates: Array<{ word: string; translation: string }>) => {
+      if (!user) {
+        throw new Error(tError("error.notAuthenticated"));
+      }
+
+      if (updates.length === 0) return;
+
+      const userId = getEffectiveUserId(user);
+      const entries = updates
+        .map(({ word, translation }) => {
+          const data = words.wordData.get(word);
+          const wordId = data?.id;
+          if (!data || !wordId) return null;
+          return { word, translation, data, wordId };
+        })
+        .filter(
+          (entry): entry is NonNullable<typeof entry> => entry !== null
+        );
+
+      if (entries.length === 0) return;
+
+      try {
+        entries.forEach(({ word, translation, data }) => {
+          words.setWordData(word, { ...data, translation });
+        });
+
+        await commitBatchOperations(
+          entries.map(({ wordId, translation }) => (batch) => {
+            batch.update(doc(db, "users", userId, "words", wordId), {
+              translation,
+            });
+          })
+        );
+      } catch (err) {
+        console.error("Failed to update translations:", err);
+        throw new Error(tError("error.updateTranslationFailed"));
+      }
+    },
+    [user]
+  );
+
   const resetPracticeRecords = useCallback(async () => {
     if (!user) {
       throw new Error(tError("error.notAuthenticated"));
@@ -438,6 +483,7 @@ export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
       recordIncorrectAttempt,
       syncToFirestore,
       resetPracticeRecords,
+      updateTranslations,
       loading,
       error,
       syncing,
@@ -451,6 +497,7 @@ export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
       recordIncorrectAttempt,
       syncToFirestore,
       resetPracticeRecords,
+      updateTranslations,
       loading,
       error,
       syncing,

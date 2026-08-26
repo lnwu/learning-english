@@ -15,6 +15,7 @@
 - Firestore `onSnapshot` 结果通过 `mergeSnapshotIntoStore(store, snapshot)` 增量合并到 store（仅更新变化的单词、按需使缓存失效），不要改成全量替换 `wordData`，否则会导致所有 observer 组件无谓重渲染。
 - `correctPracticeDates` 存 `YYYY-MM-DD` 本地日期字符串（`formatLocalPracticeDate`），不要存 ISO 时间戳，避免时区解析偏移；`getLocalPracticeDate` 对纯日期字符串短路返回。
 - `syncToFirestore` 落库的 `lastPracticedAt` 取同步队列条目的 `timestamp`（即真实练习时刻），不要用同步时的 `new Date()`。
+- 批量更新释义用 `updateTranslations(updates)`：先 `setWordData` 即时更新 store（失效缓存），再按 wordId 用 `commitBatchOperations` 写 Firestore（onSnapshot 幂等合并）。
 - 练习页的输入值在 `words.userInputs` 中，单词行是独立的 observer 组件（`WordRow`），只有对应行会随击键重渲染，不要在父组件渲染路径里读 `userInputs`。
 
 ## 双击选词添加（Word Picker）
@@ -40,4 +41,5 @@
 - 同步队列（`src/lib/syncQueue.ts`）条目重试达到上限被丢弃时，`incrementRetries` 返回被丢弃条目，`syncToFirestore` 会 toast 提示用户（文案 `sync.dataLost`），不要改回静默丢弃。
 - 造句题目界面不直接显示目标单词（答题后的反馈区才显示），这是有意设计：学生凭中文句子推断用词，因此造句请求会把词库中存的中文译法随目标词一并传给模型，prompt 要求中文译文自然地道、使用参考译法且能让学生反推出目标词；批改时对目标词的同义表达不判错、仅提示。
 - 批改接口在调用模型前先对答案与参考译文做规范化判等（`src/lib/sentenceCompare.ts` 的 `normalizeForComparison`），完全一致直接返回满分，不消耗模型调用。
+- `/api/regenerate-definitions` 批量重新生成释义：请求 `{ words: string[] }`（每批上限 50，服务端会过滤掉非小写字母或超长词并去重，合法词为空时 400），一次 DeepSeek 调用返回 `{ results: [{ word, senses }] }`；纯逻辑在 `src/lib/regenerateDefinitions.ts`（`buildRegenerateMessages`/`parseRegenerateResults`，配套测试），未识别或非法的词 `senses` 为 `null`，前端保留原释义。Profile 页「AI 重新生成释义」前端串行分批调用并显示进度，通过 `useFirestoreWords` 的 `updateTranslations`（store 即时更新 + Firestore batch 写 `translation`）落库，不改动练习数据。
 - 纯函数测试用 vitest（`bun run test`，配置在 `vitest.config.mts`），核心算法（熟练度、翻译解析、句意判等、日期处理）新增改动时应同步补测试。

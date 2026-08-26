@@ -47,6 +47,7 @@ export const translations = {
     'error.deleteWordFailed': '从云端删除单词失败',
     'error.removeWordsFailed': '从云端删除单词失败',
     'error.resetFailed': '重置练习记录失败',
+    'error.updateTranslationFailed': '更新释义失败，请稍后重试',
     'error.wordNotFound': '未找到单词',
     
     // Home page
@@ -114,6 +115,14 @@ export const translations = {
     'profile.deleteConfirmDesc': '这将同时删除该单词的所有练习记录，此操作不可撤销。',
     'profile.deleteSuccess': '单词已删除',
     'profile.deleteError': '删除失败，请重试',
+    'profile.regenerateTitle': 'AI 重新生成释义',
+    'profile.regenerateDesc': '让 AI 重新生成当前记录中所有单词的释义（不会删除或改变练习记录）。',
+    'profile.regenerateButton': '重新生成全部释义',
+    'profile.regenerateConfirm': '确定要重新生成全部单词的释义吗？',
+    'profile.regenerateConfirmDesc': 'AI 将重新生成当前记录中所有单词的释义，替换原有的释义。此操作会消耗一定时间，且不可撤销。',
+    'profile.regenerateSuccess': '已重新生成 {success} 个单词的释义',
+    'profile.regeneratePartial': '已重新生成 {success} 个单词的释义，{skipped} 个保留原释义',
+    'profile.regenerateFailed': '重新生成释义失败，请稍后重试',
 
     // Add Word page
     'addWord.title': '添加单词',
@@ -167,6 +176,7 @@ export const translations = {
     'error.deleteWordFailed': 'Failed to delete word from cloud',
     'error.removeWordsFailed': 'Failed to remove words from cloud',
     'error.resetFailed': 'Failed to reset practice records',
+    'error.updateTranslationFailed': 'Failed to update definitions, please try again',
     'error.wordNotFound': 'Word not found',
     
     // Home page
@@ -234,6 +244,14 @@ export const translations = {
     'profile.deleteConfirmDesc': 'This will also delete all practice records for this word. This action cannot be undone.',
     'profile.deleteSuccess': 'Word deleted',
     'profile.deleteError': 'Failed to delete, please try again',
+    'profile.regenerateTitle': 'Regenerate Definitions with AI',
+    'profile.regenerateDesc': 'Let AI regenerate the definitions of all words in the current records (practice records will not be deleted or changed).',
+    'profile.regenerateButton': 'Regenerate All Definitions',
+    'profile.regenerateConfirm': 'Regenerate definitions for all words?',
+    'profile.regenerateConfirmDesc': 'AI will regenerate the definitions of all words in the current records, replacing the existing ones. This takes some time and cannot be undone.',
+    'profile.regenerateSuccess': 'Regenerated definitions for {success} words',
+    'profile.regeneratePartial': 'Regenerated definitions for {success} words, kept {skipped} unchanged',
+    'profile.regenerateFailed': 'Failed to regenerate definitions, please try again',
 
     // Add Word page
     'addWord.title': 'Add Word',
