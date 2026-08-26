@@ -8,6 +8,7 @@ import type { Metadata } from "next";
 import { FC, ReactNode } from "react";
 import { AuthProvider } from "@/components/auth";
 import { AppShell } from "@/components/auth/AppShell";
+import { WordPicker } from "@/components/word-picker";
 import { WordsProvider, LocaleProvider } from "@/hooks";
 import { Toaster } from "@/components/ui";
 import { detectLocaleFromAcceptLanguage, localeToHtmlLang } from "@/lib/i18n";
@@ -40,6 +41,7 @@ const RootLayout: FC<{ children: ReactNode }> = async ({ children }) => {
               <AppShell>
                 {children}
               </AppShell>
+              <WordPicker />
               <Toaster position="bottom-right" duration={5000} richColors />
             </WordsProvider>
           </AuthProvider>
