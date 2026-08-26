@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, afterEach, vi } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, afterEach, jest } from "bun:test";
 import { checkRateLimit, checkInMemoryRateLimit } from "./rateLimit";
 
 const REDIS_ENV_KEYS = [
@@ -25,15 +25,15 @@ describe("checkInMemoryRateLimit", () => {
   });
 
   it("窗口过期后重新计数", () => {
-    vi.useFakeTimers();
+    jest.useFakeTimers();
     try {
       const key = `test:window:${Math.random()}`;
       expect(checkInMemoryRateLimit(key, 1, 1000)).toBeNull();
       expect(checkInMemoryRateLimit(key, 1, 1000)?.status).toBe(429);
-      vi.advanceTimersByTime(1001);
+      jest.advanceTimersByTime(1001);
       expect(checkInMemoryRateLimit(key, 1, 1000)).toBeNull();
     } finally {
-      vi.useRealTimers();
+      jest.useRealTimers();
     }
   });
 });
@@ -60,7 +60,7 @@ describe("checkRateLimit", () => {
   });
 
   afterEach(() => {
-    vi.useRealTimers();
+    jest.useRealTimers();
   });
 
   it("未配置 Redis 时回退到进程内限流", async () => {
