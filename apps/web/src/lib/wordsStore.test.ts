@@ -188,7 +188,7 @@ describe("isWordDataEqual", () => {
     ["inputTimes", { inputTimes: [9] }],
     ["correctPracticeDates", { correctPracticeDates: ["2026-01-02"] }],
     ["lastPracticedAt", { lastPracticedAt: new Date() }],
-  ] as Array<[string, Partial<WordData>]>)("%s 不同返回 false", (_field, overrides) => {
+  ] as Array<[string, Partial<WordData>]>)("%s 不同返回 false", (_field: string, overrides: Partial<WordData>) => {
     expect(isWordDataEqual(makeWordData(), makeWordData(overrides))).toBe(false);
   });
 });
