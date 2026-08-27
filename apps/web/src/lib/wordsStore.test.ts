@@ -16,6 +16,7 @@ const makeWordData = (overrides: Partial<WordData> = {}): WordData => ({
   inputTimes: [],
   lastPracticedAt: null,
   correctPracticeDates: [],
+  attemptHistory: [],
   createdAt: new Date("2026-01-01T00:00:00"),
   id: "id-apple",
   ...overrides,
@@ -39,6 +40,7 @@ describe("Words store", () => {
     expect(data.correctPracticeDates).toEqual([
       formatLocalPracticeDate(new Date()),
     ]);
+    expect(data.attemptHistory).toEqual([true]);
   });
 
   it("recordCorrectAttempt 不传 inputTimeSeconds 时不记录耗时", () => {
@@ -80,6 +82,18 @@ describe("Words store", () => {
     expect(data.totalAttempts).toBe(1);
     expect(data.correctCount).toBe(0);
     expect(data.lastPracticedAt).toBeInstanceOf(Date);
+    expect(data.attemptHistory).toEqual([false]);
+  });
+
+  it("attemptHistory 超过上限时只保留最近记录", () => {
+    for (let i = 0; i < Words.MAX_ATTEMPT_HISTORY + 5; i++) {
+      store.recordCorrectAttempt("apple", 1);
+    }
+    const history = store.getWordData("apple")!.attemptHistory;
+    expect(history).toHaveLength(Words.MAX_ATTEMPT_HISTORY);
+    expect(history).toEqual(
+      Array.from({ length: Words.MAX_ATTEMPT_HISTORY }, () => true)
+    );
   });
 
   it("对不存在的单词记录尝试时静默忽略", () => {
@@ -149,6 +163,7 @@ describe("parseWordDoc", () => {
     expect(data.inputTimes).toEqual([]);
     expect(data.lastPracticedAt).toBeNull();
     expect(data.correctPracticeDates).toEqual([]);
+    expect(data.attemptHistory).toEqual([]);
     expect(data.id).toBe("id-1");
   });
 
@@ -187,6 +202,7 @@ describe("isWordDataEqual", () => {
     ["totalAttempts", { totalAttempts: 1 }],
     ["inputTimes", { inputTimes: [9] }],
     ["correctPracticeDates", { correctPracticeDates: ["2026-01-02"] }],
+    ["attemptHistory", { attemptHistory: [false] }],
     ["lastPracticedAt", { lastPracticedAt: new Date() }],
   ] as Array<[string, Partial<WordData>]>)("%s 不同返回 false", (_field: string, overrides: Partial<WordData>) => {
     expect(isWordDataEqual(makeWordData(), makeWordData(overrides))).toBe(false);

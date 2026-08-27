@@ -7,6 +7,7 @@ export interface WordMetrics {
   inputTimes: number[];
   lastPracticedAt: Date | null;
   correctPracticeDates?: string[];
+  attemptHistory?: boolean[];
 }
 
 export interface MasteryResult {
@@ -25,6 +26,9 @@ const MIN_REVIEW_DAYS_FOR_PROFICIENT = 2;
 const MIN_REVIEW_DAYS_FOR_MASTERED = 3;
 const MIN_ACCURACY_FOR_FAMILIAR = 0.5;
 const MIN_ACCURACY_FOR_PROFICIENT = 0.7;
+const RECENT_ACCURACY_WINDOW = 10;
+const MIN_RECENT_ACCURACY_SAMPLES = 3;
+const RECENT_ACCURACY_WEIGHT = 0.5;
 const DEFAULT_EARLY_CONSISTENCY = 50;
 const SPEED_SCORE_MULTIPLIER = 50;
 const ACCURACY_SMOOTHING = 1;
@@ -106,6 +110,7 @@ export function calculateMasteryScore(metrics: WordMetrics): MasteryResult {
     totalAttempts,
     inputTimes,
     correctPracticeDates = [],
+    attemptHistory = [],
   } = metrics;
 
   if (totalAttempts === 0) {
@@ -119,10 +124,23 @@ export function calculateMasteryScore(metrics: WordMetrics): MasteryResult {
     };
   }
 
-  const accuracyScore =
+  const lifetimeAccuracy =
     ((correctCount + ACCURACY_SMOOTHING) /
       (totalAttempts + ACCURACY_SMOOTHING * 2)) *
     100;
+
+  let accuracyScore = lifetimeAccuracy;
+  if (attemptHistory.length >= MIN_RECENT_ACCURACY_SAMPLES) {
+    const recent = attemptHistory.slice(-RECENT_ACCURACY_WINDOW);
+    const recentCorrect = recent.filter(Boolean).length;
+    const recentAccuracy =
+      ((recentCorrect + ACCURACY_SMOOTHING) /
+        (recent.length + ACCURACY_SMOOTHING * 2)) *
+      100;
+    accuracyScore =
+      recentAccuracy * RECENT_ACCURACY_WEIGHT +
+      lifetimeAccuracy * (1 - RECENT_ACCURACY_WEIGHT);
+  }
 
   const expectedTime = getExpectedInputTime(word.length);
   const speedSamples = inputTimes

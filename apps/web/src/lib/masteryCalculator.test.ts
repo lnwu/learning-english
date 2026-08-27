@@ -173,6 +173,64 @@ describe("calculateMasteryScore", () => {
     });
     expect(result.speedScore).toBeGreaterThanOrEqual(40);
   });
+
+  it("近期正确率高于全量时 accuracyScore 更高", () => {
+    const withRecent = calculateMasteryScore({
+      ...baseWord,
+      correctCount: 8,
+      totalAttempts: 12,
+      inputTimes: [2],
+      attemptHistory: [false, false, false, false, ...Array(8).fill(true)],
+      correctPracticeDates: ["2026-08-12", "2026-08-13", "2026-08-14"],
+    });
+    const withoutRecent = calculateMasteryScore({
+      ...baseWord,
+      correctCount: 8,
+      totalAttempts: 12,
+      inputTimes: [2],
+      correctPracticeDates: ["2026-08-12", "2026-08-13", "2026-08-14"],
+    });
+    expect(withRecent.accuracyScore).toBeGreaterThan(
+      withoutRecent.accuracyScore
+    );
+  });
+
+  it("近期正确率低于全量时 accuracyScore 更低", () => {
+    const withRecent = calculateMasteryScore({
+      ...baseWord,
+      correctCount: 10,
+      totalAttempts: 12,
+      inputTimes: [2],
+      attemptHistory: [
+        ...Array(8).fill(true),
+        false,
+        false,
+        false,
+        false,
+      ],
+      correctPracticeDates: ["2026-08-12", "2026-08-13", "2026-08-14"],
+    });
+    expect(withRecent.accuracyScore).toBeLessThan(100);
+  });
+
+  it("历史样本不足 3 时不启用近期窗口", () => {
+    const withShortHistory = calculateMasteryScore({
+      ...baseWord,
+      correctCount: 2,
+      totalAttempts: 3,
+      inputTimes: [2],
+      attemptHistory: [true, false, true],
+      correctPracticeDates: ["2026-08-14"],
+    });
+    const withoutHistory = calculateMasteryScore({
+      ...baseWord,
+      correctCount: 2,
+      totalAttempts: 3,
+      inputTimes: [2],
+      correctPracticeDates: ["2026-08-14"],
+    });
+    expect(withShortHistory.accuracyScore).toBe(withoutHistory.accuracyScore);
+  });
 });
 
 describe("calculatePriority", () => {

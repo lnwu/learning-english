@@ -14,6 +14,7 @@
 - 熟练度结果通过 `#masteryCache` 缓存（随 `recordCorrect/IncorrectAttempt`、`setWordData`/`deleteWord`/`removeAllWords` 失效），全量统计用 computed getter（`overallAverageInputTime`、`averageTimeByLengthCategory`、`practiceStats`），新增派生数据时优先用 computed getter 而非每次渲染重算。
 - Firestore `onSnapshot` 结果通过 `mergeSnapshotIntoStore(store, snapshot)` 增量合并到 store（仅更新变化单词、只对变化词局部失效缓存），不要改成全量替换 `wordData`，否则会导致所有 observer 组件无谓重渲染。
 - `correctPracticeDates` 存 `YYYY-MM-DD` 本地日期字符串（`formatLocalPracticeDate`），不要存 ISO 时间戳，避免时区解析偏移；`getLocalPracticeDate` 对纯日期字符串短路返回。
+- `attemptHistory` 存最近 30 条练习对错序列（`true`/`false`），随 `recordCorrectAttempt`/`recordIncorrectAttempt` 更新并随同步队列落库；老数据没有该字段时 `parseWordDoc` 兜底为空数组，熟练度正确率回退为全量统计。
 - `syncToFirestore` 落库的 `lastPracticedAt` 取同步队列条目的 `timestamp`（即真实练习时刻），不要用同步时的 `new Date()`。
 - 批量更新释义用 `updateTranslations(updates)`：先 `setWordData` 即时更新 store（失效缓存），再按 wordId 用 `commitBatchOperations` 写 Firestore（onSnapshot 幂等合并）。
 - 练习页的输入值在 `words.userInputs` 中，单词行是独立的 observer 组件（`WordRow`），只有对应行会随击键重渲染，不要在父组件渲染路径里读 `userInputs`。
