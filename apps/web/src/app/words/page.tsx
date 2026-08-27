@@ -105,7 +105,8 @@ const WordsPractice = observer(() => {
   const [shouldFocusFirst, setShouldFocusFirst] = useState(false);
   const [randomWords, setRandomWords] = useState<[string, string][]>([]);
   const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
-  const incorrectRecordedRef = useRef<Set<string>>(new Set());
+  const hintRecordedRef = useRef<Set<string>>(new Set());
+  const errorRecordedRef = useRef<Set<string>>(new Set());
   const timerStartRef = useRef<Map<string, number>>(new Map());
 
   useEffect(() => {
@@ -135,7 +136,8 @@ const WordsPractice = observer(() => {
 
   const refreshWords = () => {
     words.userInputs.clear();
-    incorrectRecordedRef.current.clear();
+    hintRecordedRef.current.clear();
+    errorRecordedRef.current.clear();
     timerStartRef.current.clear();
     setRandomWords(words.getRandomWords());
     setShouldFocusFirst(true);
@@ -154,9 +156,11 @@ const WordsPractice = observer(() => {
 
     words.setUserInput(word, value);
 
-    if (value.length >= word.length && value !== word && !incorrectRecordedRef.current.has(word)) {
-      incorrectRecordedRef.current.add(word);
+    if (value.length >= word.length && value !== word && !errorRecordedRef.current.has(word)) {
+      errorRecordedRef.current.add(word);
       recordIncorrectAttempt(word);
+    } else if (value.length < word.length) {
+      errorRecordedRef.current.delete(word);
     }
 
     // If word is now correct, record the attempt
@@ -172,9 +176,9 @@ const WordsPractice = observer(() => {
   }, [words, recordCorrectAttempt, recordIncorrectAttempt]);
 
   const handleHintReveal = useCallback((word: string) => {
-    // Only record incorrect attempt once per word per session
-    if (!incorrectRecordedRef.current.has(word)) {
-      incorrectRecordedRef.current.add(word);
+    // 看提示每轮每个词只记一次错误，避免 hover/focus 连发重复计数
+    if (!hintRecordedRef.current.has(word)) {
+      hintRecordedRef.current.add(word);
       recordIncorrectAttempt(word);
     }
   }, [recordIncorrectAttempt]);

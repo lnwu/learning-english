@@ -330,12 +330,9 @@ export const mergeSnapshotIntoStore = (
     incoming.set(doc.data().word, parseWordDoc(doc.id, doc.data()));
   });
 
-  let changed = false;
-
   for (const word of Array.from(store.wordData.keys())) {
     if (!incoming.has(word)) {
       store.deleteWord(word);
-      changed = true;
     }
   }
 
@@ -343,12 +340,8 @@ export const mergeSnapshotIntoStore = (
     const existing = store.wordData.get(word);
     if (!existing) {
       store.setWordData(word, data);
-      changed = true;
     } else if (!isWordDataEqual(existing, data)) {
       store.setWordData(word, data);
-      changed = true;
     }
   }
-
-  if (changed) store.invalidateCaches();
 };

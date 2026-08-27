@@ -27,6 +27,9 @@ const DEFAULT_EARLY_CONSISTENCY = 50;
 const SPEED_SCORE_MULTIPLIER = 50;
 const ACCURACY_SMOOTHING = 1;
 const SPEED_SAMPLE_SIZE = 5;
+const CONSISTENCY_SAMPLE_SIZE = 10;
+const MIN_CONSISTENCY_SAMPLES = 3;
+const SPEED_ANOMALY_FACTOR = 5;
 const REVIEW_DAY_SCORE_MULTIPLIER = 100 / MIN_REVIEW_DAYS_FOR_MASTERED;
 const ACCURACY_WEIGHT = 0.5;
 const SPEED_WEIGHT = 0.15;
@@ -63,20 +66,35 @@ export function getExpectedInputTime(wordLength: number): number {
   }
 }
 
+const MASTERY_LEVEL_ORDER: MasteryLevel[] = [
+  "new",
+  "learning",
+  "familiar",
+  "proficient",
+  "mastered",
+];
+
 export function getMasteryLevel(score: number): MasteryLevel {
-  if (score >= 80) return "mastered";
-  if (score >= 60) return "proficient";
-  if (score >= 40) return "familiar";
-  if (score >= 20) return "learning";
-  return "new";
+  let level: MasteryLevel = "new";
+  for (const candidate of MASTERY_LEVEL_ORDER) {
+    if (score >= MASTERY_LEVELS[candidate].min) {
+      level = candidate;
+    }
+  }
+  return level;
 }
 
 export function getMasteryLevelIndex(score: number): number {
-  if (score >= 80) return 4;
-  if (score >= 60) return 3;
-  if (score >= 40) return 2;
-  if (score >= 20) return 1;
-  return 0;
+  return MASTERY_LEVEL_ORDER.indexOf(getMasteryLevel(score));
+}
+
+function getMedian(values: number[]): number {
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  if (sorted.length % 2 === 0) {
+    return (sorted[mid - 1] + sorted[mid]) / 2;
+  }
+  return sorted[mid];
 }
 
 export function calculateMasteryScore(metrics: WordMetrics): MasteryResult {
@@ -105,36 +123,45 @@ export function calculateMasteryScore(metrics: WordMetrics): MasteryResult {
     100;
 
   const expectedTime = getExpectedInputTime(word.length);
-  const speedSamples =
-    inputTimes.length > 0 ? inputTimes.slice(-SPEED_SAMPLE_SIZE) : [];
-  const avgInputTime =
-    speedSamples.length > 0
-      ? speedSamples.reduce((a, b) => a + b, 0) / speedSamples.length
-      : expectedTime * 2.5;
+  const speedSamples = inputTimes
+    .slice(-SPEED_SAMPLE_SIZE)
+    .filter((t) => t <= expectedTime * SPEED_ANOMALY_FACTOR);
+  const hasSpeedData = speedSamples.length > 0;
+  const avgInputTime = hasSpeedData
+    ? speedSamples.reduce((a, b) => a + b, 0) / speedSamples.length
+    : expectedTime * 2.5;
   const speedRatio = expectedTime / avgInputTime;
   const speedScore = Math.min(100, Math.max(0, speedRatio * SPEED_SCORE_MULTIPLIER));
 
+  const hasConsistencyData = inputTimes.length >= MIN_CONSISTENCY_SAMPLES;
   let consistencyScore = DEFAULT_EARLY_CONSISTENCY;
-  if (inputTimes.length >= 3) {
-    const lastTimes = inputTimes.slice(-10);
-    const mean = lastTimes.reduce((a, b) => a + b, 0) / lastTimes.length;
-    const stdDev = Math.sqrt(
-      lastTimes.reduce((sum, t) => sum + Math.pow(t - mean, 2), 0) /
-        lastTimes.length
-    );
-    const cv = mean > 0 ? stdDev / mean : 0;
+  if (hasConsistencyData) {
+    const lastTimes = inputTimes.slice(-CONSISTENCY_SAMPLE_SIZE);
+    const median = getMedian(lastTimes);
+    const deviations = lastTimes.map((t) => Math.abs(t - median));
+    const mad = getMedian(deviations);
+    const cv = median > 0 ? mad / median : 0;
     consistencyScore = Math.max(0, Math.min(100, 100 * Math.exp(-cv * 2)));
   }
 
   const reviewDays = new Set(correctPracticeDates.map(getLocalPracticeDate)).size;
   const reviewScore = Math.min(100, reviewDays * REVIEW_DAY_SCORE_MULTIPLIER);
 
-  let score = Math.round(
-    accuracyScore * ACCURACY_WEIGHT +
-      speedScore * SPEED_WEIGHT +
-      consistencyScore * CONSISTENCY_WEIGHT +
-      reviewScore * REVIEW_WEIGHT
+  const weightedFactors = [
+    { score: accuracyScore, weight: ACCURACY_WEIGHT },
+    ...(hasSpeedData ? [{ score: speedScore, weight: SPEED_WEIGHT }] : []),
+    ...(hasConsistencyData
+      ? [{ score: consistencyScore, weight: CONSISTENCY_WEIGHT }]
+      : []),
+    { score: reviewScore, weight: REVIEW_WEIGHT },
+  ];
+  const weightedTotal = weightedFactors.reduce(
+    (sum, f) => sum + f.score * f.weight,
+    0
   );
+  const totalWeight = weightedFactors.reduce((sum, f) => sum + f.weight, 0);
+
+  let score = Math.round(weightedTotal / totalWeight);
 
   if (totalAttempts < MIN_ATTEMPTS_FOR_FAMILIAR) {
     score = Math.min(score, 39);

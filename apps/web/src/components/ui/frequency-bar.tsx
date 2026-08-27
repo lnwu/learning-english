@@ -65,21 +65,4 @@ const MasteryBar = React.forwardRef<HTMLDivElement, MasteryBarProps>(
 
 MasteryBar.displayName = "MasteryBar";
 
-// Legacy support: FrequencyBar that converts old frequency to new score
-interface FrequencyBarProps {
-  frequency: number;
-  className?: string;
-}
-
-const FrequencyBar = React.forwardRef<HTMLDivElement, FrequencyBarProps>(
-  ({ frequency, className }, ref) => {
-    // Convert old frequency (-5 to 10+) to new score (0-100)
-    // Old system: -5 to 10, map to 0-100
-    const score = Math.min(100, Math.max(0, (frequency + 5) * (100 / 15)));
-    return <MasteryBar ref={ref} score={score} className={className} />;
-  }
-);
-
-FrequencyBar.displayName = "FrequencyBar";
-
-export { MasteryBar, FrequencyBar, getMasteryLevel, getMasteryLevelIndex };
+export { MasteryBar, getMasteryLevel, getMasteryLevelIndex };
