@@ -23,6 +23,8 @@ const MIN_ATTEMPTS_FOR_PROFICIENT = 5;
 const MIN_ATTEMPTS_FOR_MASTERED = 8;
 const MIN_REVIEW_DAYS_FOR_PROFICIENT = 2;
 const MIN_REVIEW_DAYS_FOR_MASTERED = 3;
+const MIN_ACCURACY_FOR_FAMILIAR = 0.5;
+const MIN_ACCURACY_FOR_PROFICIENT = 0.7;
 const DEFAULT_EARLY_CONSISTENCY = 50;
 const SPEED_SCORE_MULTIPLIER = 50;
 const ACCURACY_SMOOTHING = 1;
@@ -163,11 +165,17 @@ export function calculateMasteryScore(metrics: WordMetrics): MasteryResult {
 
   let score = Math.round(weightedTotal / totalWeight);
 
-  if (totalAttempts < MIN_ATTEMPTS_FOR_FAMILIAR) {
+  const rawAccuracy = correctCount / totalAttempts;
+
+  if (
+    totalAttempts < MIN_ATTEMPTS_FOR_FAMILIAR ||
+    rawAccuracy < MIN_ACCURACY_FOR_FAMILIAR
+  ) {
     score = Math.min(score, 39);
   } else if (
     totalAttempts < MIN_ATTEMPTS_FOR_PROFICIENT ||
-    reviewDays < MIN_REVIEW_DAYS_FOR_PROFICIENT
+    reviewDays < MIN_REVIEW_DAYS_FOR_PROFICIENT ||
+    rawAccuracy < MIN_ACCURACY_FOR_PROFICIENT
   ) {
     score = Math.min(score, 59);
   } else if (

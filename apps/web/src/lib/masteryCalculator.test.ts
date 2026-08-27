@@ -58,6 +58,30 @@ describe("calculateMasteryScore", () => {
     expect(result.score).toBeLessThanOrEqual(59);
   });
 
+  it("错误多次后经提示完成（正确率过低）只能到 learning", () => {
+    const result = calculateMasteryScore({
+      ...baseWord,
+      correctCount: 1,
+      totalAttempts: 5,
+      inputTimes: [1.2],
+      correctPracticeDates: ["2026-08-14"],
+    });
+    expect(result.score).toBeLessThanOrEqual(39);
+    expect(result.level).toBe("learning");
+  });
+
+  it("正确率不足 70% 时达不到 proficient 以上", () => {
+    const result = calculateMasteryScore({
+      ...baseWord,
+      correctCount: 4,
+      totalAttempts: 7,
+      inputTimes: [2, 2, 2, 2],
+      correctPracticeDates: ["2026-08-12", "2026-08-13", "2026-08-14"],
+    });
+    expect(result.score).toBeLessThanOrEqual(59);
+    expect(result.level).not.toBe("proficient");
+  });
+
   it("8 次全对且复习 3 天达到已掌握", () => {
     const result = calculateMasteryScore({
       ...baseWord,
