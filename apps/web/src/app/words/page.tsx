@@ -25,10 +25,10 @@ const WordRow = observer(({ word, translation, words, onInputChange, onHintRevea
   const hasSense = senses.some((sense) => sense.chinese);
 
   return (
-    <li className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-2 gap-y-1">
-      <div className="max-w-xs w-full text-right justify-self-end">
+    <li className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-2 gap-y-1 border-b border-gray-100 py-3 first:pt-0 last:border-b-0">
+      <div className="max-w-xs w-full justify-self-end text-left">
         <div
-          className={`min-h-9 px-3 py-1 flex flex-col items-end justify-start whitespace-pre-line ${hasSense ? "font-semibold" : "text-gray-400 italic"}`}
+          className={`min-h-8 px-3 py-1 flex flex-col items-start justify-start whitespace-pre-line ${hasSense ? "font-semibold" : "text-gray-400 italic"}`}
         >
           {hasSense ? (
             senses.map((sense, index) => (
@@ -218,7 +218,7 @@ const WordsPractice = observer(() => {
         <SyncIndicator syncing={syncing} pendingCount={pendingCount} onManualSync={syncToFirestore} />
         <main>
           <form onSubmit={handleSubmit} className="flex flex-col space-y-2">
-            <ul className="space-y-2">
+            <ul>
               {randomWords.map(([word, translation]) => (
                 <WordRow
                   key={word}
