@@ -158,6 +158,7 @@ export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
           inputTimes: [],
           lastPracticedAt: null,
           correctPracticeDates: [],
+          attemptHistory: [],
           createdAt: new Date(),
         });
       } catch (err) {
@@ -232,6 +233,7 @@ export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
             totalAttempts: data.totalAttempts,
             inputTimes: data.inputTimes,
             correctPracticeDates: data.correctPracticeDates,
+            attemptHistory: data.attemptHistory,
           },
         });
         setPendingCount(SyncQueueManager.getUniqueWordCount());
@@ -255,6 +257,7 @@ export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
           totalAttempts: data.totalAttempts,
           inputTimes: data.inputTimes,
           correctPracticeDates: data.correctPracticeDates,
+          attemptHistory: data.attemptHistory,
         },
       });
       setPendingCount(SyncQueueManager.getUniqueWordCount());
@@ -291,6 +294,7 @@ export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
             totalAttempts: number;
             inputTimes: number[];
             correctPracticeDates?: string[];
+            attemptHistory?: boolean[];
           };
           lastPracticedAt: number;
           queueItemIds: string[];
@@ -325,6 +329,9 @@ export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
             inputTimes: data.inputTimes,
             ...(data.correctPracticeDates !== undefined && {
               correctPracticeDates: data.correctPracticeDates,
+            }),
+            ...(data.attemptHistory !== undefined && {
+              attemptHistory: data.attemptHistory,
             }),
             lastPracticedAt: new Date(lastPracticedAt),
           });
@@ -449,6 +456,7 @@ export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
         data.inputTimes = [];
         data.lastPracticedAt = null;
         data.correctPracticeDates = [];
+        data.attemptHistory = [];
       });
       words.invalidateCaches();
 
@@ -461,6 +469,7 @@ export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
             inputTimes: [],
             lastPracticedAt: null,
             correctPracticeDates: [],
+            attemptHistory: [],
           });
         })
       );

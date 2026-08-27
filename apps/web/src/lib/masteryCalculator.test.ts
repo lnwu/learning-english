@@ -1,6 +1,7 @@
 import { describe, it, expect } from "bun:test";
 import {
   calculateMasteryScore,
+  calculatePriority,
   getExpectedInputTime,
   getMasteryLevel,
   getMasteryLevelIndex,
@@ -57,6 +58,30 @@ describe("calculateMasteryScore", () => {
     expect(result.score).toBeLessThanOrEqual(59);
   });
 
+  it("错误多次后经提示完成（正确率过低）只能到 learning", () => {
+    const result = calculateMasteryScore({
+      ...baseWord,
+      correctCount: 1,
+      totalAttempts: 5,
+      inputTimes: [1.2],
+      correctPracticeDates: ["2026-08-14"],
+    });
+    expect(result.score).toBeLessThanOrEqual(39);
+    expect(result.level).toBe("learning");
+  });
+
+  it("正确率不足 70% 时达不到 proficient 以上", () => {
+    const result = calculateMasteryScore({
+      ...baseWord,
+      correctCount: 4,
+      totalAttempts: 7,
+      inputTimes: [2, 2, 2, 2],
+      correctPracticeDates: ["2026-08-12", "2026-08-13", "2026-08-14"],
+    });
+    expect(result.score).toBeLessThanOrEqual(59);
+    expect(result.level).not.toBe("proficient");
+  });
+
   it("8 次全对且复习 3 天达到已掌握", () => {
     const result = calculateMasteryScore({
       ...baseWord,
@@ -91,6 +116,159 @@ describe("calculateMasteryScore", () => {
     });
     expect(result.score).toBeGreaterThanOrEqual(0);
     expect(result.score).toBeLessThanOrEqual(100);
+  });
+
+  it("无输入计时（纯造句）8 次全对跨 3 天可达到 mastered", () => {
+    const result = calculateMasteryScore({
+      ...baseWord,
+      correctCount: 8,
+      totalAttempts: 8,
+      inputTimes: [],
+      correctPracticeDates: ["2026-08-12", "2026-08-13", "2026-08-14"],
+    });
+    expect(result.score).toBeGreaterThanOrEqual(80);
+    expect(result.level).toBe("mastered");
+  });
+
+  it("输入计时样本不足 3 时稳定性因子不参与加权", () => {
+    const result = calculateMasteryScore({
+      ...baseWord,
+      correctCount: 8,
+      totalAttempts: 8,
+      inputTimes: [1.5, 1.8],
+      correctPracticeDates: ["2026-08-12", "2026-08-13", "2026-08-14"],
+    });
+    expect(result.score).toBeGreaterThanOrEqual(80);
+  });
+
+  it("单次中断异常耗时不影响稳定性", () => {
+    const result = calculateMasteryScore({
+      ...baseWord,
+      correctCount: 8,
+      totalAttempts: 8,
+      inputTimes: [2, 2, 2, 2, 2, 2, 2, 60],
+      correctPracticeDates: ["2026-08-12", "2026-08-13", "2026-08-14"],
+    });
+    expect(result.consistencyScore).toBeGreaterThanOrEqual(90);
+  });
+
+  it("持续波动仍得较低稳定性分", () => {
+    const result = calculateMasteryScore({
+      ...baseWord,
+      correctCount: 8,
+      totalAttempts: 8,
+      inputTimes: [2, 8, 2, 8, 2, 8, 2, 8],
+      correctPracticeDates: ["2026-08-12", "2026-08-13", "2026-08-14"],
+    });
+    expect(result.consistencyScore).toBeLessThanOrEqual(40);
+  });
+
+  it("速度分过滤单次异常耗时", () => {
+    const result = calculateMasteryScore({
+      ...baseWord,
+      correctCount: 8,
+      totalAttempts: 8,
+      inputTimes: [2, 2, 2, 2, 2, 2, 2, 60],
+      correctPracticeDates: ["2026-08-12", "2026-08-13", "2026-08-14"],
+    });
+    expect(result.speedScore).toBeGreaterThanOrEqual(40);
+  });
+
+  it("近期正确率高于全量时 accuracyScore 更高", () => {
+    const withRecent = calculateMasteryScore({
+      ...baseWord,
+      correctCount: 8,
+      totalAttempts: 12,
+      inputTimes: [2],
+      attemptHistory: [false, false, false, false, ...Array(8).fill(true)],
+      correctPracticeDates: ["2026-08-12", "2026-08-13", "2026-08-14"],
+    });
+    const withoutRecent = calculateMasteryScore({
+      ...baseWord,
+      correctCount: 8,
+      totalAttempts: 12,
+      inputTimes: [2],
+      correctPracticeDates: ["2026-08-12", "2026-08-13", "2026-08-14"],
+    });
+    expect(withRecent.accuracyScore).toBeGreaterThan(
+      withoutRecent.accuracyScore
+    );
+  });
+
+  it("近期正确率低于全量时 accuracyScore 更低", () => {
+    const withRecent = calculateMasteryScore({
+      ...baseWord,
+      correctCount: 10,
+      totalAttempts: 12,
+      inputTimes: [2],
+      attemptHistory: [
+        ...Array(8).fill(true),
+        false,
+        false,
+        false,
+        false,
+      ],
+      correctPracticeDates: ["2026-08-12", "2026-08-13", "2026-08-14"],
+    });
+    expect(withRecent.accuracyScore).toBeLessThan(100);
+  });
+
+  it("历史样本不足 3 时不启用近期窗口", () => {
+    const withShortHistory = calculateMasteryScore({
+      ...baseWord,
+      correctCount: 2,
+      totalAttempts: 3,
+      inputTimes: [2],
+      attemptHistory: [true, false, true],
+      correctPracticeDates: ["2026-08-14"],
+    });
+    const withoutHistory = calculateMasteryScore({
+      ...baseWord,
+      correctCount: 2,
+      totalAttempts: 3,
+      inputTimes: [2],
+      correctPracticeDates: ["2026-08-14"],
+    });
+    expect(withShortHistory.accuracyScore).toBe(withoutHistory.accuracyScore);
+  });
+});
+
+describe("calculatePriority", () => {
+  const DAY = 24 * 60 * 60 * 1000;
+  const at = (daysAgo: number) => new Date(Date.now() - daysAgo * DAY);
+
+  it("基础优先级与熟练度负相关", () => {
+    const low = calculatePriority(20, at(1), 5);
+    const high = calculatePriority(80, at(1), 5);
+    expect(low).toBeGreaterThan(high);
+  });
+
+  it("熟练度 100 时仍保留最低基础优先级", () => {
+    const priority = calculatePriority(100, at(0.5), 20);
+    expect(priority).toBeCloseTo(10 * 0.3 * 0.8, 10);
+  });
+
+  it("时间分段倍率正确", () => {
+    expect(calculatePriority(0, at(0.5), 1)).toBeCloseTo(100 * 0.3 * 2.0, 10);
+    expect(calculatePriority(0, at(1.5), 1)).toBeCloseTo(100 * 0.8 * 2.0, 10);
+    expect(calculatePriority(0, at(3), 1)).toBeCloseTo(100 * 1.2 * 2.0, 10);
+    expect(calculatePriority(0, at(5), 1)).toBeCloseTo(100 * 2.0 * 2.0, 10);
+    expect(calculatePriority(0, at(10), 1)).toBeCloseTo(100 * 8.0 * 2.0, 10);
+    expect(calculatePriority(0, at(14.5), 1)).toBeCloseTo(100 * 15.0 * 2.0, 10);
+  });
+
+  it("练习次数分段倍率正确", () => {
+    expect(calculatePriority(0, at(5), 0)).toBeCloseTo(100 * 2.0 * 3.0, 10);
+    expect(calculatePriority(0, at(5), 2)).toBeCloseTo(100 * 2.0 * 2.0, 10);
+    expect(calculatePriority(0, at(5), 3)).toBeCloseTo(100 * 2.0 * 1.5, 10);
+    expect(calculatePriority(0, at(5), 10)).toBeCloseTo(100 * 2.0 * 1.0, 10);
+    expect(calculatePriority(0, at(5), 11)).toBeCloseTo(100 * 2.0 * 0.8, 10);
+  });
+
+  it("未练习单词优先级最高", () => {
+    const never = calculatePriority(0, null, 0);
+    const practiced = calculatePriority(0, at(1), 3);
+    expect(never).toBeGreaterThan(practiced);
   });
 });
 

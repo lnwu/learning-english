@@ -19,6 +19,7 @@ export interface WordData {
   inputTimes: number[];
   lastPracticedAt: Date | null;
   correctPracticeDates: string[];
+  attemptHistory: boolean[];
   createdAt: Date;
   id: string;
 }
@@ -27,6 +28,7 @@ export class Words {
   static MAX_RANDOM_WORDS = 5;
   static MAX_INPUT_TIMES = 20;
   static MAX_CORRECT_PRACTICE_DATES = 30;
+  static MAX_ATTEMPT_HISTORY = 30;
 
   wordData: Map<string, WordData> = new Map();
   userInputs: Map<string, string> = new Map();
@@ -57,6 +59,7 @@ export class Words {
       inputTimes: [],
       lastPracticedAt: null,
       correctPracticeDates: [],
+      attemptHistory: [],
       createdAt: new Date(),
       id,
     });
@@ -79,6 +82,10 @@ export class Words {
 
     data.totalAttempts += 1;
     data.correctCount += 1;
+    data.attemptHistory.push(true);
+    if (data.attemptHistory.length > Words.MAX_ATTEMPT_HISTORY) {
+      data.attemptHistory = data.attemptHistory.slice(-Words.MAX_ATTEMPT_HISTORY);
+    }
     if (inputTimeSeconds !== undefined) {
       data.inputTimes.push(inputTimeSeconds);
     }
@@ -105,6 +112,10 @@ export class Words {
     if (!data) return;
 
     data.totalAttempts += 1;
+    data.attemptHistory.push(false);
+    if (data.attemptHistory.length > Words.MAX_ATTEMPT_HISTORY) {
+      data.attemptHistory = data.attemptHistory.slice(-Words.MAX_ATTEMPT_HISTORY);
+    }
     data.lastPracticedAt = new Date();
     this.#priorityCache.delete(word);
     this.#masteryCache.delete(word);
@@ -293,6 +304,7 @@ export const parseWordDoc = (id: string, data: DocumentData): WordData => {
     correctPracticeDates: (data.correctPracticeDates ?? []).map(
       getLocalPracticeDate
     ),
+    attemptHistory: (data.attemptHistory ?? []).map(Boolean),
     createdAt: data.createdAt?.toDate() ?? new Date(),
     id,
   };
@@ -307,7 +319,8 @@ export const isWordDataEqual = (a: WordData, b: WordData) => {
     a.lastPracticedAt?.getTime() !== b.lastPracticedAt?.getTime() ||
     a.createdAt?.getTime() !== b.createdAt?.getTime() ||
     a.inputTimes.length !== b.inputTimes.length ||
-    a.correctPracticeDates.length !== b.correctPracticeDates.length
+    a.correctPracticeDates.length !== b.correctPracticeDates.length ||
+    a.attemptHistory.length !== b.attemptHistory.length
   ) {
     return false;
   }
@@ -315,7 +328,8 @@ export const isWordDataEqual = (a: WordData, b: WordData) => {
     a.inputTimes.every((time, i) => time === b.inputTimes[i]) &&
     a.correctPracticeDates.every(
       (date, i) => date === b.correctPracticeDates[i]
-    )
+    ) &&
+    a.attemptHistory.every((ok, i) => ok === b.attemptHistory[i])
   );
 };
 
@@ -330,12 +344,9 @@ export const mergeSnapshotIntoStore = (
     incoming.set(doc.data().word, parseWordDoc(doc.id, doc.data()));
   });
 
-  let changed = false;
-
   for (const word of Array.from(store.wordData.keys())) {
     if (!incoming.has(word)) {
       store.deleteWord(word);
-      changed = true;
     }
   }
 
@@ -343,12 +354,8 @@ export const mergeSnapshotIntoStore = (
     const existing = store.wordData.get(word);
     if (!existing) {
       store.setWordData(word, data);
-      changed = true;
     } else if (!isWordDataEqual(existing, data)) {
       store.setWordData(word, data);
-      changed = true;
     }
   }
-
-  if (changed) store.invalidateCaches();
 };

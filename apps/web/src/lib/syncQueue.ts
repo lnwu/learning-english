@@ -9,6 +9,7 @@ export interface SyncQueueItem {
     totalAttempts: number;
     inputTimes: number[];
     correctPracticeDates?: string[];
+    attemptHistory?: boolean[];
   };
   timestamp: number;
   retryCount: number;

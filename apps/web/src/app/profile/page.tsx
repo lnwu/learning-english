@@ -1,13 +1,14 @@
 "use client";
 
-import { Button, ConfirmDialog, Input, MasteryBar } from "@/components/ui";
+import { Button, ConfirmDialog, Input, MasteryBar, getMasteryLevel } from "@/components/ui";
 import { useFirestoreWords, useLocale, toast, useAuth } from "@/hooks";
 import { observer } from "mobx-react-lite";
 import Link from "next/link";
 import { useState, useEffect, useMemo, useRef } from "react";
-import { type Locale } from "@/lib/i18n";
+import { type Locale, type TranslationKey } from "@/lib/i18n";
 import { auth } from "@/lib/firebase";
 import { formatSenses } from "@/lib/parseTranslation";
+import type { MasteryLevel } from "@/lib/masteryCalculator";
 import {
   MAX_REGENERATE_BATCH_SIZE,
   type RegenerateResult,
@@ -27,6 +28,18 @@ const COLOR_CLASSES = {
     border: "border-red-200 dark:border-red-700",
   },
 } as const;
+
+const MASTERY_SEGMENTS: Array<{
+  key: MasteryLevel;
+  labelKey: TranslationKey;
+  barColor: string;
+}> = [
+  { key: "new", labelKey: "mastery.new", barColor: "bg-red-500" },
+  { key: "learning", labelKey: "mastery.learning", barColor: "bg-orange-500" },
+  { key: "familiar", labelKey: "mastery.familiar", barColor: "bg-yellow-500" },
+  { key: "proficient", labelKey: "mastery.proficient", barColor: "bg-lime-500" },
+  { key: "mastered", labelKey: "mastery.mastered", barColor: "bg-green-500" },
+];
 
 const Profile = observer(() => {
   const { user } = useAuth();
@@ -88,6 +101,20 @@ const Profile = observer(() => {
   const avgMasteryScore = wordsWithStats.length > 0
     ? Math.round(wordsWithStats.reduce((sum, w) => sum + w.masteryScore, 0) / wordsWithStats.length)
     : 0;
+
+  const masteryDistribution = useMemo(() => {
+    const counts: Record<MasteryLevel, number> = {
+      new: 0,
+      learning: 0,
+      familiar: 0,
+      proficient: 0,
+      mastered: 0,
+    };
+    wordsWithStats.forEach((item) => {
+      counts[getMasteryLevel(item.masteryScore)] += 1;
+    });
+    return counts;
+  }, [wordsWithStats]);
 
   const handleResetRecords = async () => {
     setResetting(true);
@@ -359,6 +386,35 @@ const Profile = observer(() => {
               <div className="text-sm text-gray-600 dark:text-gray-300">{t('profile.avgMastery')}</div>
             </div>
           </div>
+        </div>
+
+        {/* Mastery Distribution */}
+        <div className="mb-8 p-6 bg-white dark:bg-gray-800 rounded-lg shadow">
+          <h2 className="text-xl font-semibold mb-4">{t('profile.masteryDistribution')}</h2>
+          {wordsWithStats.length === 0 ? (
+            <p className="text-sm text-gray-600 dark:text-gray-400">{t('profile.noPracticeData')}</p>
+          ) : (
+            <div className="space-y-3">
+              {MASTERY_SEGMENTS.map(({ key, labelKey, barColor }) => {
+                const count = masteryDistribution[key];
+                const pct = totalWords > 0 ? Math.round((count / totalWords) * 100) : 0;
+                return (
+                  <div key={key} className="flex items-center gap-3">
+                    <span className="w-16 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                      {t(labelKey)}
+                    </span>
+                    <div className="flex-1 h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full ${barColor} transition-all`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                    <span className="w-12 text-sm text-gray-600 dark:text-gray-400 text-right">{count}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Average Speed by Word Length with Word Performance */}
