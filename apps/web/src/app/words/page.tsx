@@ -32,9 +32,9 @@ const WordRow = observer(({ word, translation, words, onInputChange, onHintRevea
         >
           {hasSense ? (
             senses.map((sense, index) => (
-              <span key={index} className="flex flex-col">
-                <span>{[sense.pos, sense.chinese].filter(Boolean).join(" ")}</span>
-                {sense.english && <span className="text-sm font-normal text-gray-500">{sense.english}</span>}
+              <span key={index}>
+                {[sense.pos, sense.chinese].filter(Boolean).join(" ")}
+                {sense.english && <span className="text-sm font-normal text-gray-500"> — {sense.english}</span>}
               </span>
             ))
           ) : (
