@@ -124,6 +124,13 @@ export const translations = {
     'profile.regenerateSuccess': '已重新生成 {success} 个单词的释义',
     'profile.regeneratePartial': '已重新生成 {success} 个单词的释义，{skipped} 个保留原释义',
     'profile.regenerateFailed': '重新生成释义失败，请稍后重试',
+    'profile.practiceTimeTitle': '每日练习时间',
+    'profile.practiceTimeDesc': '统计停留在单词练习或造句练习页面且窗口处于激活状态的时长',
+    'profile.weekdayMon': '一',
+    'profile.weekdayWed': '三',
+    'profile.weekdayFri': '五',
+    'profile.practiceTimeLess': '少',
+    'profile.practiceTimeMore': '多',
 
     // Add Word page
     'addWord.title': '添加单词',
@@ -254,6 +261,13 @@ export const translations = {
     'profile.regenerateSuccess': 'Regenerated definitions for {success} words',
     'profile.regeneratePartial': 'Regenerated definitions for {success} words, kept {skipped} unchanged',
     'profile.regenerateFailed': 'Failed to regenerate definitions, please try again',
+    'profile.practiceTimeTitle': 'Daily Practice Time',
+    'profile.practiceTimeDesc': 'Time counted while the window is on the word or sentence practice page and is active',
+    'profile.weekdayMon': 'Mon',
+    'profile.weekdayWed': 'Wed',
+    'profile.weekdayFri': 'Fri',
+    'profile.practiceTimeLess': 'Less',
+    'profile.practiceTimeMore': 'More',
 
     // Add Word page
     'addWord.title': 'Add Word',

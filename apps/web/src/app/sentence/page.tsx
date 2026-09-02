@@ -1,7 +1,7 @@
 "use client";
 
 import { Button, Input, SyncIndicator } from "@/components/ui";
-import { useSentencePractice, useLocale } from "@/hooks";
+import { useSentencePractice, useLocale, usePracticeTimeTracker } from "@/hooks";
 import { observer } from "mobx-react-lite";
 import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
@@ -9,6 +9,7 @@ import { useEffect, useState, type FormEvent } from "react";
 const Sentence = observer(() => {
   const { loading, loadError, question, feedback, generating, checking, error, generate, check, words, syncing, pendingCount, syncToFirestore } = useSentencePractice();
   const { t } = useLocale();
+  usePracticeTimeTracker();
   const [answer, setAnswer] = useState("");
   const [isClient, setIsClient] = useState(false);
   const [hasTriedInitialGenerate, setHasTriedInitialGenerate] = useState(false);
