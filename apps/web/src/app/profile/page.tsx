@@ -537,9 +537,13 @@ const Profile = observer(() => {
                         cell ? (
                           <div
                             key={cell.date}
-                            title={`${cell.date} · ${formatPracticeDuration(cell.seconds, locale)}`}
-                            className={`w-3 h-3 rounded-sm ${PRACTICE_TIME_LEVEL_CLASSES[cell.level]}`}
-                          />
+                            aria-label={`${cell.date} · ${formatPracticeDuration(cell.seconds, locale)}`}
+                            className={`relative group w-3 h-3 rounded-sm ${PRACTICE_TIME_LEVEL_CLASSES[cell.level]}`}
+                          >
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
+                              {cell.date} · {formatPracticeDuration(cell.seconds, locale)}
+                            </div>
+                          </div>
                         ) : (
                           <div key={`${weekIndex}-${dayIndex}`} className="w-3 h-3" />
                         )
