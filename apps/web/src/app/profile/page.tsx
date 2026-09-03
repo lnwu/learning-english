@@ -16,6 +16,7 @@ import {
   formatPracticeDuration,
   getPracticeTimeMonthLabels,
   type PracticeTimeLevel,
+  PRACTICE_TIME_HEATMAP_WEEKS,
 } from "@/lib/practiceTime";
 import { formatSenses } from "@/lib/parseTranslation";
 import type { MasteryLevel } from "@/lib/masteryCalculator";
@@ -58,6 +59,9 @@ const PRACTICE_TIME_LEVEL_CLASSES: Record<PracticeTimeLevel, string> = {
   3: "bg-green-600 dark:bg-green-500",
   4: "bg-green-800 dark:bg-green-300",
 };
+
+const HEATMAP_CELL_PITCH_PX = 15;
+const HEATMAP_WEEKDAY_COLUMN_PX = 28;
 
 const Profile = observer(() => {
   const { user } = useAuth();
@@ -156,9 +160,30 @@ const Profile = observer(() => {
     return counts;
   }, [wordsWithStats]);
 
+  const practiceTimeContainerRef = useRef<HTMLDivElement>(null);
+  const [practiceTimeWeekCount, setPracticeTimeWeekCount] = useState(
+    PRACTICE_TIME_HEATMAP_WEEKS
+  );
+
+  useEffect(() => {
+    const container = practiceTimeContainerRef.current;
+    if (!container) return;
+    const observer = new ResizeObserver((entries) => {
+      const width = entries[0]?.contentRect.width ?? 0;
+      const weeks = Math.floor(
+        (width - HEATMAP_WEEKDAY_COLUMN_PX) / HEATMAP_CELL_PITCH_PX
+      );
+      setPracticeTimeWeekCount(
+        Math.min(PRACTICE_TIME_HEATMAP_WEEKS, Math.max(4, weeks))
+      );
+    });
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [practiceTime.size]);
+
   const practiceTimeWeeks = useMemo(
-    () => buildPracticeTimeWeeks(practiceTime, new Date()),
-    [practiceTime]
+    () => buildPracticeTimeWeeks(practiceTime, new Date(), practiceTimeWeekCount),
+    [practiceTime, practiceTimeWeekCount]
   );
   const practiceTimeMonthLabels = useMemo(
     () => getPracticeTimeMonthLabels(practiceTimeWeeks),
@@ -477,14 +502,17 @@ const Profile = observer(() => {
             {t('profile.practiceTimeDesc')}
           </p>
           {practiceTime.size > 0 ? (
-            <div className="overflow-x-auto">
+            <div ref={practiceTimeContainerRef}>
               <div className="inline-block">
-                <div className="relative h-4 mb-1" style={{ marginLeft: 28 }}>
+                <div
+                  className="relative h-4 mb-1"
+                  style={{ marginLeft: HEATMAP_WEEKDAY_COLUMN_PX }}
+                >
                   {practiceTimeMonthLabels.map(({ weekIndex, month }) => (
                     <span
                       key={weekIndex}
                       className="absolute text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap"
-                      style={{ left: weekIndex * 15 }}
+                      style={{ left: weekIndex * HEATMAP_CELL_PITCH_PX }}
                     >
                       {formatMonthLabel(month)}
                     </span>
@@ -493,7 +521,7 @@ const Profile = observer(() => {
                 <div className="flex gap-1">
                   <div
                     className="grid grid-rows-7 gap-[3px] text-[10px] leading-3 text-gray-500 dark:text-gray-400"
-                    style={{ width: 24 }}
+                    style={{ width: HEATMAP_WEEKDAY_COLUMN_PX - 4 }}
                   >
                     <span className="h-3" />
                     <span className="h-3">{t('profile.weekdayMon')}</span>
