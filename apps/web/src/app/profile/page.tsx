@@ -6,7 +6,17 @@ import { observer } from "mobx-react-lite";
 import Link from "next/link";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { type Locale, type TranslationKey } from "@/lib/i18n";
-import { auth } from "@/lib/firebase";
+import { auth, db, getEffectiveUserId } from "@/lib/firebase";
+import {
+  collection,
+  getDocs,
+} from "firebase/firestore";
+import {
+  buildPracticeTimeWeeks,
+  formatPracticeDuration,
+  getPracticeTimeMonthLabels,
+  type PracticeTimeLevel,
+} from "@/lib/practiceTime";
 import { formatSenses } from "@/lib/parseTranslation";
 import type { MasteryLevel } from "@/lib/masteryCalculator";
 import {
@@ -41,6 +51,14 @@ const MASTERY_SEGMENTS: Array<{
   { key: "mastered", labelKey: "mastery.mastered", barColor: "bg-green-500" },
 ];
 
+const PRACTICE_TIME_LEVEL_CLASSES: Record<PracticeTimeLevel, string> = {
+  0: "bg-gray-100 dark:bg-gray-700",
+  1: "bg-green-200 dark:bg-green-900",
+  2: "bg-green-400 dark:bg-green-700",
+  3: "bg-green-600 dark:bg-green-500",
+  4: "bg-green-800 dark:bg-green-300",
+};
+
 const Profile = observer(() => {
   const { user } = useAuth();
   const { words, deleteWord, resetPracticeRecords, updateTranslations, loading, error } =
@@ -56,6 +74,28 @@ const Profile = observer(() => {
   const [regenerating, setRegenerating] = useState(false);
   const [regenerateProgress, setRegenerateProgress] = useState(0);
   const regeneratingRef = useRef(false);
+  const [practiceTime, setPracticeTime] = useState<Map<string, number>>(
+    new Map()
+  );
+
+  useEffect(() => {
+    if (!user) return;
+    const userId = getEffectiveUserId(user);
+    getDocs(collection(db, "users", userId, "practiceTime"))
+      .then((snapshot) => {
+        setPracticeTime(
+          new Map(
+            snapshot.docs.map((doc) => [
+              doc.id,
+              Number(doc.data().seconds) || 0,
+            ])
+          )
+        );
+      })
+      .catch((err) => {
+        console.error("Failed to load practice time:", err);
+      });
+  }, [user]);
 
   useEffect(() => {
     setIsClient(true);
@@ -115,6 +155,19 @@ const Profile = observer(() => {
     });
     return counts;
   }, [wordsWithStats]);
+
+  const practiceTimeWeeks = useMemo(
+    () => buildPracticeTimeWeeks(practiceTime, new Date()),
+    [practiceTime]
+  );
+  const practiceTimeMonthLabels = useMemo(
+    () => getPracticeTimeMonthLabels(practiceTimeWeeks),
+    [practiceTimeWeeks]
+  );
+  const formatMonthLabel = (month: number) =>
+    locale === 'zh'
+      ? `${month}月`
+      : new Date(2000, month - 1, 1).toLocaleString('en', { month: 'short' });
 
   const handleResetRecords = async () => {
     setResetting(true);
@@ -414,6 +467,74 @@ const Profile = observer(() => {
                 );
               })}
             </div>
+          )}
+        </div>
+
+        {/* Daily Practice Time */}
+        <div className="mb-8 p-6 bg-white dark:bg-gray-800 rounded-lg shadow">
+          <h2 className="text-xl font-semibold mb-4">{t('profile.practiceTimeTitle')}</h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+            {t('profile.practiceTimeDesc')}
+          </p>
+          {practiceTime.size > 0 ? (
+            <div className="overflow-x-auto">
+              <div className="inline-block">
+                <div className="relative h-4 mb-1" style={{ marginLeft: 28 }}>
+                  {practiceTimeMonthLabels.map(({ weekIndex, month }) => (
+                    <span
+                      key={weekIndex}
+                      className="absolute text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap"
+                      style={{ left: weekIndex * 15 }}
+                    >
+                      {formatMonthLabel(month)}
+                    </span>
+                  ))}
+                </div>
+                <div className="flex gap-1">
+                  <div
+                    className="grid grid-rows-7 gap-[3px] text-[10px] leading-3 text-gray-500 dark:text-gray-400"
+                    style={{ width: 24 }}
+                  >
+                    <span className="h-3" />
+                    <span className="h-3">{t('profile.weekdayMon')}</span>
+                    <span className="h-3" />
+                    <span className="h-3">{t('profile.weekdayWed')}</span>
+                    <span className="h-3" />
+                    <span className="h-3">{t('profile.weekdayFri')}</span>
+                    <span className="h-3" />
+                  </div>
+                  <div className="grid grid-rows-7 grid-flow-col gap-[3px]">
+                    {practiceTimeWeeks.flatMap((week, weekIndex) =>
+                      week.map((cell, dayIndex) =>
+                        cell ? (
+                          <div
+                            key={cell.date}
+                            title={`${cell.date} · ${formatPracticeDuration(cell.seconds, locale)}`}
+                            className={`w-3 h-3 rounded-sm ${PRACTICE_TIME_LEVEL_CLASSES[cell.level]}`}
+                          />
+                        ) : (
+                          <div key={`${weekIndex}-${dayIndex}`} className="w-3 h-3" />
+                        )
+                      )
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center justify-end gap-1 mt-2 text-xs text-gray-500 dark:text-gray-400">
+                  <span>{t('profile.practiceTimeLess')}</span>
+                  {(Object.keys(PRACTICE_TIME_LEVEL_CLASSES) as unknown as PracticeTimeLevel[]).map((level) => (
+                    <span
+                      key={level}
+                      className={`w-3 h-3 rounded-sm ${PRACTICE_TIME_LEVEL_CLASSES[level]}`}
+                    />
+                  ))}
+                  <span>{t('profile.practiceTimeMore')}</span>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              {t('profile.noData')}
+            </p>
           )}
         </div>
 

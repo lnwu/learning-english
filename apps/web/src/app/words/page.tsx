@@ -4,7 +4,7 @@ import { Input, Button, MasteryBar, SyncIndicator } from "@/components/ui";
 import { useCallback, useEffect, useState, useRef, type FormEvent, type RefObject } from "react";
 import { observer } from "mobx-react-lite";
 import Link from "next/link";
-import { useFirestoreWords, useLocale } from "@/hooks";
+import { useFirestoreWords, useLocale, usePracticeTimeTracker } from "@/hooks";
 import { parseTranslation } from "@/lib/parseTranslation";
 import type { Words } from "@/lib/wordsStore";
 import type { TranslationKey } from "@/lib/i18n";
@@ -101,6 +101,7 @@ const SubmitButton = observer(({ randomWords, words, label }: { randomWords: [st
 const WordsPractice = observer(() => {
   const { words, recordCorrectAttempt, recordIncorrectAttempt, syncToFirestore, syncing, pendingCount, loading, error } = useFirestoreWords();
   const { t } = useLocale();
+  usePracticeTimeTracker();
   const [isClient, setIsClient] = useState(false);
   const [shouldFocusFirst, setShouldFocusFirst] = useState(false);
   const [randomWords, setRandomWords] = useState<[string, string][]>([]);

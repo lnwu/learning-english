@@ -25,6 +25,11 @@
 - 添加弹窗复用共享组件 `src/components/word-picker/AddWordDialog.tsx`（翻译 → 展示义项 → 确认落库），`/add-word` 页面与全局双击入口共用，不要在别处再复制「调 `/api/translate` + 确认弹窗」逻辑。弹窗内部只做翻译与落库，已存在/非法字符的预校验由调用方（页面或 `WordPicker`）先用 `checkWordAddable` 完成。
 - 双击监听需跳过 `input/textarea/select/[contenteditable]` 与弹窗自身（`[data-slot="dialog-content"]`），未登录时忽略；不要在这些区域或未登录场景触发。
 
+## 每日练习时间统计
+
+- `src/hooks/usePracticeTimeTracker.ts` 挂载在 `/words` 与 `/sentence` 页面：仅当 `document.visibilityState === 'visible'` 且 `document.hasFocus()` 时计时（纯逻辑在 `src/lib/practiceTime.ts` 的 `ActiveTimeTracker`，配套测试；`formatPracticeDuration` 负责中英格式化）。每 60s 及页面隐藏/卸载时把累计秒数用 Firestore `increment` 原子累加写入 `users/{userId}/practiceTime/{YYYY-MM-DD}`（文档 ID 为本地日期，字段为 `seconds`），写失败时把秒数放回待累计池下次重试。
+- Profile 页用 `getDocs` 读取全部 `practiceTime` 文档，以 GitHub Contributions 风格热力图展示（53 周 × 7 天网格、月份标签、少→多图例）；网格构建与分档纯逻辑在 `practiceTime.ts`（`buildPracticeTimeWeeks`/`getPracticeTimeLevel`/`getPracticeTimeMonthLabels`，配套测试），不做实时订阅；该子集合的 Firestore 规则与 `words` 一致（本人读写、preview 匿名可写）。
+
 ## 多语言
 
 - locale 持久化在 cookie（`locale=zh|en`）：`layout.tsx` 服务端读 cookie（无 cookie 时回退 `accept-language`）决定 `<html lang>` 并通过 `LocaleProvider` 下发初始 locale；`useLocale` 的 `getServerSnapshot` 用该初始值，保证 SSR 与客户端一致。不要再从 localStorage 或硬编码读取 locale。
