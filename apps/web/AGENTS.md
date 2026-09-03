@@ -28,7 +28,7 @@
 ## 每日练习时间统计
 
 - `src/hooks/usePracticeTimeTracker.ts` 挂载在 `/words` 与 `/sentence` 页面：仅当 `document.visibilityState === 'visible'` 且 `document.hasFocus()` 时计时（纯逻辑在 `src/lib/practiceTime.ts` 的 `ActiveTimeTracker`，配套测试；`formatPracticeDuration` 负责中英格式化）。每 60s 及页面隐藏/卸载时把累计秒数用 Firestore `increment` 原子累加写入 `users/{userId}/practiceTime/{YYYY-MM-DD}`（文档 ID 为本地日期，字段为 `seconds`），写失败时把秒数放回待累计池下次重试。
-- Profile 页用 `getDocs` 读取全部 `practiceTime` 文档，以 GitHub Contributions 风格热力图展示（53 周 × 7 天网格、月份标签、少→多图例）；网格构建与分档纯逻辑在 `practiceTime.ts`（`buildPracticeTimeWeeks`/`getPracticeTimeLevel`/`getPracticeTimeMonthLabels`，配套测试），不做实时订阅；该子集合的 Firestore 规则与 `words` 一致（本人读写、preview 匿名可写）。
+- Profile 页用 `getDocs` 读取全部 `practiceTime` 文档，以 GitHub Contributions 风格热力图展示（N 周 × 7 天网格，周数由 `ResizeObserver` 按容器宽度自适应、上限 53 周，避免横向滚动；月份标签、少→多图例）；网格构建与分档纯逻辑在 `practiceTime.ts`（`buildPracticeTimeWeeks`/`getPracticeTimeLevel`/`getPracticeTimeMonthLabels`，配套测试），不做实时订阅；该子集合的 Firestore 规则与 `words` 一致（本人读写、preview 匿名可写）。
 
 ## 多语言
 
