@@ -46,7 +46,7 @@
 - `/api/translate` 由 DeepSeek 一次调用生成结构化义项数组 `senses: [{ pos, chinese, english }]`（2~4 个义项，最常用在前），不再使用 Google Translate/Datamuse 等外部免费源或回退词典（`lib/dictionary.ts` 已删除）；模型判定非有效单词时返回 `senses: null`（前端提示未识别），调用失败时返回错误且前端不落库；内存 LRU 缓存只存 `senses` 非空数组的成功结果。前端用 `src/lib/parseTranslation.ts` 的 `formatSenses` 把 `senses` 拼成「每义项一行（词性+中文 — 英文）」存入 `translation` 字段，`parseTranslation` 兼容旧格式（首行英文、其余中文）。
 - API Key 只允许在服务端使用，禁止加 `NEXT_PUBLIC_` 前缀或下发到前端。
 - 造句练习复用 `useFirestoreWords` 的单词库与 `recordCorrectAttempt`/`recordIncorrectAttempt`，练习结果计入单词熟练度并同步到 Firebase；造句场景没有真实输入计时，`recordCorrectAttempt(word)` 不传 `inputTimeSeconds`（该参数仅单词拼写练习传入），不要伪造输入时间以免抬高 speedScore。`calculateMasteryScore` 对无计时数据的词让速度/稳定性因子不参与加权（避免纯造句词被压级），详见 `docs/WORD_FAMILIARITY_ALGORITHM.md`。
-- 批改接口返回 `usedWords`（用户实际用到的目标词，同义表达替代也算），客户端只对 `usedWords` 中的词调用 `recordCorrect/IncorrectAttempt`，未用到的目标词不记分；模型未返回该字段时回退为全部目标词。
+- 批改接口返回 `usedWords`（用户实际用到的目标词，同义表达替代也算），客户端只对 `usedWords` 中的词调用 `recordCorrect/IncorrectAttempt`，未用到的目标词不记分；模型未返回该字段时回退为全部目标词。造句是「每题一考」：同一道题只按首次提交的结果计分（`useSentencePractice` 的 `scoredQuestionRef` 去重，防止重复提交刷熟练度），提交后页面锁定答案、隐藏提交按钮，只能看反馈或换下一题，不要改回可重复计分。
 - 同步队列（`src/lib/syncQueue.ts`）按 uid 隔离（`SyncQueueManager.setUser(uid)`，key 为 `sync_queue:{uid}`，登录/登出由 `useFirestoreWords` 负责切换并在登出时清空 store 与队列，切换账号不会把旧账号的 wordId 写到新账号路径下）；条目重试达到上限被丢弃时，`incrementRetries` 返回被丢弃条目，`syncToFirestore` 会 toast 提示用户（文案 `sync.dataLost`），不要改回静默丢弃。localStorage 写失败时队列自动回退到内存副本（`hasMemoryFallback()`）并 toast 提示（文案 `sync.storageFailed`）。
 - 造句题目界面不直接显示目标单词（答题后的反馈区才显示），这是有意设计：学生凭中文句子推断用词，因此造句请求会把词库中存的中文译法随目标词一并传给模型，prompt 要求中文译文自然地道、使用参考译法且能让学生反推出目标词；批改时对目标词的同义表达不判错、仅提示。
 - 批改接口在调用模型前先对答案与参考译文做规范化判等（`src/lib/sentenceCompare.ts` 的 `normalizeForComparison`），完全一致直接返回满分，不消耗模型调用。
