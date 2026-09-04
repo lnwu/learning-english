@@ -120,16 +120,15 @@ export const useSentencePractice = () => {
         const shouldRecord = scoredQuestionRef.current !== question;
         if (shouldRecord) {
           scoredQuestionRef.current = question;
+          attemptedWords.forEach((word) => {
+            if (result.correct) {
+              // 造句场景没有真实输入计时，不传 inputTimeSeconds，避免伪造时间抬高 speedScore
+              recordCorrectAttempt(word);
+            } else {
+              recordIncorrectAttempt(word);
+            }
+          });
         }
-        attemptedWords.forEach((word) => {
-          if (!shouldRecord) return;
-          if (result.correct) {
-            // 造句场景没有真实输入计时，不传 inputTimeSeconds，避免伪造时间抬高 speedScore
-            recordCorrectAttempt(word);
-          } else {
-            recordIncorrectAttempt(word);
-          }
-        });
         return result;
       } catch (err) {
         setError(err instanceof Error ? err.message : "批改失败，请稍后重试");
