@@ -53,7 +53,6 @@ interface WordsContextValue {
   words: Words;
   addWord: (word: string, translation: string) => Promise<void>;
   deleteWord: (word: string) => Promise<void>;
-  removeAllWords: () => Promise<void>;
   recordCorrectAttempt: (word: string, inputTimeSeconds?: number) => void;
   recordIncorrectAttempt: (word: string) => void;
   syncToFirestore: () => Promise<void>;
@@ -212,27 +211,6 @@ export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
     },
     [user]
   );
-
-  const removeAllWords = useCallback(async () => {
-    if (!user) {
-      throw new Error(tError("error.notAuthenticated"));
-    }
-
-    const userId = getEffectiveUserId(user);
-    const docIds = Array.from(words.wordData.values()).map((data) => data.id);
-    if (docIds.length === 0) return;
-
-    try {
-      await commitBatchOperations(
-        docIds.map((id) => (batch) =>
-          batch.delete(doc(db, "users", userId, "words", id))
-        )
-      );
-    } catch (err) {
-      console.error("Failed to remove all words:", err);
-      throw new Error(tError("error.removeWordsFailed"));
-    }
-  }, [user]);
 
   const recordCorrectAttempt = useCallback(
     (word: string, inputTimeSeconds?: number) => {
@@ -506,7 +484,6 @@ export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
       words,
       addWord,
       deleteWord,
-      removeAllWords,
       recordCorrectAttempt,
       recordIncorrectAttempt,
       syncToFirestore,
@@ -520,7 +497,6 @@ export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
     [
       addWord,
       deleteWord,
-      removeAllWords,
       recordCorrectAttempt,
       recordIncorrectAttempt,
       syncToFirestore,
