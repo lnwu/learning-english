@@ -370,6 +370,81 @@ const Profile = observer(() => {
           </div>
         )}
 
+        {/* Daily Practice Time */}
+        <div className="mb-8 p-6 bg-white dark:bg-gray-800 rounded-lg shadow">
+          <h2 className="text-xl font-semibold mb-4">{t('profile.practiceTimeTitle')}</h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+            {t('profile.practiceTimeDesc')}
+          </p>
+          {practiceTime.size > 0 ? (
+            <div ref={practiceTimeContainerRef}>
+              <div className="inline-block">
+                <div
+                  className="relative h-4 mb-1"
+                  style={{ marginLeft: HEATMAP_WEEKDAY_COLUMN_PX }}
+                >
+                  {practiceTimeMonthLabels.map(({ weekIndex, month }) => (
+                    <span
+                      key={weekIndex}
+                      className="absolute text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap"
+                      style={{ left: weekIndex * HEATMAP_CELL_PITCH_PX }}
+                    >
+                      {formatMonthLabel(month)}
+                    </span>
+                  ))}
+                </div>
+                <div className="flex gap-1">
+                  <div
+                    className="grid grid-rows-7 gap-[3px] text-[10px] leading-3 text-gray-500 dark:text-gray-400"
+                    style={{ width: HEATMAP_WEEKDAY_COLUMN_PX - 4 }}
+                  >
+                    <span className="h-3" />
+                    <span className="h-3">{t('profile.weekdayMon')}</span>
+                    <span className="h-3" />
+                    <span className="h-3">{t('profile.weekdayWed')}</span>
+                    <span className="h-3" />
+                    <span className="h-3">{t('profile.weekdayFri')}</span>
+                    <span className="h-3" />
+                  </div>
+                  <div className="grid grid-rows-7 grid-flow-col gap-[3px]">
+                    {practiceTimeWeeks.flatMap((week, weekIndex) =>
+                      week.map((cell, dayIndex) =>
+                        cell ? (
+                          <div
+                            key={cell.date}
+                            aria-label={`${cell.date} · ${formatPracticeDuration(cell.seconds, locale)}`}
+                            className={`relative group w-3 h-3 rounded-sm ${PRACTICE_TIME_LEVEL_CLASSES[cell.level]}`}
+                          >
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
+                              {cell.date} · {formatPracticeDuration(cell.seconds, locale)}
+                            </div>
+                          </div>
+                        ) : (
+                          <div key={`${weekIndex}-${dayIndex}`} className="w-3 h-3" />
+                        )
+                      )
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center justify-end gap-1 mt-2 text-xs text-gray-500 dark:text-gray-400">
+                  <span>{t('profile.practiceTimeLess')}</span>
+                  {(Object.keys(PRACTICE_TIME_LEVEL_CLASSES) as unknown as PracticeTimeLevel[]).map((level) => (
+                    <span
+                      key={level}
+                      className={`w-3 h-3 rounded-sm ${PRACTICE_TIME_LEVEL_CLASSES[level]}`}
+                    />
+                  ))}
+                  <span>{t('profile.practiceTimeMore')}</span>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              {t('profile.noData')}
+            </p>
+          )}
+        </div>
+
         {/* Settings */}
         <div className="mb-8 p-6 bg-white dark:bg-gray-800 rounded-lg shadow">
           <h2 className="text-xl font-semibold mb-4">{t('profile.settings')}</h2>
@@ -492,81 +567,6 @@ const Profile = observer(() => {
                 );
               })}
             </div>
-          )}
-        </div>
-
-        {/* Daily Practice Time */}
-        <div className="mb-8 p-6 bg-white dark:bg-gray-800 rounded-lg shadow">
-          <h2 className="text-xl font-semibold mb-4">{t('profile.practiceTimeTitle')}</h2>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-            {t('profile.practiceTimeDesc')}
-          </p>
-          {practiceTime.size > 0 ? (
-            <div ref={practiceTimeContainerRef}>
-              <div className="inline-block">
-                <div
-                  className="relative h-4 mb-1"
-                  style={{ marginLeft: HEATMAP_WEEKDAY_COLUMN_PX }}
-                >
-                  {practiceTimeMonthLabels.map(({ weekIndex, month }) => (
-                    <span
-                      key={weekIndex}
-                      className="absolute text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap"
-                      style={{ left: weekIndex * HEATMAP_CELL_PITCH_PX }}
-                    >
-                      {formatMonthLabel(month)}
-                    </span>
-                  ))}
-                </div>
-                <div className="flex gap-1">
-                  <div
-                    className="grid grid-rows-7 gap-[3px] text-[10px] leading-3 text-gray-500 dark:text-gray-400"
-                    style={{ width: HEATMAP_WEEKDAY_COLUMN_PX - 4 }}
-                  >
-                    <span className="h-3" />
-                    <span className="h-3">{t('profile.weekdayMon')}</span>
-                    <span className="h-3" />
-                    <span className="h-3">{t('profile.weekdayWed')}</span>
-                    <span className="h-3" />
-                    <span className="h-3">{t('profile.weekdayFri')}</span>
-                    <span className="h-3" />
-                  </div>
-                  <div className="grid grid-rows-7 grid-flow-col gap-[3px]">
-                    {practiceTimeWeeks.flatMap((week, weekIndex) =>
-                      week.map((cell, dayIndex) =>
-                        cell ? (
-                          <div
-                            key={cell.date}
-                            aria-label={`${cell.date} · ${formatPracticeDuration(cell.seconds, locale)}`}
-                            className={`relative group w-3 h-3 rounded-sm ${PRACTICE_TIME_LEVEL_CLASSES[cell.level]}`}
-                          >
-                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
-                              {cell.date} · {formatPracticeDuration(cell.seconds, locale)}
-                            </div>
-                          </div>
-                        ) : (
-                          <div key={`${weekIndex}-${dayIndex}`} className="w-3 h-3" />
-                        )
-                      )
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-center justify-end gap-1 mt-2 text-xs text-gray-500 dark:text-gray-400">
-                  <span>{t('profile.practiceTimeLess')}</span>
-                  {(Object.keys(PRACTICE_TIME_LEVEL_CLASSES) as unknown as PracticeTimeLevel[]).map((level) => (
-                    <span
-                      key={level}
-                      className={`w-3 h-3 rounded-sm ${PRACTICE_TIME_LEVEL_CLASSES[level]}`}
-                    />
-                  ))}
-                  <span>{t('profile.practiceTimeMore')}</span>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              {t('profile.noData')}
-            </p>
           )}
         </div>
 
