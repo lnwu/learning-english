@@ -136,24 +136,8 @@ export class Words {
     return this.#getMastery(word, data).score;
   }
 
-  getMasteryResult(word: string): MasteryResult | null {
-    const data = this.wordData.get(word);
-    if (!data) return null;
-    return this.#getMastery(word, data);
-  }
-
   getMasteryLevelIndex(word: string): number {
     return getMasteryLevelIndex(this.getMasteryScore(word));
-  }
-
-  getInputTimes(word: string): number[] {
-    return this.wordData.get(word)?.inputTimes ?? [];
-  }
-
-  getAverageInputTime(word: string): number | null {
-    const times = this.getInputTimes(word);
-    if (times.length === 0) return null;
-    return times.reduce((sum, time) => sum + time, 0) / times.length;
   }
 
   get overallAverageInputTime(): number | null {
@@ -184,14 +168,6 @@ export class Words {
         ? null
         : times.reduce((sum, time) => sum + time, 0) / times.length
     );
-  }
-
-  getTotalAttempts(word: string): number {
-    return this.wordData.get(word)?.totalAttempts ?? 0;
-  }
-
-  getCorrectCount(word: string): number {
-    return this.wordData.get(word)?.correctCount ?? 0;
   }
 
   getWordData(word: string): WordData | undefined {

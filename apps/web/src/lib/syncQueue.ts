@@ -146,11 +146,6 @@ export class SyncQueueManager {
     }
   }
 
-  // 获取队列长度
-  static getQueueLength(): number {
-    return this.getQueue().length;
-  }
-
   // 获取待同步的唯一单词数量
   static getUniqueWordCount(): number {
     const queue = this.getQueue();
