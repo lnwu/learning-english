@@ -84,9 +84,15 @@ export async function POST(request: Request) {
       },
     ]);
 
+    const chinese = typeof result.chinese === "string" ? result.chinese.trim() : "";
+    const english = typeof result.english === "string" ? result.english.trim() : "";
+    if (!chinese || !english) {
+      return NextResponse.json({ error: "生成失败，请稍后重试" }, { status: 502 });
+    }
+
     return NextResponse.json({
-      chinese: result.chinese,
-      english: result.english,
+      chinese,
+      english,
       words: words.map((item) => item.word),
     });
   } catch (error) {

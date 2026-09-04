@@ -11,6 +11,7 @@ const Sentence = observer(() => {
   const { t } = useLocale();
   usePracticeTimeTracker();
   const [answer, setAnswer] = useState("");
+  const [submitted, setSubmitted] = useState(false);
   const [isClient, setIsClient] = useState(false);
   const [hasTriedInitialGenerate, setHasTriedInitialGenerate] = useState(false);
   const noWords = words.wordData.size < 2;
@@ -18,6 +19,10 @@ const Sentence = observer(() => {
   useEffect(() => {
     setIsClient(true);
   }, []);
+
+  useEffect(() => {
+    setSubmitted(false);
+  }, [question]);
 
   useEffect(() => {
     if (!isClient || loading || noWords || question || generating || hasTriedInitialGenerate) {
@@ -29,10 +34,13 @@ const Sentence = observer(() => {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!answer.trim() || checking) return;
+    if (!answer.trim() || checking || submitted) return;
     const result = await check(answer.trim());
-    if (result?.score === 100) {
-      await handleNext();
+    if (result) {
+      setSubmitted(true);
+      if (result.score === 100) {
+        await handleNext();
+      }
     }
   };
 
@@ -98,12 +106,15 @@ const Sentence = observer(() => {
                     placeholder={t("sentence.answerPlaceholder")}
                     value={answer}
                     autoFocus
+                    disabled={checking || submitted}
                     onChange={(e) => setAnswer(e.target.value)}
                   />
                   <div className="flex space-x-2 justify-end">
-                    <Button type="submit" disabled={!answer.trim() || checking}>
-                      {checking ? t("sentence.checking") : t("sentence.submit")}
-                    </Button>
+                    {!submitted && (
+                      <Button type="submit" disabled={!answer.trim() || checking}>
+                        {checking ? t("sentence.checking") : t("sentence.submit")}
+                      </Button>
+                    )}
                     <Button type="button" onClick={handleNext} disabled={generating || checking}>
                       {t("sentence.next")}
                     </Button>

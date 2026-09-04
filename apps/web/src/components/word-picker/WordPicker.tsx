@@ -38,14 +38,14 @@ const WordPicker = () => {
       const status = checkWordAddable(words, extracted);
       if (status === "exists") {
         toast({
-          title: t("addWord.wordExists").replace("{word}", extracted),
+          title: t("addWord.wordExists", { word: extracted }),
           variant: "destructive",
         });
         return;
       }
       if (status === "invalid") {
         toast({
-          title: t("addWord.invalidChars").replace("{word}", extracted),
+          title: t("addWord.invalidChars", { word: extracted }),
           variant: "destructive",
         });
         return;

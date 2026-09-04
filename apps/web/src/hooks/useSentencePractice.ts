@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useFirestoreWords } from "@/hooks/useFirestoreWords";
-import { auth } from "@/lib/firebase";
+import { postJson } from "@/lib/apiClient";
 
 export interface SentenceQuestion {
   chinese: string;
@@ -32,29 +32,6 @@ function shuffle<T>(items: T[]): T[] {
   return result;
 }
 
-async function postJson<T>(url: string, payload: unknown): Promise<T> {
-  const idToken = await auth.currentUser?.getIdToken();
-  if (!idToken) {
-    throw new Error("用户未登录");
-  }
-
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${idToken}`,
-    },
-    body: JSON.stringify(payload),
-  });
-
-  const data = await response.json().catch(() => null);
-  if (!response.ok) {
-    const message = data && typeof data.error === "string" ? data.error : "请求失败，请稍后重试";
-    throw new Error(message);
-  }
-  return data as T;
-}
-
 export const useSentencePractice = () => {
   const firestore = useFirestoreWords();
   const { words, recordCorrectAttempt, recordIncorrectAttempt } = firestore;
@@ -64,6 +41,7 @@ export const useSentencePractice = () => {
   const [generating, setGenerating] = useState(false);
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const scoredQuestionRef = useRef<SentenceQuestion | null>(null);
 
   const pickPrioritizedWords = useCallback(
     (count: number) => {
@@ -102,6 +80,7 @@ export const useSentencePractice = () => {
     setError(null);
     setFeedback(null);
     setQuestion(null);
+    scoredQuestionRef.current = null;
 
     const targetWords = pickWords();
     if (targetWords.length < MIN_WORDS) {
@@ -138,14 +117,18 @@ export const useSentencePractice = () => {
         setFeedback(result);
 
         const attemptedWords = result.usedWords ?? question.words;
-        attemptedWords.forEach((word) => {
-          if (result.correct) {
-            // 造句场景没有真实输入计时，不传 inputTimeSeconds，避免伪造时间抬高 speedScore
-            recordCorrectAttempt(word);
-          } else {
-            recordIncorrectAttempt(word);
-          }
-        });
+        const shouldRecord = scoredQuestionRef.current !== question;
+        if (shouldRecord) {
+          scoredQuestionRef.current = question;
+          attemptedWords.forEach((word) => {
+            if (result.correct) {
+              // 造句场景没有真实输入计时，不传 inputTimeSeconds，避免伪造时间抬高 speedScore
+              recordCorrectAttempt(word);
+            } else {
+              recordIncorrectAttempt(word);
+            }
+          });
+        }
         return result;
       } catch (err) {
         setError(err instanceof Error ? err.message : "批改失败，请稍后重试");

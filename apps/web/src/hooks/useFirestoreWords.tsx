@@ -17,7 +17,6 @@ import {
   deleteDoc,
   doc,
   onSnapshot,
-  getDocs,
   writeBatch,
   type WriteBatch,
 } from "firebase/firestore";
@@ -54,7 +53,6 @@ interface WordsContextValue {
   words: Words;
   addWord: (word: string, translation: string) => Promise<void>;
   deleteWord: (word: string) => Promise<void>;
-  removeAllWords: () => Promise<void>;
   recordCorrectAttempt: (word: string, inputTimeSeconds?: number) => void;
   recordIncorrectAttempt: (word: string) => void;
   syncToFirestore: () => Promise<void>;
@@ -77,13 +75,29 @@ export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const [syncing, setSyncing] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const syncingRef = useRef(false);
+  const storageWarnedRef = useRef(false);
+
+  const notifyIfStorageFallback = useCallback(() => {
+    if (storageWarnedRef.current) return;
+    if (!SyncQueueManager.hasMemoryFallback()) return;
+    storageWarnedRef.current = true;
+    toast({
+      title: tError("sync.storageFailed"),
+      variant: "destructive",
+    });
+  }, []);
 
   useEffect(() => {
     if (!user) {
+      SyncQueueManager.setUser(null);
+      words.removeAllWords();
+      words.userInputs.clear();
+      setPendingCount(0);
       setLoading(false);
       return;
     }
 
+    SyncQueueManager.setUser(getEffectiveUserId(user));
     setLoading(true);
     setError(null);
 
@@ -198,25 +212,6 @@ export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
     [user]
   );
 
-  const removeAllWords = useCallback(async () => {
-    if (!user) {
-      throw new Error(tError("error.notAuthenticated"));
-    }
-
-    const userId = getEffectiveUserId(user);
-    const wordsCollection = collection(db, "users", userId, "words");
-
-    try {
-      const querySnapshot = await getDocs(wordsCollection);
-      await commitBatchOperations(
-        querySnapshot.docs.map((document) => (batch) => batch.delete(document.ref))
-      );
-    } catch (err) {
-      console.error("Failed to remove all words:", err);
-      throw new Error(tError("error.removeWordsFailed"));
-    }
-  }, [user]);
-
   const recordCorrectAttempt = useCallback(
     (word: string, inputTimeSeconds?: number) => {
       words.recordCorrectAttempt(word, inputTimeSeconds);
@@ -236,10 +231,11 @@ export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
             attemptHistory: data.attemptHistory,
           },
         });
+        notifyIfStorageFallback();
         setPendingCount(SyncQueueManager.getUniqueWordCount());
       }
     },
-    []
+    [notifyIfStorageFallback]
   );
 
   const recordIncorrectAttempt = useCallback((word: string) => {
@@ -260,9 +256,10 @@ export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
           attemptHistory: data.attemptHistory,
         },
       });
+      notifyIfStorageFallback();
       setPendingCount(SyncQueueManager.getUniqueWordCount());
     }
-  }, []);
+  }, [notifyIfStorageFallback]);
 
   const syncToFirestore = useCallback(async () => {
     if (!user) {
@@ -487,7 +484,6 @@ export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
       words,
       addWord,
       deleteWord,
-      removeAllWords,
       recordCorrectAttempt,
       recordIncorrectAttempt,
       syncToFirestore,
@@ -501,7 +497,6 @@ export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
     [
       addWord,
       deleteWord,
-      removeAllWords,
       recordCorrectAttempt,
       recordIncorrectAttempt,
       syncToFirestore,

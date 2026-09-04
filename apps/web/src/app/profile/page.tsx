@@ -6,18 +6,13 @@ import { observer } from "mobx-react-lite";
 import Link from "next/link";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { type Locale, type TranslationKey } from "@/lib/i18n";
-import { auth, db, getEffectiveUserId } from "@/lib/firebase";
+import { db, getEffectiveUserId } from "@/lib/firebase";
 import {
   collection,
   getDocs,
 } from "firebase/firestore";
-import {
-  buildPracticeTimeWeeks,
-  formatPracticeDuration,
-  getPracticeTimeMonthLabels,
-  type PracticeTimeLevel,
-  PRACTICE_TIME_HEATMAP_WEEKS,
-} from "@/lib/practiceTime";
+import { postJson } from "@/lib/apiClient";
+import PracticeHeatmap from "./PracticeHeatmap";
 import { formatSenses } from "@/lib/parseTranslation";
 import type { MasteryLevel } from "@/lib/masteryCalculator";
 import {
@@ -51,17 +46,6 @@ const MASTERY_SEGMENTS: Array<{
   { key: "proficient", labelKey: "mastery.proficient", barColor: "bg-lime-500" },
   { key: "mastered", labelKey: "mastery.mastered", barColor: "bg-green-500" },
 ];
-
-const PRACTICE_TIME_LEVEL_CLASSES: Record<PracticeTimeLevel, string> = {
-  0: "bg-gray-100 dark:bg-gray-700",
-  1: "bg-green-200 dark:bg-green-900",
-  2: "bg-green-400 dark:bg-green-700",
-  3: "bg-green-600 dark:bg-green-500",
-  4: "bg-green-800 dark:bg-green-300",
-};
-
-const HEATMAP_CELL_PITCH_PX = 15;
-const HEATMAP_WEEKDAY_COLUMN_PX = 28;
 
 const Profile = observer(() => {
   const { user } = useAuth();
@@ -160,40 +144,6 @@ const Profile = observer(() => {
     return counts;
   }, [wordsWithStats]);
 
-  const practiceTimeContainerRef = useRef<HTMLDivElement>(null);
-  const [practiceTimeWeekCount, setPracticeTimeWeekCount] = useState(
-    PRACTICE_TIME_HEATMAP_WEEKS
-  );
-
-  useEffect(() => {
-    const container = practiceTimeContainerRef.current;
-    if (!container) return;
-    const observer = new ResizeObserver((entries) => {
-      const width = entries[0]?.contentRect.width ?? 0;
-      const weeks = Math.floor(
-        (width - HEATMAP_WEEKDAY_COLUMN_PX) / HEATMAP_CELL_PITCH_PX
-      );
-      setPracticeTimeWeekCount(
-        Math.min(PRACTICE_TIME_HEATMAP_WEEKS, Math.max(4, weeks))
-      );
-    });
-    observer.observe(container);
-    return () => observer.disconnect();
-  }, [practiceTime.size]);
-
-  const practiceTimeWeeks = useMemo(
-    () => buildPracticeTimeWeeks(practiceTime, new Date(), practiceTimeWeekCount),
-    [practiceTime, practiceTimeWeekCount]
-  );
-  const practiceTimeMonthLabels = useMemo(
-    () => getPracticeTimeMonthLabels(practiceTimeWeeks),
-    [practiceTimeWeeks]
-  );
-  const formatMonthLabel = (month: number) =>
-    locale === 'zh'
-      ? `${month}月`
-      : new Date(2000, month - 1, 1).toLocaleString('en', { month: 'short' });
-
   const handleResetRecords = async () => {
     setResetting(true);
     try {
@@ -257,11 +207,6 @@ const Profile = observer(() => {
     const batches: string[][] = [];
 
     try {
-      const idToken = await auth.currentUser?.getIdToken();
-      if (!idToken) {
-        throw new Error(t('error.notAuthenticated'));
-      }
-
       for (let i = 0; i < total; i += MAX_REGENERATE_BATCH_SIZE) {
         batches.push(allWords.slice(i, i + MAX_REGENERATE_BATCH_SIZE));
       }
@@ -269,25 +214,13 @@ const Profile = observer(() => {
       for (const batch of batches) {
         let batchSuccess = 0;
         try {
-          const response = await fetch("/api/regenerate-definitions", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${idToken}`,
-            },
-            body: JSON.stringify({ words: batch }),
-          });
+          const data = await postJson<{ results?: RegenerateResult[] }>(
+            "/api/regenerate-definitions",
+            { words: batch },
+            t("profile.regenerateFailed")
+          );
 
-          const data = await response.json().catch(() => null);
-          if (!response.ok) {
-            throw new Error(
-              data && typeof data.error === "string"
-                ? data.error
-                : t('profile.regenerateFailed')
-            );
-          }
-
-          const results = (data as { results?: RegenerateResult[] } | null)?.results ?? [];
+          const results = data.results ?? [];
           const updates: Array<{ word: string; translation: string }> = [];
           for (const item of results) {
             if (item.senses && item.senses.length > 0) {
@@ -315,12 +248,12 @@ const Profile = observer(() => {
         });
       } else if (skipped > 0) {
         toast({
-          title: t('profile.regeneratePartial').replace('{success}', String(success)).replace('{skipped}', String(skipped)),
+          title: t('profile.regeneratePartial', { success, skipped }),
           variant: "success",
         });
       } else {
         toast({
-          title: t('profile.regenerateSuccess').replace('{success}', String(success)),
+          title: t('profile.regenerateSuccess', { success }),
           variant: "success",
         });
       }
@@ -377,67 +310,7 @@ const Profile = observer(() => {
             {t('profile.practiceTimeDesc')}
           </p>
           {practiceTime.size > 0 ? (
-            <div ref={practiceTimeContainerRef}>
-              <div className="inline-block">
-                <div
-                  className="relative h-4 mb-1"
-                  style={{ marginLeft: HEATMAP_WEEKDAY_COLUMN_PX }}
-                >
-                  {practiceTimeMonthLabels.map(({ weekIndex, month }) => (
-                    <span
-                      key={weekIndex}
-                      className="absolute text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap"
-                      style={{ left: weekIndex * HEATMAP_CELL_PITCH_PX }}
-                    >
-                      {formatMonthLabel(month)}
-                    </span>
-                  ))}
-                </div>
-                <div className="flex gap-1">
-                  <div
-                    className="grid grid-rows-7 gap-[3px] text-[10px] leading-3 text-gray-500 dark:text-gray-400"
-                    style={{ width: HEATMAP_WEEKDAY_COLUMN_PX - 4 }}
-                  >
-                    <span className="h-3" />
-                    <span className="h-3">{t('profile.weekdayMon')}</span>
-                    <span className="h-3" />
-                    <span className="h-3">{t('profile.weekdayWed')}</span>
-                    <span className="h-3" />
-                    <span className="h-3">{t('profile.weekdayFri')}</span>
-                    <span className="h-3" />
-                  </div>
-                  <div className="grid grid-rows-7 grid-flow-col gap-[3px]">
-                    {practiceTimeWeeks.flatMap((week, weekIndex) =>
-                      week.map((cell, dayIndex) =>
-                        cell ? (
-                          <div
-                            key={cell.date}
-                            aria-label={`${cell.date} · ${formatPracticeDuration(cell.seconds, locale)}`}
-                            className={`relative group w-3 h-3 rounded-sm ${PRACTICE_TIME_LEVEL_CLASSES[cell.level]}`}
-                          >
-                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
-                              {cell.date} · {formatPracticeDuration(cell.seconds, locale)}
-                            </div>
-                          </div>
-                        ) : (
-                          <div key={`${weekIndex}-${dayIndex}`} className="w-3 h-3" />
-                        )
-                      )
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-center justify-end gap-1 mt-2 text-xs text-gray-500 dark:text-gray-400">
-                  <span>{t('profile.practiceTimeLess')}</span>
-                  {(Object.keys(PRACTICE_TIME_LEVEL_CLASSES) as unknown as PracticeTimeLevel[]).map((level) => (
-                    <span
-                      key={level}
-                      className={`w-3 h-3 rounded-sm ${PRACTICE_TIME_LEVEL_CLASSES[level]}`}
-                    />
-                  ))}
-                  <span>{t('profile.practiceTimeMore')}</span>
-                </div>
-              </div>
-            </div>
+            <PracticeHeatmap practiceTime={practiceTime} />
           ) : (
             <p className="text-sm text-gray-500 dark:text-gray-400">
               {t('profile.noData')}
@@ -707,7 +580,7 @@ const Profile = observer(() => {
           onOpenChange={(open) => {
             if (!open) setWordToDelete(null);
           }}
-          title={t('profile.deleteConfirm').replace('{word}', wordToDelete ?? '')}
+          title={t('profile.deleteConfirm', { word: wordToDelete ?? '' })}
           description={t('profile.deleteConfirmDesc')}
           confirmText={deleting ? t('common.loading') : t('common.confirm')}
           cancelText={t('common.cancel')}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useSyncExternalStore, useCallback, useEffect, useContext, createContext, type FC, type ReactNode } from "react";
-import { getCurrentLocale, localeToHtmlLang, setLocale as setI18nLocale, t, type Locale, type TranslationKey } from "@/lib/i18n";
+import { getCurrentLocale, localeToHtmlLang, setLocale as setI18nLocale, t, type Locale, type TranslationKey, type TranslationParams } from "@/lib/i18n";
 
 const LocaleContext = createContext<Locale>("zh");
 
@@ -33,7 +33,7 @@ export const useLocale = () => {
     setI18nLocale(newLocale);
   }, []);
 
-  const translate = useCallback((key: TranslationKey) => t(key, locale), [locale]);
+  const translate = useCallback((key: TranslationKey, params?: TranslationParams) => t(key, locale, params), [locale]);
 
   return { locale, setLocale, t: translate };
 };
