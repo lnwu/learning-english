@@ -17,7 +17,6 @@ import {
   deleteDoc,
   doc,
   onSnapshot,
-  getDocs,
   writeBatch,
   type WriteBatch,
 } from "firebase/firestore";
@@ -77,13 +76,29 @@ export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const [syncing, setSyncing] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const syncingRef = useRef(false);
+  const storageWarnedRef = useRef(false);
+
+  const notifyIfStorageFallback = useCallback(() => {
+    if (storageWarnedRef.current) return;
+    if (!SyncQueueManager.hasMemoryFallback()) return;
+    storageWarnedRef.current = true;
+    toast({
+      title: tError("sync.storageFailed"),
+      variant: "destructive",
+    });
+  }, []);
 
   useEffect(() => {
     if (!user) {
+      SyncQueueManager.setUser(null);
+      words.removeAllWords();
+      words.userInputs.clear();
+      setPendingCount(0);
       setLoading(false);
       return;
     }
 
+    SyncQueueManager.setUser(getEffectiveUserId(user));
     setLoading(true);
     setError(null);
 
@@ -204,12 +219,14 @@ export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
     }
 
     const userId = getEffectiveUserId(user);
-    const wordsCollection = collection(db, "users", userId, "words");
+    const docIds = Array.from(words.wordData.values()).map((data) => data.id);
+    if (docIds.length === 0) return;
 
     try {
-      const querySnapshot = await getDocs(wordsCollection);
       await commitBatchOperations(
-        querySnapshot.docs.map((document) => (batch) => batch.delete(document.ref))
+        docIds.map((id) => (batch) =>
+          batch.delete(doc(db, "users", userId, "words", id))
+        )
       );
     } catch (err) {
       console.error("Failed to remove all words:", err);
@@ -236,10 +253,11 @@ export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
             attemptHistory: data.attemptHistory,
           },
         });
+        notifyIfStorageFallback();
         setPendingCount(SyncQueueManager.getUniqueWordCount());
       }
     },
-    []
+    [notifyIfStorageFallback]
   );
 
   const recordIncorrectAttempt = useCallback((word: string) => {
@@ -260,9 +278,10 @@ export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
           attemptHistory: data.attemptHistory,
         },
       });
+      notifyIfStorageFallback();
       setPendingCount(SyncQueueManager.getUniqueWordCount());
     }
-  }, []);
+  }, [notifyIfStorageFallback]);
 
   const syncToFirestore = useCallback(async () => {
     if (!user) {

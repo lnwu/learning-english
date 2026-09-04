@@ -10,7 +10,7 @@ import {
 } from "@/components/ui";
 import { useEffect, useRef, useState } from "react";
 import { useFirestoreWords, useLocale, toast } from "@/hooks";
-import { auth } from "@/lib/firebase";
+import { postJson } from "@/lib/apiClient";
 import { formatSenses, type WordSense } from "@/lib/parseTranslation";
 
 interface AddWordDialogProps {
@@ -46,33 +46,16 @@ const AddWordDialog = ({ word, onClose, onFinished }: AddWordDialogProps) => {
       setSenses([]);
       const t = tRef.current;
       try {
-        const idToken = await auth.currentUser?.getIdToken();
-        if (!idToken) {
-          throw new Error(t("error.notAuthenticated"));
-        }
+        const data = await postJson<{ senses: WordSense[] | null }>(
+          "/api/translate",
+          { word },
+          t("addWord.addFailed")
+        );
 
-        const response = await fetch("/api/translate", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${idToken}`,
-          },
-          body: JSON.stringify({ word }),
-        });
-
-        const data = await response.json().catch(() => null);
-        if (!response.ok) {
-          throw new Error(
-            data && typeof data.error === "string"
-              ? data.error
-              : t("addWord.addFailed")
-          );
-        }
-
-        const fetched = (data as { senses: WordSense[] | null }).senses;
+        const fetched = data.senses;
         if (!fetched || fetched.length === 0) {
           toast({
-            title: t("addWord.notRecognized").replace("{word}", word),
+            title: t("addWord.notRecognized", { word }),
             variant: "destructive",
           });
           onFinishedRef.current?.();
@@ -106,7 +89,7 @@ const AddWordDialog = ({ word, onClose, onFinished }: AddWordDialogProps) => {
 
     if (words.wordData.has(word)) {
       toast({
-        title: tRef.current("addWord.wordExists").replace("{word}", word),
+        title: tRef.current("addWord.wordExists", { word }),
         variant: "destructive",
       });
       onFinishedRef.current?.();

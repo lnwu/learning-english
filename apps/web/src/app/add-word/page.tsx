@@ -24,12 +24,12 @@ const Home = () => {
 
     const status = checkWordAddable(words, word);
     if (status === "exists") {
-      toast({ title: t('addWord.wordExists').replace('{word}', word), variant: "destructive" });
+      toast({ title: t('addWord.wordExists', { word }), variant: "destructive" });
       clear();
       return;
     }
     if (status === "invalid") {
-      toast({ title: t('addWord.invalidChars').replace('{word}', word), variant: "destructive" });
+      toast({ title: t('addWord.invalidChars', { word }), variant: "destructive" });
       clear();
       return;
     }

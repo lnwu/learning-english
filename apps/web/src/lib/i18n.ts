@@ -21,8 +21,7 @@ function detectBrowserLocale(): Locale {
   return hasZh ? 'zh' : 'en';
 }
 
-export const translations = {
-  zh: {
+const zh = {
     // Common
     'common.loading': '加载中...',
     'common.error': '错误',
@@ -151,6 +150,7 @@ export const translations = {
     'sync.syncing': '同步中...',
     'sync.syncNow': '立即同步',
     'sync.dataLost': '部分练习记录多次同步失败，已丢失',
+    'sync.storageFailed': '本地存储写入失败，练习记录暂存于本页内存中，请立即同步以免丢失',
     
     // Mastery levels
     'mastery.new': '新单词',
@@ -158,8 +158,11 @@ export const translations = {
     'mastery.familiar': '熟悉',
     'mastery.proficient': '熟练',
     'mastery.mastered': '已掌握',
-  },
-  en: {
+};
+
+export type TranslationKey = keyof typeof zh;
+
+const en: Record<TranslationKey, string> = {
     // Common
     'common.loading': 'Loading...',
     'common.error': 'Error',
@@ -288,6 +291,7 @@ export const translations = {
     'sync.syncing': 'Syncing...',
     'sync.syncNow': 'Sync Now',
     'sync.dataLost': 'Some practice records failed to sync repeatedly and were lost',
+    'sync.storageFailed': 'Local storage write failed. Practice records are kept in memory on this page only — sync now to avoid losing them.',
     
     // Mastery levels
     'mastery.new': 'New',
@@ -295,15 +299,24 @@ export const translations = {
     'mastery.familiar': 'Familiar',
     'mastery.proficient': 'Proficient',
     'mastery.mastered': 'Mastered',
-  },
 };
 
-export type TranslationKey = keyof typeof translations["zh"];
+export const translations = { zh, en };
+
+export type TranslationParams = Record<string, string | number>;
+
+export function formatMessage(template: string, params: TranslationParams): string {
+  return template.replace(/\{(\w+)\}/g, (match, name: string) =>
+    Object.prototype.hasOwnProperty.call(params, name)
+      ? String(params[name])
+      : match
+  );
+}
 
 // 获取翻译文本
-export function t(key: TranslationKey, locale: Locale = "zh"): string {
-  const table = translations[locale] as unknown as Record<TranslationKey, string>;
-  return table[key] ?? translations.zh[key];
+export function t(key: TranslationKey, locale: Locale = "zh", params?: TranslationParams): string {
+  const text = translations[locale][key] ?? translations.zh[key];
+  return params ? formatMessage(text, params) : text;
 }
 
 const LOCALE_COOKIE = 'locale';

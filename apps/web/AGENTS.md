@@ -6,6 +6,8 @@
 
 - `src/components/ui` 是 shadcn/ui 风格组件，底层原语是 **Base UI**（`@base-ui/react`，2026-08 从 Radix 迁移完成，报告在仓库根 `.migration/`）。`components.json` 的 style 为 **`base-nova`**：标准组件（button/dialog/input/alert/sonner）用 `bun x shadcn@latest add <组件> --overwrite` 从官方注册表生成；项目自有组件（confirm-dialog/frequency-bar/sync-indicator）手写，改动时保留现有 API。
 - toast 用 sonner：`src/components/ui/sonner.tsx`（官方 Toaster，`next-themes` 取主题），业务侧通过 `src/hooks/useToast.ts` 的 `toast({ title, variant })` 调用（映射到 `toast.success/.error`），`richColors` 提供着色，`<Toaster>` 挂载在 `layout.tsx`。
+- 带登录态调 `/api/*` 统一用 `src/lib/apiClient.ts` 的 `postJson<T>(url, payload, fallbackError)`（自动取 ID token、解析错误 JSON），不要在手写 token + fetch 的重复逻辑；目前 `useSentencePractice`、`AddWordDialog`、Profile 页批量释义均已接入。
+- 全局错误兜底：`src/app/error.tsx` 与 `src/app/global-error.tsx` 已存在，未捕获渲染异常不会白屏；不要删除。
 - Base UI 惯例：多态用 `render` prop（不用 radix 的 `asChild`）；render 到非 button 元素时传 `nativeButton={false}`；动画用 keyframe 写法 `data-open:animate-in`/`data-closed:animate-out`（不用 `data-[state=...]`）。
 
 ## 词库状态管理
@@ -28,11 +30,12 @@
 ## 每日练习时间统计
 
 - `src/hooks/usePracticeTimeTracker.ts` 挂载在 `/words` 与 `/sentence` 页面：仅当 `document.visibilityState === 'visible'` 且 `document.hasFocus()` 时计时（纯逻辑在 `src/lib/practiceTime.ts` 的 `ActiveTimeTracker`，配套测试；`formatPracticeDuration` 负责中英格式化）。每 60s 及页面隐藏/卸载时把累计秒数用 Firestore `increment` 原子累加写入 `users/{userId}/practiceTime/{YYYY-MM-DD}`（文档 ID 为本地日期，字段为 `seconds`），写失败时把秒数放回待累计池下次重试。
-- Profile 页用 `getDocs` 读取全部 `practiceTime` 文档，以 GitHub Contributions 风格热力图展示（N 周 × 7 天网格，周数由 `ResizeObserver` 按容器宽度自适应、上限 53 周，避免横向滚动；月份标签、少→多图例）；网格构建与分档纯逻辑在 `practiceTime.ts`（`buildPracticeTimeWeeks`/`getPracticeTimeLevel`/`getPracticeTimeMonthLabels`，配套测试），不做实时订阅；该子集合的 Firestore 规则与 `words` 一致（本人读写、preview 匿名可写）。
+- Profile 页用 `getDocs` 读取全部 `practiceTime` 文档，以 GitHub Contributions 风格热力图展示（N 周 × 7 天网格，周数由 `ResizeObserver` 按容器宽度自适应、上限 53 周，避免横向滚动；月份标签、少→多图例）；热力图 UI 独立在 `src/app/profile/PracticeHeatmap.tsx`（`memo` 子组件，仅接收 `practiceTime`，避免搜索输入等无关重渲染波及 371 格网格），改动热力图时保持该隔离。网格构建与分档纯逻辑在 `practiceTime.ts`（`buildPracticeTimeWeeks`/`getPracticeTimeLevel`/`getPracticeTimeMonthLabels`，配套测试），不做实时订阅；该子集合的 Firestore 规则与 `words` 一致（本人读写、preview 匿名可写）。
 
 ## 多语言
 
 - locale 持久化在 cookie（`locale=zh|en`）：`layout.tsx` 服务端读 cookie（无 cookie 时回退 `accept-language`）决定 `<html lang>` 并通过 `LocaleProvider` 下发初始 locale；`useLocale` 的 `getServerSnapshot` 用该初始值，保证 SSR 与客户端一致。不要再从 localStorage 或硬编码读取 locale。
+- `t()` 支持占位符参数：`t(key, locale, params)`（`useLocale` 返回的 `t` 为 `t(key, params)`），占位符写法 `{name}`（如 `profile.deleteConfirm` 的 `{word}`、`profile.regeneratePartial` 的 `{success}/{skipped}`）；需要插值时传 params，不要手写 `.replace('{xxx}', ...)`。en 表以 `Record<TranslationKey, string>` 约束，缺 key 会编译报错；key 一致性与占位符匹配由 `src/lib/i18n.test.ts` 守护。
 
 ## 造句练习与 DeepSeek 集成
 
@@ -44,7 +47,7 @@
 - API Key 只允许在服务端使用，禁止加 `NEXT_PUBLIC_` 前缀或下发到前端。
 - 造句练习复用 `useFirestoreWords` 的单词库与 `recordCorrectAttempt`/`recordIncorrectAttempt`，练习结果计入单词熟练度并同步到 Firebase；造句场景没有真实输入计时，`recordCorrectAttempt(word)` 不传 `inputTimeSeconds`（该参数仅单词拼写练习传入），不要伪造输入时间以免抬高 speedScore。`calculateMasteryScore` 对无计时数据的词让速度/稳定性因子不参与加权（避免纯造句词被压级），详见 `docs/WORD_FAMILIARITY_ALGORITHM.md`。
 - 批改接口返回 `usedWords`（用户实际用到的目标词，同义表达替代也算），客户端只对 `usedWords` 中的词调用 `recordCorrect/IncorrectAttempt`，未用到的目标词不记分；模型未返回该字段时回退为全部目标词。
-- 同步队列（`src/lib/syncQueue.ts`）条目重试达到上限被丢弃时，`incrementRetries` 返回被丢弃条目，`syncToFirestore` 会 toast 提示用户（文案 `sync.dataLost`），不要改回静默丢弃。
+- 同步队列（`src/lib/syncQueue.ts`）按 uid 隔离（`SyncQueueManager.setUser(uid)`，key 为 `sync_queue:{uid}`，登录/登出由 `useFirestoreWords` 负责切换并在登出时清空 store 与队列，切换账号不会把旧账号的 wordId 写到新账号路径下）；条目重试达到上限被丢弃时，`incrementRetries` 返回被丢弃条目，`syncToFirestore` 会 toast 提示用户（文案 `sync.dataLost`），不要改回静默丢弃。localStorage 写失败时队列自动回退到内存副本（`hasMemoryFallback()`）并 toast 提示（文案 `sync.storageFailed`）。
 - 造句题目界面不直接显示目标单词（答题后的反馈区才显示），这是有意设计：学生凭中文句子推断用词，因此造句请求会把词库中存的中文译法随目标词一并传给模型，prompt 要求中文译文自然地道、使用参考译法且能让学生反推出目标词；批改时对目标词的同义表达不判错、仅提示。
 - 批改接口在调用模型前先对答案与参考译文做规范化判等（`src/lib/sentenceCompare.ts` 的 `normalizeForComparison`），完全一致直接返回满分，不消耗模型调用。
 - `/api/regenerate-definitions` 批量重新生成释义：请求 `{ words: string[] }`（每批上限 50，服务端会过滤掉非小写字母或超长词并去重，合法词为空时 400），一次 DeepSeek 调用返回 `{ results: [{ word, senses }] }`；纯逻辑在 `src/lib/regenerateDefinitions.ts`（`buildRegenerateMessages`/`parseRegenerateResults`，配套测试），未识别或非法的词 `senses` 为 `null`，前端保留原释义。Profile 页「AI 重新生成释义」前端串行分批调用并显示进度，通过 `useFirestoreWords` 的 `updateTranslations`（store 即时更新 + Firestore batch 写 `translation`）落库，不改动练习数据。
