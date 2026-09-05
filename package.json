@@ -1,6 +1,6 @@
 {
   "name": "learn-english",
-  "packageManager": "bun@1.4.0",
+  "packageManager": "bun@1.4.2",
   "private": true,
   "scripts": {
     "dev": "test -d apps/web/.vercel || bun x vercel link --cwd apps/web; turbo dev",
