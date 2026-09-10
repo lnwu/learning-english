@@ -30,6 +30,10 @@ export const AppShell: FC<{ children: ReactNode }> = ({ children }) => {
     );
   }
 
+  if (!user && pathname !== "/login") {
+    return null;
+  }
+
   return (
     <>
       {user && (
@@ -42,9 +46,9 @@ export const AppShell: FC<{ children: ReactNode }> = ({ children }) => {
           </div>
         </header>
       )}
-      <main className="flex flex-1 flex-col items-center justify-center">
+      <div className="flex flex-1 flex-col items-center justify-center">
         {children}
-      </main>
+      </div>
     </>
   );
 };

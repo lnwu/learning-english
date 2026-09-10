@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { chatCompletionJson, DeepSeekError } from "@/lib/deepseek";
 import { verifyFirebaseIdToken } from "@/lib/serverAuth";
 import { checkRateLimit } from "@/lib/rateLimit";
-import { normalizeForComparison } from "@/lib/sentenceCompare";
+import { normalizeForComparison, resolveUsedWords, sanitizeUsedWords } from "@/lib/sentenceCompare";
 
 interface CheckRequest {
   chinese?: string;
@@ -25,21 +25,6 @@ const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const MAX_SENTENCE_LENGTH = 500;
 const MAX_WORDS = 3;
 const MAX_WORD_LENGTH = 50;
-
-const resolveUsedWords = (sentence: string, words: string[]): string[] => {
-  const tokens = new Set(normalizeForComparison(sentence).split(" "));
-  return words.filter((word) => tokens.has(word.toLowerCase()));
-};
-
-const sanitizeUsedWords = (usedWords: unknown, words: string[]): string[] => {
-  if (!Array.isArray(usedWords)) return words;
-  const lowered = new Set(
-    usedWords
-      .filter((word): word is string => typeof word === "string")
-      .map((word) => word.trim().toLowerCase())
-  );
-  return words.filter((word) => lowered.has(word.toLowerCase()));
-};
 
 export async function POST(request: Request) {
   const auth = await verifyFirebaseIdToken(request);

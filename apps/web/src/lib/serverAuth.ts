@@ -5,6 +5,7 @@ const ACCOUNTS_LOOKUP_URL =
 
 const DEFAULT_TOKEN_TTL_MS = 60 * 60 * 1000;
 const CACHE_SKEW_MS = 60 * 1000;
+const MAX_TOKEN_CACHE_ENTRIES = 1000;
 const tokenCache = new Map<string, number>();
 
 function decodeTokenPayload(token: string): Record<string, unknown> | null {
@@ -84,7 +85,14 @@ export async function verifyFirebaseIdToken(
       decodeTokenExpiry(idToken) ?? Date.now() + DEFAULT_TOKEN_TTL_MS;
     const ttl = expiry - Date.now() - CACHE_SKEW_MS;
     if (ttl > 0) {
-      if (tokenCache.size >= 1000) evictExpiredTokens();
+      if (tokenCache.size >= MAX_TOKEN_CACHE_ENTRIES) {
+        evictExpiredTokens();
+      }
+      while (tokenCache.size >= MAX_TOKEN_CACHE_ENTRIES) {
+        const oldest = tokenCache.keys().next().value;
+        if (oldest === undefined) break;
+        tokenCache.delete(oldest);
+      }
       tokenCache.set(idToken, Date.now() + ttl);
     }
 
