@@ -21,7 +21,7 @@
 
 常用命令（在 `apps/web` 下执行）：
 
-- `bun run test`：运行 vitest 单元测试
+- `bun run test`：运行 bun test 单元测试
 - `bun x tsc --noEmit`：类型检查
 - `bun run lint`：ESLint
 
