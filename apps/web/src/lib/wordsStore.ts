@@ -309,24 +309,122 @@ export const isWordDataEqual = (a: WordData, b: WordData) => {
   );
 };
 
+export interface SyncableWordData {
+  correctCount: number;
+  totalAttempts: number;
+  inputTimes: number[];
+  correctPracticeDates?: string[];
+  attemptHistory?: boolean[];
+}
+
+export interface PendingWordUpdate {
+  wordId: string;
+  data: SyncableWordData;
+  practicedAt: number;
+}
+
+export interface MergedSnapshotResult {
+  byWord: Map<string, WordData>;
+  byId: Map<string, WordData>;
+}
+
+export const isSyncableDataEqual = (
+  a: SyncableWordData,
+  b: SyncableWordData
+): boolean => {
+  const aDates = a.correctPracticeDates ?? [];
+  const bDates = b.correctPracticeDates ?? [];
+  const aHistory = a.attemptHistory ?? [];
+  const bHistory = b.attemptHistory ?? [];
+  return (
+    a.correctCount === b.correctCount &&
+    a.totalAttempts === b.totalAttempts &&
+    a.inputTimes.length === b.inputTimes.length &&
+    a.inputTimes.every((time, index) => time === b.inputTimes[index]) &&
+    aDates.length === bDates.length &&
+    aDates.every((date, index) => date === bDates[index]) &&
+    aHistory.length === bHistory.length &&
+    aHistory.every((flag, index) => flag === bHistory[index])
+  );
+};
+
+export const isFirestoreAdvanced = (
+  firestore: SyncableWordData,
+  queued: SyncableWordData
+): boolean => {
+  if (
+    firestore.totalAttempts < queued.totalAttempts ||
+    firestore.correctCount < queued.correctCount
+  ) {
+    return false;
+  }
+  return (
+    firestore.totalAttempts > queued.totalAttempts ||
+    firestore.correctCount > queued.correctCount
+  );
+};
+
+export const isQueueItemStale = (
+  firestore: SyncableWordData,
+  queued: SyncableWordData
+): boolean => {
+  if (isFirestoreAdvanced(firestore, queued)) {
+    return true;
+  }
+  if (
+    firestore.totalAttempts !== queued.totalAttempts ||
+    firestore.correctCount !== queued.correctCount
+  ) {
+    return false;
+  }
+  return isSyncableDataEqual(firestore, queued);
+};
+
 export const mergeSnapshotIntoStore = (
   store: Words,
   snapshot: {
     docs: Array<{ id: string; data: () => DocumentData }>;
-  }
-) => {
-  const incoming = new Map<string, WordData>();
+  },
+  pending: PendingWordUpdate[] = []
+): MergedSnapshotResult => {
+  const byId = new Map<string, WordData>();
+  const byWord = new Map<string, WordData>();
+
   snapshot.docs.forEach((doc) => {
-    incoming.set(doc.data().word, parseWordDoc(doc.id, doc.data()));
+    const parsed = parseWordDoc(doc.id, doc.data());
+    byId.set(doc.id, parsed);
+    byWord.set(parsed.word, parsed);
   });
 
+  for (const item of pending) {
+    const firestoreWord = byId.get(item.wordId);
+    if (!firestoreWord || isFirestoreAdvanced(firestoreWord, item.data)) {
+      continue;
+    }
+
+    const merged: WordData = {
+      ...firestoreWord,
+      correctCount: item.data.correctCount,
+      totalAttempts: item.data.totalAttempts,
+      inputTimes: item.data.inputTimes,
+      lastPracticedAt: new Date(item.practicedAt),
+    };
+    if (item.data.correctPracticeDates !== undefined) {
+      merged.correctPracticeDates = item.data.correctPracticeDates;
+    }
+    if (item.data.attemptHistory !== undefined) {
+      merged.attemptHistory = item.data.attemptHistory;
+    }
+    byWord.set(merged.word, merged);
+  }
+
   for (const word of Array.from(store.wordData.keys())) {
-    if (!incoming.has(word)) {
+    if (!byWord.has(word)) {
       store.deleteWord(word);
     }
   }
 
-  for (const [word, data] of incoming) {
+  for (const [word, data] of byWord) {
     const existing = store.wordData.get(word);
     if (!existing) {
       store.setWordData(word, data);
@@ -334,4 +432,6 @@ export const mergeSnapshotIntoStore = (
       store.setWordData(word, data);
     }
   }
+
+  return { byWord, byId };
 };

@@ -1,10 +1,10 @@
 "use client";
 
-import { Button, ConfirmDialog, Input, MasteryBar, getMasteryLevel } from "@/components/ui";
+import { Button, ConfirmDialog, getMasteryLevel, MASTERY_BAR_COLORS } from "@/components/ui";
 import { useFirestoreWords, useLocale, toast, useAuth } from "@/hooks";
 import { observer } from "mobx-react-lite";
 import Link from "next/link";
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { type Locale, type TranslationKey } from "@/lib/i18n";
 import { db, getEffectiveUserId } from "@/lib/firebase";
 import {
@@ -13,6 +13,7 @@ import {
 } from "firebase/firestore";
 import { postJson } from "@/lib/apiClient";
 import PracticeHeatmap from "./PracticeHeatmap";
+import { WordPerformanceSection } from "./WordPerformanceSection";
 import { formatSenses } from "@/lib/parseTranslation";
 import type { MasteryLevel } from "@/lib/masteryCalculator";
 import {
@@ -20,31 +21,15 @@ import {
   type RegenerateResult,
 } from "@/lib/regenerateDefinitions";
 
-const COLOR_CLASSES = {
-  blue: {
-    header: "bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-300",
-    border: "border-blue-200 dark:border-blue-700",
-  },
-  yellow: {
-    header: "bg-yellow-50 dark:bg-yellow-900 text-yellow-600 dark:text-yellow-300",
-    border: "border-yellow-200 dark:border-yellow-700",
-  },
-  red: {
-    header: "bg-red-50 dark:bg-red-900 text-red-600 dark:text-red-300",
-    border: "border-red-200 dark:border-red-700",
-  },
-} as const;
-
 const MASTERY_SEGMENTS: Array<{
   key: MasteryLevel;
   labelKey: TranslationKey;
-  barColor: string;
 }> = [
-  { key: "new", labelKey: "mastery.new", barColor: "bg-red-500" },
-  { key: "learning", labelKey: "mastery.learning", barColor: "bg-orange-500" },
-  { key: "familiar", labelKey: "mastery.familiar", barColor: "bg-yellow-500" },
-  { key: "proficient", labelKey: "mastery.proficient", barColor: "bg-lime-500" },
-  { key: "mastered", labelKey: "mastery.mastered", barColor: "bg-green-500" },
+  { key: "new", labelKey: "mastery.new" },
+  { key: "learning", labelKey: "mastery.learning" },
+  { key: "familiar", labelKey: "mastery.familiar" },
+  { key: "proficient", labelKey: "mastery.proficient" },
+  { key: "mastered", labelKey: "mastery.mastered" },
 ];
 
 const Profile = observer(() => {
@@ -55,7 +40,6 @@ const Profile = observer(() => {
   const { locale, setLocale, t } = useLocale();
   const [resetting, setResetting] = useState(false);
   const [showResetDialog, setShowResetDialog] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
   const [wordToDelete, setWordToDelete] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [showRegenerateDialog, setShowRegenerateDialog] = useState(false);
@@ -93,37 +77,6 @@ const Profile = observer(() => {
   const overallAverageTime = words.overallAverageInputTime;
 
   const wordsWithStats = words.practiceStats;
-
-  const wordsByCategory = useMemo<Record<number, typeof wordsWithStats>>(() => {
-    const grouped: Record<number, typeof wordsWithStats> = {
-      0: [], // short words
-      1: [], // medium words
-      2: [], // long words
-    };
-    wordsWithStats.forEach((item) => {
-      grouped[words.getWordLengthCategory(item.word)].push(item);
-    });
-    return grouped;
-  }, [wordsWithStats, words]);
-
-  // Filter words by search query
-  const filteredWordsByCategory = useMemo<Record<number, typeof wordsWithStats>>(() => {
-    if (!searchQuery.trim()) {
-      return wordsByCategory;
-    }
-    const query = searchQuery.toLowerCase().trim();
-    const filtered: Record<number, typeof wordsWithStats> = {
-      0: [],
-      1: [],
-      2: [],
-    };
-    Object.entries(wordsByCategory).forEach(([cat, categoryWords]) => {
-      filtered[Number(cat)] = categoryWords.filter(({ word }) => 
-        word.toLowerCase().includes(query)
-      );
-    });
-    return filtered;
-  }, [searchQuery, wordsByCategory]);
 
   // Calculate average mastery score
   const avgMasteryScore = wordsWithStats.length > 0
@@ -187,6 +140,10 @@ const Profile = observer(() => {
       setWordToDelete(null);
     }
   };
+
+  const handleDeleteRequest = useCallback((word: string) => {
+    setWordToDelete(word);
+  }, []);
 
   const handleRegenerateAll = async () => {
     if (regeneratingRef.current) return;
@@ -421,7 +378,7 @@ const Profile = observer(() => {
             <p className="text-sm text-gray-600 dark:text-gray-400">{t('profile.noPracticeData')}</p>
           ) : (
             <div className="space-y-3">
-              {MASTERY_SEGMENTS.map(({ key, labelKey, barColor }) => {
+              {MASTERY_SEGMENTS.map(({ key, labelKey }) => {
                 const count = masteryDistribution[key];
                 const pct = totalWords > 0 ? Math.round((count / totalWords) * 100) : 0;
                 return (
@@ -431,7 +388,7 @@ const Profile = observer(() => {
                     </span>
                     <div className="flex-1 h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                       <div
-                        className={`h-full rounded-full ${barColor} transition-all`}
+                        className={`h-full rounded-full ${MASTERY_BAR_COLORS[key]} transition-all`}
                         style={{ width: `${pct}%` }}
                       />
                     </div>
@@ -443,93 +400,11 @@ const Profile = observer(() => {
           )}
         </div>
 
-        {/* Average Speed by Word Length with Word Performance */}
-        <div className="mb-8 p-6 bg-white dark:bg-gray-800 rounded-lg shadow">
-          <h2 className="text-xl font-semibold mb-4">{t('profile.speedByLength')}</h2>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-            {t('profile.speedByLengthDesc')}
-          </p>
-          
-          {/* Search Input */}
-          <div className="mb-4">
-            <Input
-              type="text"
-              placeholder={t('profile.searchWord')}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full md:w-64"
-            />
-          </div>
-          
-          <div className="space-y-6">
-            {([
-              { category: 0, labelKey: "profile.shortWords", color: "blue" },
-              { category: 1, labelKey: "profile.mediumWords", color: "yellow" },
-              { category: 2, labelKey: "profile.longWords", color: "red" },
-            ] as const).map(({ category, labelKey, color }) => {
-              const avgTime = words.averageTimeByLengthCategory[category];
-              const categoryWords = filteredWordsByCategory[category];
-              const classes = COLOR_CLASSES[color as keyof typeof COLOR_CLASSES];
-              
-              return (
-                <div key={category} className={`border rounded-lg overflow-hidden ${classes.border}`}>
-                  {/* Category Header */}
-                  <div className={`p-4 ${classes.header} flex items-center justify-between`}>
-                    <div className="font-semibold">{t(labelKey)}</div>
-                    <div className="text-xl font-bold">
-                      {avgTime !== null ? `${avgTime.toFixed(2)}${t('profile.seconds')}` : t('profile.noData')}
-                    </div>
-                  </div>
-                  
-                  {/* Words in this category */}
-                  {categoryWords.length > 0 && (
-                    <div className="max-h-48 overflow-y-auto">
-                      {categoryWords.map(({ word, avgTime: wordAvgTime, count, masteryScore, correctCount, totalAttempts }) => (
-                        <div
-                          key={word}
-                          className="flex items-center justify-between p-3 border-t border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800"
-                        >
-                          <div className="flex-1">
-                            <span className="font-medium">{word}</span>
-                            <span className="text-sm text-gray-500 dark:text-gray-400 ml-2">
-                              ({correctCount}/{totalAttempts} {t('profile.correct')})
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-4">
-                            <div className="text-right">
-                              <div className="font-semibold">
-                                {count > 0 ? `${wordAvgTime.toFixed(1)}${t('profile.seconds')}` : '-'}
-                              </div>
-                            </div>
-                            <MasteryBar score={masteryScore} showLabel={false} />
-                            <div className="text-xs text-gray-500 dark:text-gray-400 w-10 text-right">
-                              {masteryScore}%
-                            </div>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 px-2"
-                              onClick={() => setWordToDelete(word)}
-                              aria-label={t('profile.deleteWord')}
-                            >
-                              {t('profile.deleteWord')}
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  
-                  {categoryWords.length === 0 && (
-                    <div className="p-3 text-center text-sm text-gray-500 dark:text-gray-400">
-                      {t('profile.noData')}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
+        <WordPerformanceSection
+          words={words}
+          onDelete={handleDeleteRequest}
+          t={t}
+        />
 
         {/* No Data Message */}
         {wordsWithStats.length === 0 && (

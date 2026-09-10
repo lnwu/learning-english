@@ -3,6 +3,8 @@ import {
   Words,
   parseWordDoc,
   isWordDataEqual,
+  isQueueItemStale,
+  isSyncableDataEqual,
   mergeSnapshotIntoStore,
   type WordData,
 } from "./wordsStore";
@@ -206,6 +208,234 @@ describe("isWordDataEqual", () => {
     ["lastPracticedAt", { lastPracticedAt: new Date() }],
   ] as Array<[string, Partial<WordData>]>)("%s 不同返回 false", (_field: string, overrides: Partial<WordData>) => {
     expect(isWordDataEqual(makeWordData(), makeWordData(overrides))).toBe(false);
+  });
+});
+
+describe("isSyncableDataEqual", () => {
+  it("缺失数组字段按空数组比较", () => {
+    const base = { correctCount: 1, totalAttempts: 1, inputTimes: [1] };
+    expect(isSyncableDataEqual(base, { ...base })).toBe(true);
+    expect(
+      isSyncableDataEqual(base, {
+        ...base,
+        correctPracticeDates: ["2026-01-01"],
+      })
+    ).toBe(false);
+  });
+});
+
+describe("isQueueItemStale", () => {
+  const queued = { correctCount: 2, totalAttempts: 3, inputTimes: [1, 2] };
+
+  it("远端尝试次数更多时视为已被覆盖", () => {
+    expect(
+      isQueueItemStale(
+        { ...queued, totalAttempts: 4, correctCount: 3, inputTimes: [1, 2, 3] },
+        queued
+      )
+    ).toBe(true);
+  });
+
+  it("本地尝试次数更多时不清理队列", () => {
+    expect(isQueueItemStale(queued, { ...queued, totalAttempts: 4 })).toBe(
+      false
+    );
+  });
+
+  it("计数与数组完全一致时视为已同步", () => {
+    expect(isQueueItemStale({ ...queued }, queued)).toBe(true);
+  });
+
+  it("同尝试次数下远端正确数更高时视为已被覆盖", () => {
+    expect(
+      isQueueItemStale(
+        { ...queued, correctCount: 3 },
+        { ...queued, correctCount: 1, attemptHistory: [true, false, false] }
+      )
+    ).toBe(true);
+  });
+
+  it("远端尝试更多但正确更少时保留队列", () => {
+    expect(
+      isQueueItemStale(
+        {
+          ...queued,
+          totalAttempts: 4,
+          correctCount: 1,
+          inputTimes: [1, 2, 3, 4],
+        },
+        queued
+      )
+    ).toBe(false);
+  });
+
+  it("计数相同但数组不同时保留队列避免丢数据", () => {
+    expect(
+      isQueueItemStale(
+        { ...queued, correctPracticeDates: ["2026-01-01"] },
+        { ...queued, correctPracticeDates: ["2026-01-01", "2026-01-02"] }
+      )
+    ).toBe(false);
+  });
+});
+
+describe("mergeSnapshotIntoStore with pending queue", () => {
+  let store: Words;
+
+  const makeSnapshot = (entries: Array<[string, Partial<WordData>]>) => ({
+    docs: entries.map(([word, overrides]) => ({
+      id: overrides.id ?? `id-${word}`,
+      data: () => ({
+        word,
+        translation: overrides.translation ?? `${word}译`,
+        ...overrides,
+        createdAt:
+          overrides.createdAt ?? { toDate: () => new Date("2026-01-01T00:00:00") },
+      }),
+    })),
+  });
+
+  beforeEach(() => {
+    store = new Words();
+  });
+
+  it("本地队列较新时保留本地数据", () => {
+    mergeSnapshotIntoStore(
+      store,
+      makeSnapshot([
+        ["apple", { correctCount: 2, totalAttempts: 2, inputTimes: [1, 1] }],
+      ]),
+      [
+        {
+          wordId: "id-apple",
+          data: { correctCount: 3, totalAttempts: 3, inputTimes: [1, 1, 1] },
+          practicedAt: 1700000000000,
+        },
+      ]
+    );
+    const data = store.getWordData("apple")!;
+    expect(data.totalAttempts).toBe(3);
+    expect(data.correctCount).toBe(3);
+    expect(data.lastPracticedAt?.getTime()).toBe(1700000000000);
+  });
+
+  it("远端较新时使用远端数据", () => {
+    mergeSnapshotIntoStore(
+      store,
+      makeSnapshot([
+        [
+          "apple",
+          { correctCount: 4, totalAttempts: 4, inputTimes: [1, 1, 1, 1] },
+        ],
+      ]),
+      [
+        {
+          wordId: "id-apple",
+          data: { correctCount: 3, totalAttempts: 3, inputTimes: [1, 1, 1] },
+          practicedAt: 1700000000000,
+        },
+      ]
+    );
+    expect(store.getWordData("apple")!.totalAttempts).toBe(4);
+  });
+
+  it("远端同次数但正确更多时使用远端数据", () => {
+    mergeSnapshotIntoStore(
+      store,
+      makeSnapshot([
+        ["apple", { correctCount: 3, totalAttempts: 3, inputTimes: [1, 1, 1] }],
+      ]),
+      [
+        {
+          wordId: "id-apple",
+          data: { correctCount: 1, totalAttempts: 3, inputTimes: [1, 1, 1] },
+          practicedAt: 1700000000000,
+        },
+      ]
+    );
+    expect(store.getWordData("apple")!.correctCount).toBe(3);
+  });
+
+  it("计数相同时本地数组优先", () => {
+    mergeSnapshotIntoStore(
+      store,
+      makeSnapshot([
+        [
+          "apple",
+          {
+            correctCount: 2,
+            totalAttempts: 2,
+            correctPracticeDates: ["2026-01-01"],
+            attemptHistory: [true, true],
+          },
+        ],
+      ]),
+      [
+        {
+          wordId: "id-apple",
+          data: {
+            correctCount: 2,
+            totalAttempts: 2,
+            inputTimes: [],
+            correctPracticeDates: ["2026-01-01", "2026-01-02"],
+            attemptHistory: [true, false],
+          },
+          practicedAt: 1700000000000,
+        },
+      ]
+    );
+    const data = store.getWordData("apple")!;
+    expect(data.correctPracticeDates).toEqual(["2026-01-01", "2026-01-02"]);
+    expect(data.attemptHistory).toEqual([true, false]);
+  });
+
+  it("byId 返回未叠加队列的 Firestore 原始数据", () => {
+    const result = mergeSnapshotIntoStore(
+      store,
+      makeSnapshot([
+        ["apple", { correctCount: 1, totalAttempts: 1, inputTimes: [1] }],
+      ]),
+      [
+        {
+          wordId: "id-apple",
+          data: { correctCount: 2, totalAttempts: 2, inputTimes: [1, 1] },
+          practicedAt: 1700000000000,
+        },
+      ]
+    );
+    expect(result.byId.get("id-apple")!.totalAttempts).toBe(1);
+    expect(result.byWord.get("apple")!.totalAttempts).toBe(2);
+  });
+
+  it("每份文档只解析一次", () => {
+    let calls = 0;
+    const snapshot = {
+      docs: ["apple", "banana"].map((word) => ({
+        id: `id-${word}`,
+        data: () => {
+          calls += 1;
+          return {
+            word,
+            translation: `${word}译`,
+            createdAt: { toDate: () => new Date("2026-01-01") },
+          };
+        },
+      })),
+    };
+    mergeSnapshotIntoStore(store, snapshot);
+    expect(calls).toBe(2);
+  });
+
+  it("队列中没有对应文档的词不影响合并", () => {
+    mergeSnapshotIntoStore(store, makeSnapshot([["apple", {}]]), [
+      {
+        wordId: "id-ghost",
+        data: { correctCount: 1, totalAttempts: 1, inputTimes: [] },
+        practicedAt: 1,
+      },
+    ]);
+    expect(store.wordData.size).toBe(1);
+    expect(store.getWordData("apple")!.totalAttempts).toBe(0);
   });
 });
 

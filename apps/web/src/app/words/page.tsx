@@ -6,6 +6,11 @@ import { observer } from "mobx-react-lite";
 import Link from "next/link";
 import { useFirestoreWords, useLocale, usePracticeTimeTracker } from "@/hooks";
 import { parseTranslation } from "@/lib/parseTranslation";
+import {
+  createPracticeInputState,
+  evaluatePracticeInput,
+  type PracticeInputState,
+} from "@/lib/practiceInput";
 import type { Words } from "@/lib/wordsStore";
 import type { TranslationKey } from "@/lib/i18n";
 
@@ -50,6 +55,8 @@ const WordRow = observer(({ word, translation, words, onInputChange, onHintRevea
           ref={(el) => {
             if (el) {
               inputRefs.current.set(word, el);
+            } else {
+              inputRefs.current.delete(word);
             }
           }}
           onChange={(e) => onInputChange(word, e.target.value.toLowerCase())}
@@ -107,8 +114,7 @@ const WordsPractice = observer(() => {
   const [randomWords, setRandomWords] = useState<[string, string][]>([]);
   const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
   const hintRecordedRef = useRef<Set<string>>(new Set());
-  const errorRecordedRef = useRef<Set<string>>(new Set());
-  const timerStartRef = useRef<Map<string, number>>(new Map());
+  const inputStatesRef = useRef<Map<string, PracticeInputState>>(new Map());
 
   useEffect(() => {
     setIsClient(true);
@@ -138,41 +144,24 @@ const WordsPractice = observer(() => {
   const refreshWords = () => {
     words.userInputs.clear();
     hintRecordedRef.current.clear();
-    errorRecordedRef.current.clear();
-    timerStartRef.current.clear();
+    inputStatesRef.current.clear();
     setRandomWords(words.getRandomWords());
     setShouldFocusFirst(true);
   };
 
   const handleInputChange = useCallback((word: string, value: string) => {
-    // Start timer on first character typed
-    if (value.length === 1) {
-      timerStartRef.current.set(word, Date.now());
-    }
-
-    // Clear timer if user clears input
-    if (value.length === 0) {
-      timerStartRef.current.delete(word);
-    }
+    const previous =
+      inputStatesRef.current.get(word) ?? createPracticeInputState();
+    const decision = evaluatePracticeInput(previous, word, value, Date.now());
+    inputStatesRef.current.set(word, decision);
 
     words.setUserInput(word, value);
 
-    if (value.length >= word.length && value !== word && !errorRecordedRef.current.has(word)) {
-      errorRecordedRef.current.add(word);
+    if (decision.recordIncorrect) {
       recordIncorrectAttempt(word);
-    } else if (value.length < word.length) {
-      errorRecordedRef.current.delete(word);
     }
-
-    // If word is now correct, record the attempt
-    if (value === word) {
-      const startTime = timerStartRef.current.get(word);
-
-      if (startTime) {
-        const inputTimeSeconds = (Date.now() - startTime) / 1000;
-        recordCorrectAttempt(word, inputTimeSeconds);
-        timerStartRef.current.delete(word);
-      }
+    if (decision.recordCorrect) {
+      recordCorrectAttempt(word, decision.inputTimeSeconds);
     }
   }, [words, recordCorrectAttempt, recordIncorrectAttempt]);
 

@@ -27,9 +27,10 @@ import { toast } from "@/hooks/useToast";
 import { getCurrentLocale, t, type TranslationKey } from "@/lib/i18n";
 import {
   Words,
+  isQueueItemStale,
   mergeSnapshotIntoStore,
-  parseWordDoc,
 } from "@/lib/wordsStore";
+import { buildAttemptQueueData, buildWordUpdates } from "@/lib/wordSync";
 
 const tError = (key: TranslationKey) => t(key, getCurrentLocale());
 
@@ -76,6 +77,7 @@ export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const [pendingCount, setPendingCount] = useState(0);
   const syncingRef = useRef(false);
   const storageWarnedRef = useRef(false);
+  const wordsLoadedRef = useRef(false);
 
   const notifyIfStorageFallback = useCallback(() => {
     if (storageWarnedRef.current) return;
@@ -92,12 +94,14 @@ export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
       SyncQueueManager.setUser(null);
       words.removeAllWords();
       words.userInputs.clear();
+      wordsLoadedRef.current = false;
       setPendingCount(0);
       setLoading(false);
       return;
     }
 
     SyncQueueManager.setUser(getEffectiveUserId(user));
+    wordsLoadedRef.current = false;
     setLoading(true);
     setError(null);
 
@@ -108,36 +112,35 @@ export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
       return onSnapshot(
         wordsCollection,
         (snapshot) => {
-          mergeSnapshotIntoStore(words, snapshot);
+          const queue = SyncQueueManager.getQueue();
+          const merged = mergeSnapshotIntoStore(
+            words,
+            snapshot,
+            queue.map((item) => ({
+              wordId: item.wordId,
+              data: item.data,
+              practicedAt: item.timestamp,
+            }))
+          );
 
           // Clean up stale sync queue items
           // If Firestore data matches or exceeds queue data, remove from queue
-          const queue = SyncQueueManager.getQueue();
           if (queue.length > 0) {
-            const wordsById = new Map(
-              snapshot.docs.map((doc) => [doc.id, parseWordDoc(doc.id, doc.data())])
-            );
             const staleIds = new Set<string>();
             queue.forEach((item) => {
-              const firestoreWord = wordsById.get(item.wordId);
-              // If Firestore has same or newer data, this queue item is stale
-              if (
-                firestoreWord &&
-                firestoreWord.totalAttempts >= item.data.totalAttempts &&
-                firestoreWord.correctCount >= item.data.correctCount
-              ) {
+              const firestoreWord = merged.byId.get(item.wordId);
+              if (firestoreWord && isQueueItemStale(firestoreWord, item.data)) {
                 staleIds.add(item.id);
               }
             });
 
             if (staleIds.size > 0) {
-              SyncQueueManager.saveQueue(
-                queue.filter((item) => !staleIds.has(item.id))
-              );
+              SyncQueueManager.removeFromQueue(Array.from(staleIds));
               setPendingCount(SyncQueueManager.getUniqueWordCount());
             }
           }
 
+          wordsLoadedRef.current = true;
           setLoading(false);
           setError(null);
         },
@@ -199,9 +202,11 @@ export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
         await deleteDoc(doc(db, "users", userId, "words", wordId));
 
         const queue = SyncQueueManager.getQueue();
-        const remaining = queue.filter((item) => item.wordId !== wordId);
-        if (remaining.length !== queue.length) {
-          SyncQueueManager.saveQueue(remaining);
+        const removedIds = queue
+          .filter((item) => item.wordId === wordId)
+          .map((item) => item.id);
+        if (removedIds.length > 0) {
+          SyncQueueManager.removeFromQueue(removedIds);
           setPendingCount(SyncQueueManager.getUniqueWordCount());
         }
       } catch (err) {
@@ -212,54 +217,39 @@ export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
     [user]
   );
 
-  const recordCorrectAttempt = useCallback(
-    (word: string, inputTimeSeconds?: number) => {
-      words.recordCorrectAttempt(word, inputTimeSeconds);
-
+  const enqueueAttempt = useCallback(
+    (word: string) => {
       const wordId = words.getWordId(word);
       const data = words.getWordData(word);
-      if (wordId && data) {
-        SyncQueueManager.addToQueue({
-          type: "attempt",
-          word,
-          wordId,
-          data: {
-            correctCount: data.correctCount,
-            totalAttempts: data.totalAttempts,
-            inputTimes: data.inputTimes,
-            correctPracticeDates: data.correctPracticeDates,
-            attemptHistory: data.attemptHistory,
-          },
-        });
-        notifyIfStorageFallback();
-        setPendingCount(SyncQueueManager.getUniqueWordCount());
-      }
-    },
-    [notifyIfStorageFallback]
-  );
+      if (!wordId || !data) return;
 
-  const recordIncorrectAttempt = useCallback((word: string) => {
-    words.recordIncorrectAttempt(word);
-
-    const wordId = words.getWordId(word);
-    const data = words.getWordData(word);
-    if (wordId && data) {
       SyncQueueManager.addToQueue({
         type: "attempt",
         word,
         wordId,
-        data: {
-          correctCount: data.correctCount,
-          totalAttempts: data.totalAttempts,
-          inputTimes: data.inputTimes,
-          correctPracticeDates: data.correctPracticeDates,
-          attemptHistory: data.attemptHistory,
-        },
+        data: buildAttemptQueueData(data),
       });
       notifyIfStorageFallback();
       setPendingCount(SyncQueueManager.getUniqueWordCount());
-    }
-  }, [notifyIfStorageFallback]);
+    },
+    [notifyIfStorageFallback]
+  );
+
+  const recordCorrectAttempt = useCallback(
+    (word: string, inputTimeSeconds?: number) => {
+      words.recordCorrectAttempt(word, inputTimeSeconds);
+      enqueueAttempt(word);
+    },
+    [enqueueAttempt]
+  );
+
+  const recordIncorrectAttempt = useCallback(
+    (word: string) => {
+      words.recordIncorrectAttempt(word);
+      enqueueAttempt(word);
+    },
+    [enqueueAttempt]
+  );
 
   const syncToFirestore = useCallback(async () => {
     if (!user) {
@@ -282,37 +272,7 @@ export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
     try {
       const userId = getEffectiveUserId(user);
-
-      const updates: Map<
-        string,
-        {
-          data: {
-            correctCount: number;
-            totalAttempts: number;
-            inputTimes: number[];
-            correctPracticeDates?: string[];
-            attemptHistory?: boolean[];
-          };
-          lastPracticedAt: number;
-          queueItemIds: string[];
-        }
-      > = new Map();
-
-      queue.forEach((item) => {
-        const existing = updates.get(item.wordId);
-        if (existing) {
-          existing.data = item.data;
-          existing.lastPracticedAt = item.timestamp;
-          existing.queueItemIds.push(item.id);
-        } else {
-          updates.set(item.wordId, {
-            data: item.data,
-            lastPracticedAt: item.timestamp,
-            queueItemIds: [item.id],
-          });
-        }
-      });
-
+      const updates = buildWordUpdates(queue);
       const updateEntries = Array.from(updates.entries());
       for (let i = 0; i < updateEntries.length; i += FIRESTORE_BATCH_LIMIT) {
         const chunk = updateEntries.slice(i, i + FIRESTORE_BATCH_LIMIT);
@@ -343,7 +303,28 @@ export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
           SyncQueueManager.removeFromQueue(queueItemIds);
         } catch (error) {
           console.error("Failed to sync batch:", error);
-          const discarded = SyncQueueManager.incrementRetries(queueItemIds);
+
+          const wordWasDeleted =
+            (error as { code?: string }).code === "not-found" &&
+            wordsLoadedRef.current;
+          const goneQueueItemIds: string[] = [];
+          const retryQueueItemIds: string[] = [];
+
+          chunk.forEach(([, update]) => {
+            if (wordWasDeleted && !words.wordData.has(update.word)) {
+              goneQueueItemIds.push(...update.queueItemIds);
+            } else {
+              retryQueueItemIds.push(...update.queueItemIds);
+            }
+          });
+
+          if (goneQueueItemIds.length > 0) {
+            SyncQueueManager.removeFromQueue(goneQueueItemIds);
+          }
+
+          const discarded = SyncQueueManager.incrementRetries(
+            retryQueueItemIds
+          );
           if (discarded.length > 0) {
             toast({
               title: tError("sync.dataLost"),

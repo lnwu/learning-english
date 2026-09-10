@@ -2,8 +2,8 @@ import { describe, it, expect } from "bun:test";
 import {
   buildRegenerateMessages,
   parseRegenerateResults,
-  MAX_SENSES,
 } from "./regenerateDefinitions";
+import { MAX_SENSES } from "./senses";
 
 describe("buildRegenerateMessages", () => {
   it("构造 system 与 user 消息，包含全部单词", () => {

@@ -1,7 +1,20 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 import { useLocale } from "@/hooks";
-import { getMasteryLevel, getMasteryLevelIndex, type MasteryLevel } from "@/lib/masteryCalculator";
+import {
+  getMasteryLevel,
+  getMasteryLevelIndex,
+  MASTERY_LEVEL_ORDER,
+  type MasteryLevel,
+} from "@/lib/masteryCalculator";
+
+export const MASTERY_BAR_COLORS: Record<MasteryLevel, string> = {
+  new: "bg-red-500",
+  learning: "bg-orange-500",
+  familiar: "bg-yellow-500",
+  proficient: "bg-lime-500",
+  mastered: "bg-green-500",
+};
 
 interface MasteryBarProps {
   /** Mastery score from 0-100 */
@@ -16,15 +29,6 @@ const MasteryBar = React.forwardRef<HTMLDivElement, MasteryBarProps>(
     const { t } = useLocale();
     const level = getMasteryLevel(score);
     const levelIndex = getMasteryLevelIndex(score);
-    
-    // Define colors for each mastery level
-    const levelColors = [
-      "bg-red-500",      // Level 0: New (0-19)
-      "bg-orange-500",   // Level 1: Learning (20-39)
-      "bg-yellow-500",   // Level 2: Familiar (40-59)
-      "bg-lime-500",     // Level 3: Proficient (60-79)
-      "bg-green-500",    // Level 4: Mastered (80-100)
-    ];
 
     const levelLabels: Record<MasteryLevel, string> = {
       new: t('mastery.new'),
@@ -47,7 +51,7 @@ const MasteryBar = React.forwardRef<HTMLDivElement, MasteryBarProps>(
               className={cn(
                 "w-4 h-3 rounded-sm transition-all duration-300",
                 barLevel <= levelIndex
-                  ? levelColors[barLevel]
+                  ? MASTERY_BAR_COLORS[MASTERY_LEVEL_ORDER[barLevel]]
                   : "bg-gray-300 dark:bg-gray-600"
               )}
             />

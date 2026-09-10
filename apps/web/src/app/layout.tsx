@@ -1,7 +1,7 @@
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./index.css";
-import { Inter, Noto_Sans_SC } from "next/font/google";
+import { Inter } from "next/font/google";
 import { cookies, headers } from "next/headers";
 
 import type { Metadata } from "next";
@@ -19,11 +19,6 @@ export const metadata: Metadata = {
 };
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
-const notoSansSC = Noto_Sans_SC({
-  weight: ["400", "500", "700"],
-  variable: "--font-cjk",
-  display: "swap",
-});
 
 const RootLayout: FC<{ children: ReactNode }> = async ({ children }) => {
   const cookieLocale = (await cookies()).get("locale")?.value;
@@ -33,7 +28,7 @@ const RootLayout: FC<{ children: ReactNode }> = async ({ children }) => {
       : detectLocaleFromAcceptLanguage((await headers()).get("accept-language"));
 
   return (
-    <html lang={localeToHtmlLang(locale)} className={`${inter.variable} ${notoSansSC.variable}`}>
+    <html lang={localeToHtmlLang(locale)} className={inter.variable}>
       <body className="flex min-h-screen flex-col antialiased">
         <LocaleProvider initialLocale={locale}>
           <AuthProvider>
