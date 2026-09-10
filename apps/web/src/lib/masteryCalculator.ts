@@ -51,13 +51,13 @@ export type MasteryLevel =
 
 export const MASTERY_LEVELS: Record<
   MasteryLevel,
-  { min: number; max: number; color: string }
+  { min: number; max: number }
 > = {
-  new: { min: 0, max: 19, color: "#EF4444" },
-  learning: { min: 20, max: 39, color: "#F97316" },
-  familiar: { min: 40, max: 59, color: "#EAB308" },
-  proficient: { min: 60, max: 79, color: "#84CC16" },
-  mastered: { min: 80, max: 100, color: "#22C55E" },
+  new: { min: 0, max: 19 },
+  learning: { min: 20, max: 39 },
+  familiar: { min: 40, max: 59 },
+  proficient: { min: 60, max: 79 },
+  mastered: { min: 80, max: 100 },
 };
 
 export function getExpectedInputTime(wordLength: number): number {
@@ -79,6 +79,8 @@ const MASTERY_LEVEL_ORDER: MasteryLevel[] = [
   "proficient",
   "mastered",
 ];
+
+export { MASTERY_LEVEL_ORDER };
 
 export function getMasteryLevel(score: number): MasteryLevel {
   let level: MasteryLevel = "new";

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { Ratelimit } from "@upstash/ratelimit";
-import { Redis } from "@upstash/redis";
+import { getRedis } from "@/lib/redis";
 
 interface Bucket {
   count: number;
@@ -44,30 +44,11 @@ function tooManyRequests(): NextResponse {
   );
 }
 
-interface RedisConfig {
-  url: string;
-  token: string;
-}
-
-function getRedisConfig(): RedisConfig | null {
-  const url =
-    process.env.KV_REST_API_URL ?? process.env.UPSTASH_REDIS_REST_URL;
-  const token =
-    process.env.KV_REST_API_TOKEN ?? process.env.UPSTASH_REDIS_REST_TOKEN;
-  if (!url || !token) return null;
-  return { url, token };
-}
-
-let redis: Redis | null = null;
 const limiters = new Map<string, Ratelimit>();
 
 function getLimiter(limit: number, windowMs: number): Ratelimit | null {
-  const config = getRedisConfig();
-  if (!config) return null;
-
-  if (!redis) {
-    redis = new Redis(config);
-  }
+  const redis = getRedis();
+  if (!redis) return null;
 
   const cacheKey = `${limit}:${windowMs}`;
   let limiter = limiters.get(cacheKey);

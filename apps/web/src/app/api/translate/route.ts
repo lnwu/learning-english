@@ -2,52 +2,22 @@ import { NextResponse } from "next/server";
 import { verifyFirebaseIdToken } from "@/lib/serverAuth";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { chatCompletionJson, DeepSeekError } from "@/lib/deepseek";
+import { sanitizeWordSenses } from "@/lib/senses";
+import {
+  getCachedTranslation,
+  setCachedTranslation,
+  type TranslationCacheEntry,
+} from "@/lib/translationCache";
+import type { WordSense } from "@/lib/parseTranslation";
 
 const WORD_PATTERN = /^[a-z]+$/;
 const MAX_WORD_LENGTH = 50;
 const RATE_LIMIT_PER_MINUTE = 30;
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
-const MAX_CACHE_ENTRIES = 1000;
-const MAX_SENSES = 4;
-const MAX_POS_LENGTH = 10;
-const MAX_DEFINITION_LENGTH = 150;
-const MAX_TRANSLATION_LENGTH = 50;
-
-interface WordSense {
-  pos: string;
-  chinese: string;
-  english: string;
-}
-
-interface TranslationCacheEntry {
-  senses: WordSense[] | null;
-}
 
 interface WordLookupResult {
   isWord: boolean;
   senses: WordSense[];
-}
-
-const translationCache = new Map<string, TranslationCacheEntry>();
-
-function getCached(word: string): TranslationCacheEntry | undefined {
-  const entry = translationCache.get(word);
-  if (entry) {
-    translationCache.delete(word);
-    translationCache.set(word, entry);
-  }
-  return entry;
-}
-
-function setCached(word: string, entry: TranslationCacheEntry): void {
-  if (!entry.senses || entry.senses.length === 0 || translationCache.has(word)) {
-    return;
-  }
-  if (translationCache.size >= MAX_CACHE_ENTRIES) {
-    const oldest = translationCache.keys().next().value;
-    if (oldest !== undefined) translationCache.delete(oldest);
-  }
-  translationCache.set(word, entry);
 }
 
 async function lookupWord(word: string): Promise<TranslationCacheEntry> {
@@ -75,24 +45,7 @@ async function lookupWord(word: string): Promise<TranslationCacheEntry> {
     return { senses: null };
   }
 
-  const senses = Array.isArray(result.senses)
-    ? result.senses
-        .slice(0, MAX_SENSES)
-        .map((sense) => ({
-          pos: typeof sense?.pos === "string" ? sense.pos.trim() : "",
-          chinese: typeof sense?.chinese === "string" ? sense.chinese.trim() : "",
-          english: typeof sense?.english === "string" ? sense.english.trim() : "",
-        }))
-        .filter(
-          (sense) =>
-            sense.pos &&
-            sense.pos.length <= MAX_POS_LENGTH &&
-            sense.chinese &&
-            sense.chinese.length <= MAX_TRANSLATION_LENGTH &&
-            sense.english &&
-            sense.english.length <= MAX_DEFINITION_LENGTH
-        )
-    : [];
+  const senses = sanitizeWordSenses(result.senses);
 
   if (senses.length === 0) {
     throw new DeepSeekError("AI 服务返回内容异常", 502);
@@ -126,14 +79,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "无效单词" }, { status: 400 });
   }
 
-  const cached = getCached(word);
+  const cached = await getCachedTranslation(word);
   if (cached) {
     return NextResponse.json(cached);
   }
 
   try {
     const result = await lookupWord(word);
-    setCached(word, result);
+    setCachedTranslation(word, result);
     return NextResponse.json(result);
   } catch (error) {
     console.error("translate lookup failed:", error);
