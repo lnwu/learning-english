@@ -1,9 +1,17 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "config:recommended"
+    "config:recommended",
+    "security:minimumReleaseAgeNpm"
   ],
+  "platformAutomerge": false,
   "packageRules": [
+    {
+      "description": "minor/patch 自动合并（0.x 除外）",
+      "matchUpdateTypes": ["minor", "patch"],
+      "matchCurrentVersion": "!/^0/",
+      "automerge": true
+    },
     {
       "matchPackageNames": ["mobx", "mobx-react-lite"],
       "groupName": "mobx"
