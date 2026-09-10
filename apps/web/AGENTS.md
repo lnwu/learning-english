@@ -2,6 +2,12 @@
 
 本文件包含 AI 在本项目中工作时必须遵守的规则和项目信息。
 
+## TypeScript 6/7 并排
+
+- TypeScript 采用官方并排方案（2026-09）：`typescript` 别名指向 `@typescript/typescript6`（TS6 JS API，供 typescript-eslint 与 Next 使用），`@typescript/native` 别名指向 `typescript@7`（提供 TS7 的 `tsc` 可执行文件）。因此 `bun x tsc` 是 TS 7.0.x，而 `next build` 的类型检查走 TS6 API；不要移除任一别名或把 `typescript` 直接改成 `^7`，否则 typescript-eslint 会因 TS7 没有 JS API 而崩溃。
+- `tsconfig.json` 必须保留 `"types": ["bun", "node"]`：TS 6/7 起 `types` 默认是 `[]`，不再自动加载 `@types/*`，去掉后测试文件会报 `Cannot find module 'bun:test'`。
+- TypeScript 7.1 提供新 API 且 typescript-eslint 支持后（tracking: typescript-eslint#10940），切回单一 `typescript@^7` 并移除本节的并排说明。
+
 ## UI 组件
 
 - `src/components/ui` 是 shadcn/ui 风格组件，底层原语是 **Base UI**（`@base-ui/react`，2026-08 从 Radix 迁移完成，报告在仓库根 `.migration/`）。`components.json` 的 style 为 **`base-nova`**：标准组件（button/dialog/input/alert/sonner）用 `bun x shadcn@latest add <组件> --overwrite` 从官方注册表生成；项目自有组件（confirm-dialog/frequency-bar/sync-indicator）手写，改动时保留现有 API。
