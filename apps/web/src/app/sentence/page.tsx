@@ -1,17 +1,18 @@
 "use client";
 
-import { Button, Input, SyncIndicator } from "@/components/ui";
+import { Button, Textarea, SyncIndicator } from "@/components/ui";
 import { useSentencePractice, useLocale, usePracticeTimeTracker } from "@/hooks";
 import { observer } from "mobx-react-lite";
 import Link from "next/link";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent, type KeyboardEvent } from "react";
 
 const Sentence = observer(() => {
   const { loading, loadError, question, feedback, generating, checking, error, generate, check, words, syncing, pendingCount, syncToFirestore } = useSentencePractice();
   const { t } = useLocale();
   usePracticeTimeTracker();
   const [answer, setAnswer] = useState("");
-  const [submitted, setSubmitted] = useState(false);
+  const [hasChecked, setHasChecked] = useState(false);
+  const [lastCheckedAnswer, setLastCheckedAnswer] = useState("");
   const [isClient, setIsClient] = useState(false);
   const [hasTriedInitialGenerate, setHasTriedInitialGenerate] = useState(false);
   const noWords = words.wordData.size < 2;
@@ -21,7 +22,8 @@ const Sentence = observer(() => {
   }, []);
 
   useEffect(() => {
-    setSubmitted(false);
+    setHasChecked(false);
+    setLastCheckedAnswer("");
   }, [question]);
 
   useEffect(() => {
@@ -34,14 +36,25 @@ const Sentence = observer(() => {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!answer.trim() || checking || submitted) return;
-    const result = await check(answer.trim());
+    const trimmed = answer.trim();
+    if (!trimmed || checking) return;
+    if (hasChecked && trimmed === lastCheckedAnswer) return;
+    const result = await check(trimmed);
     if (result) {
-      setSubmitted(true);
-      if (result.score === 100) {
+      const firstCheck = !hasChecked;
+      setHasChecked(true);
+      setLastCheckedAnswer(trimmed);
+      if (firstCheck && result.score === 100) {
         await handleNext();
       }
     }
+  };
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key !== "Enter" || event.shiftKey) return;
+    if (event.nativeEvent.isComposing) return;
+    event.preventDefault();
+    event.currentTarget.form?.requestSubmit();
   };
 
   const handleNext = async () => {
@@ -101,20 +114,23 @@ const Sentence = observer(() => {
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-2">
-                  <Input
-                    type="text"
+                  <Textarea
+                    rows={3}
+                    className="max-h-60 resize-y overflow-y-auto"
                     placeholder={t("sentence.answerPlaceholder")}
                     value={answer}
                     autoFocus
-                    disabled={checking || submitted}
+                    disabled={checking}
+                    onKeyDown={handleKeyDown}
                     onChange={(e) => setAnswer(e.target.value)}
                   />
                   <div className="flex space-x-2 justify-end">
-                    {!submitted && (
-                      <Button type="submit" disabled={!answer.trim() || checking}>
-                        {checking ? t("sentence.checking") : t("sentence.submit")}
-                      </Button>
-                    )}
+                    <Button
+                      type="submit"
+                      disabled={!answer.trim() || checking || (hasChecked && answer.trim() === lastCheckedAnswer)}
+                    >
+                      {checking ? t("sentence.checking") : hasChecked ? t("sentence.recheck") : t("sentence.submit")}
+                    </Button>
                     <Button type="button" onClick={handleNext} disabled={generating || checking}>
                       {t("sentence.next")}
                     </Button>
