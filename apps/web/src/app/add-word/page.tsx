@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Input } from "@/components/ui";
+import { Button, Empty, EmptyDescription, EmptyHeader, EmptyTitle, Input, LoadingState, PageContainer, PageHeader } from "@/components/ui";
 import { AddWordDialog } from "@/components/word-picker";
 import { useRef, useState } from "react";
 import Link from "next/link";
@@ -39,43 +39,60 @@ const Home = () => {
 
   if (wordsLoading) {
     return (
-      <main className="space-y-4">
-        <div className="text-center">{t('common.loading')}</div>
-      </main>
+      <PageContainer width="narrow">
+        <LoadingState label={t('common.loading')} />
+      </PageContainer>
     );
   }
 
   if (wordsError) {
     return (
-      <main className="space-y-4">
-        <div className="text-center text-red-500">{t('common.error')}: {wordsError}</div>
-        <div className="text-center">
-          <Button render={<Link href="/home" />} nativeButton={false}>
+      <PageContainer width="narrow">
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyTitle>{t('common.error')}</EmptyTitle>
+            <EmptyDescription>{wordsError}</EmptyDescription>
+          </EmptyHeader>
+          <Button render={<Link href="/home" />} nativeButton={false} variant="outline">
             {t('practiceHub.back')}
           </Button>
-        </div>
-      </main>
+        </Empty>
+      </PageContainer>
     );
   }
 
   return (
-    <main className="space-y-4">
+    <PageContainer width="narrow">
+      <PageHeader
+        className="mb-6"
+        title={t('addWord.title')}
+        actions={
+          <>
+            <Button render={<Link href="/profile" />} nativeButton={false} variant="outline">
+              {t('menu.profile')}
+            </Button>
+            <Button render={<Link href="/home" />} nativeButton={false} variant="ghost">
+              {t('practiceHub.back')}
+            </Button>
+          </>
+        }
+      />
       <form
-        className="flex space-x-2"
+        className="flex gap-2"
         onSubmit={(e) => {
           e.preventDefault();
           handleAddWord();
         }}
       >
-        <Input className="w-48" placeholder={t('addWord.word')} value={word} onChange={(e) => setWord(e.target.value.toLowerCase())} ref={inputRef} />
+        <Input
+          className="flex-1"
+          placeholder={t('addWord.word')}
+          value={word}
+          onChange={(e) => setWord(e.target.value.toLowerCase())}
+          ref={inputRef}
+        />
         <Button onClick={handleAddWord}>
           {t('addWord.add')}
-        </Button>
-        <Button render={<Link href="/home" />} nativeButton={false}>
-          {t('practiceHub.back')}
-        </Button>
-        <Button render={<Link href="/profile" />} nativeButton={false}>
-          {t('menu.profile')}
         </Button>
       </form>
       <AddWordDialog
@@ -86,7 +103,7 @@ const Home = () => {
           clear();
         }}
       />
-    </main>
+    </PageContainer>
   );
 };
 

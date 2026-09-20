@@ -1,6 +1,8 @@
 "use client";
 
-import { Input, Button, MasteryBar, SyncIndicator } from "@/components/ui";
+import { Button, Empty, EmptyDescription, EmptyHeader, EmptyTitle, Input, LoadingState, MasteryBar, PageContainer, PageHeader, SyncIndicator } from "@/components/ui";
+import { CheckIcon, XIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { useCallback, useEffect, useState, useRef, type FormEvent, type RefObject } from "react";
 import { observer } from "mobx-react-lite";
 import Link from "next/link";
@@ -30,16 +32,19 @@ const WordRow = observer(({ word, translation, words, onInputChange, onHintRevea
   const hasSense = senses.some((sense) => sense.chinese);
 
   return (
-    <li className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-2 gap-y-1 border-b border-gray-100 py-3 first:pt-0 last:border-b-0">
-      <div className="max-w-xs w-full justify-self-end text-left">
+    <li className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-6 gap-y-2 py-4 first:pt-0">
+      <div className="max-w-md min-w-0 text-left">
         <div
-          className={`min-h-8 px-3 py-1 flex flex-col items-start justify-start whitespace-pre-line ${hasSense ? "font-semibold" : "text-gray-400 italic"}`}
+          className={cn(
+            "flex min-h-8 flex-col items-start justify-start whitespace-pre-line",
+            hasSense ? "font-medium" : "text-muted-foreground italic"
+          )}
         >
           {hasSense ? (
             senses.map((sense, index) => (
               <span key={index}>
                 {[sense.pos, sense.chinese].filter(Boolean).join(" ")}
-                {sense.english && <span className="text-sm font-normal text-gray-500"> — {sense.english}</span>}
+                {sense.english && <span className="text-sm font-normal text-muted-foreground"> — {sense.english}</span>}
               </span>
             ))
           ) : (
@@ -47,7 +52,7 @@ const WordRow = observer(({ word, translation, words, onInputChange, onHintRevea
           )}
         </div>
       </div>
-      <div className="flex items-center space-x-2">
+      <div className="flex items-center gap-3">
         <Input
           className="w-xs"
           type="text"
@@ -67,7 +72,10 @@ const WordRow = observer(({ word, translation, words, onInputChange, onHintRevea
           title={word}
           aria-label={`${t("home.hint")}: ${word}`}
           disabled={inputValue === word}
-          className={`${inputValue === word ? "" : "cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:rounded"} px-1 relative group disabled:cursor-default`}
+          className={cn(
+            "group relative rounded-md px-1 outline-none",
+            inputValue !== word && "cursor-pointer focus-visible:ring-3 focus-visible:ring-ring/50"
+          )}
           onMouseEnter={() => {
             if (inputValue !== "" && inputValue !== word) {
               onHintReveal(word);
@@ -87,8 +95,16 @@ const WordRow = observer(({ word, translation, words, onInputChange, onHintRevea
             }
           }}
         >
-          {inputValue === word ? "✅" : "❌"}
-          {inputValue !== word && <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-800 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">{word}</div>}
+          {inputValue === word ? (
+            <CheckIcon className="size-4 text-success" />
+          ) : (
+            <XIcon className="size-4 text-muted-foreground" />
+          )}
+          {inputValue !== word && (
+            <span className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 -translate-x-1/2 rounded-md border bg-popover px-2 py-1 text-xs whitespace-nowrap text-popover-foreground opacity-0 shadow-md transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+              {word}
+            </span>
+          )}
         </button>
         <MasteryBar score={words.getMasteryScore(word)} />
       </div>
@@ -185,24 +201,25 @@ const WordsPractice = observer(() => {
 
   if (loading) {
     return (
-      <main>
-        <div className="text-center">{t("common.loading")}</div>
-      </main>
+      <PageContainer>
+        <LoadingState label={t("common.loading")} />
+      </PageContainer>
     );
   }
 
   if (error) {
     return (
-      <main>
-        <div className="text-center text-red-500">
-          {t("common.error")}: {error}
-        </div>
-        <div className="text-center mt-4">
-          <Button render={<Link href="/add-word" />} nativeButton={false}>
+      <PageContainer>
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyTitle>{t("common.error")}</EmptyTitle>
+            <EmptyDescription>{error}</EmptyDescription>
+          </EmptyHeader>
+          <Button render={<Link href="/add-word" />} nativeButton={false} variant="outline">
             {t("addWord.title")}
           </Button>
-        </div>
-      </main>
+        </Empty>
+      </PageContainer>
     );
   }
 
@@ -210,9 +227,24 @@ const WordsPractice = observer(() => {
     isClient && (
       <>
         <SyncIndicator syncing={syncing} pendingCount={pendingCount} onManualSync={syncToFirestore} />
-        <main>
-          <form onSubmit={handleSubmit} className="flex flex-col space-y-2">
-            <ul>
+        <PageContainer>
+          <PageHeader
+            className="mb-6"
+            title={t("practiceHub.words.title")}
+            description={t("practiceHub.words.description")}
+            actions={
+              <>
+                <Button render={<Link href="/add-word" />} nativeButton={false} variant="outline">
+                  {t("addWord.title")}
+                </Button>
+                <Button render={<Link href="/home" />} nativeButton={false} variant="ghost">
+                  {t("practiceHub.back")}
+                </Button>
+              </>
+            }
+          />
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <ul className="divide-y">
               {randomWords.map(([word, translation]) => (
                 <WordRow
                   key={word}
@@ -226,17 +258,11 @@ const WordsPractice = observer(() => {
                 />
               ))}
             </ul>
-            <div className="flex space-x-2 justify-end">
+            <div className="flex justify-end">
               <SubmitButton randomWords={randomWords} words={words} label={t("home.refresh")} />
-              <Button render={<Link href="/add-word" />} nativeButton={false} variant="outline">
-                {t("addWord.title")}
-              </Button>
-              <Button render={<Link href="/home" />} nativeButton={false} variant="outline">
-                {t("practiceHub.back")}
-              </Button>
             </div>
           </form>
-        </main>
+        </PageContainer>
       </>
     )
   );

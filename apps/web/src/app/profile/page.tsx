@@ -1,6 +1,28 @@
 "use client";
 
-import { Button, ConfirmDialog, getMasteryLevel, MASTERY_BAR_COLORS } from "@/components/ui";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  ConfirmDialog,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+  LoadingState,
+  MASTERY_BAR_COLORS,
+  PageContainer,
+  PageHeader,
+  StatTile,
+  ToggleGroup,
+  ToggleGroupItem,
+  getMasteryLevel,
+} from "@/components/ui";
 import { useFirestoreWords, useLocale, toast, useAuth } from "@/hooks";
 import { observer } from "mobx-react-lite";
 import Link from "next/link";
@@ -311,192 +333,191 @@ const Profile = observer(() => {
 
   if (loading) {
     return (
-      <main>
-        <div className="text-center">{t('profile.loading')}</div>
-      </main>
+      <PageContainer width="wide">
+        <LoadingState label={t('profile.loading')} />
+      </PageContainer>
     );
   }
 
   if (error) {
     return (
-      <main>
-        <div className="text-center text-red-500">Error: {error}</div>
-      </main>
+      <PageContainer width="wide">
+        <Alert variant="destructive">
+          <AlertTitle>{t('common.error')}</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      </PageContainer>
     );
   }
 
   return (
     isClient && (
-      <main className="container mx-auto p-4 max-w-4xl">
-        <h1 className="text-3xl font-bold mb-6">{t('profile.title')}</h1>
+      <PageContainer width="wide">
+        <PageHeader
+          className="mb-6"
+          title={t('profile.title')}
+          actions={
+            <>
+              <Button render={<Link href="/words" />} nativeButton={false}>
+                {t('profile.practiceWords')}
+              </Button>
+              <Button render={<Link href="/add-word" />} nativeButton={false} variant="outline">
+                {t('addWord.title')}
+              </Button>
+            </>
+          }
+        />
 
-        {/* User Info */}
         {user && (
-          <div className="mb-8 p-6 bg-white dark:bg-gray-800 rounded-lg shadow">
-            <h2 className="text-xl font-semibold mb-4">{t('profile.accountInfo')}</h2>
-            <div className="space-y-2">
-              <p><strong>{t('profile.email')}:</strong> {user.email}</p>
-              {user.displayName && <p><strong>{t('profile.name')}:</strong> {user.displayName}</p>}
-            </div>
-          </div>
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>{t('profile.accountInfo')}</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-1 text-sm">
+              <p>
+                <span className="text-muted-foreground">{t('profile.email')}:</span> {user.email}
+              </p>
+              {user.displayName && (
+                <p>
+                  <span className="text-muted-foreground">{t('profile.name')}:</span> {user.displayName}
+                </p>
+              )}
+            </CardContent>
+          </Card>
         )}
 
-        {/* Daily Practice Time */}
-        <div className="mb-8 p-6 bg-white dark:bg-gray-800 rounded-lg shadow">
-          <h2 className="text-xl font-semibold mb-4">{t('profile.practiceTimeTitle')}</h2>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-            {t('profile.practiceTimeDesc')}
-          </p>
-          {practiceTime.size > 0 ? (
-            <PracticeHeatmap practiceTime={practiceTime} />
-          ) : (
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              {t('profile.noData')}
-            </p>
-          )}
-        </div>
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>{t('profile.practiceTimeTitle')}</CardTitle>
+            <p className="text-sm text-muted-foreground">{t('profile.practiceTimeDesc')}</p>
+          </CardHeader>
+          <CardContent>
+            {practiceTime.size > 0 ? (
+              <PracticeHeatmap practiceTime={practiceTime} />
+            ) : (
+              <p className="text-sm text-muted-foreground">{t('profile.noData')}</p>
+            )}
+          </CardContent>
+        </Card>
 
-        {/* Settings */}
-        <div className="mb-8 p-6 bg-white dark:bg-gray-800 rounded-lg shadow">
-          <h2 className="text-xl font-semibold mb-4">{t('profile.settings')}</h2>
-          
-          {/* Language Selector */}
-          <div className="mb-6">
-            <label className="block text-sm font-medium mb-2">{t('profile.language')}</label>
-            <div className="flex gap-2">
-              <button
-                onClick={() => handleLanguageChange('zh')}
-                className={`px-4 py-2 rounded-lg transition-colors ${
-                  locale === 'zh'
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
-                }`}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>{t('profile.settings')}</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col divide-y">
+            <div className="flex flex-col gap-2 py-6 first:pt-0 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+              <label className="text-sm font-medium">{t('profile.language')}</label>
+              <ToggleGroup
+                value={[locale]}
+                onValueChange={(value) => {
+                  const next = value[0];
+                  if (next === 'zh' || next === 'en') {
+                    handleLanguageChange(next);
+                  }
+                }}
+                variant="outline"
+                size="sm"
               >
-                中文
-              </button>
-              <button
-                onClick={() => handleLanguageChange('en')}
-                className={`px-4 py-2 rounded-lg transition-colors ${
-                  locale === 'en'
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
-                }`}
+                <ToggleGroupItem value="zh">中文</ToggleGroupItem>
+                <ToggleGroupItem value="en">English</ToggleGroupItem>
+              </ToggleGroup>
+            </div>
+
+            <div className="flex flex-col gap-2 py-6 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+              <div className="flex flex-col gap-1">
+                <h3 className="text-sm font-medium">{t('profile.regenerateTitle')}</h3>
+                <p className="text-sm text-muted-foreground">{t('profile.regenerateDesc')}</p>
+              </div>
+              <Button
+                variant="outline"
+                className="shrink-0 self-start sm:self-auto"
+                onClick={() => setShowRegenerateDialog(true)}
+                disabled={regenerating || totalWords === 0}
               >
-                English
-              </button>
+                {regenerating
+                  ? `${t('common.loading')} ${regenerateProgress}/${totalWords}`
+                  : t('profile.regenerateButton')}
+              </Button>
             </div>
-          </div>
 
-          {/* AI Regenerate Definitions */}
-          <div className="border-t border-gray-200 dark:border-gray-700 pt-6 mb-6">
-            <h3 className="text-lg font-semibold mb-2">{t('profile.regenerateTitle')}</h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              {t('profile.regenerateDesc')}
-            </p>
-            <Button
-              variant="outline"
-              onClick={() => setShowRegenerateDialog(true)}
-              disabled={regenerating || totalWords === 0}
-            >
-              {regenerating
-                ? `${t('common.loading')} ${regenerateProgress}/${totalWords}`
-                : t('profile.regenerateButton')}
-            </Button>
-          </div>
+            <div className="flex flex-col gap-2 py-6 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+              <div className="flex flex-col gap-1">
+                <h3 className="text-sm font-medium">{t('profile.normalizeTitle')}</h3>
+                <p className="text-sm text-muted-foreground">{t('profile.normalizeDesc')}</p>
+              </div>
+              <Button
+                variant="outline"
+                className="shrink-0 self-start sm:self-auto"
+                onClick={() => setShowNormalizeDialog(true)}
+                disabled={normalizing || totalWords === 0}
+              >
+                {normalizing
+                  ? `${t('common.loading')} ${normalizeProgress}/${totalWords}`
+                  : t('profile.normalizeButton')}
+              </Button>
+            </div>
 
-          {/* AI Normalize Word Forms */}
-          <div className="border-t border-gray-200 dark:border-gray-700 pt-6 mb-6">
-            <h3 className="text-lg font-semibold mb-2">{t('profile.normalizeTitle')}</h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              {t('profile.normalizeDesc')}
-            </p>
-            <Button
-              variant="outline"
-              onClick={() => setShowNormalizeDialog(true)}
-              disabled={normalizing || totalWords === 0}
-            >
-              {normalizing
-                ? `${t('common.loading')} ${normalizeProgress}/${totalWords}`
-                : t('profile.normalizeButton')}
-            </Button>
-          </div>
+            <div className="flex flex-col gap-2 py-6 last:pb-0 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+              <div className="flex flex-col gap-1">
+                <h3 className="text-sm font-medium text-destructive">{t('profile.resetData')}</h3>
+                <p className="text-sm text-muted-foreground">{t('profile.resetDataDesc')}</p>
+              </div>
+              <Button
+                variant="destructive"
+                className="shrink-0 self-start sm:self-auto"
+                onClick={() => setShowResetDialog(true)}
+                disabled={resetting}
+              >
+                {resetting ? t('common.loading') : t('profile.resetButton')}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
-          {/* Reset Practice Records */}
-          <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
-            <h3 className="text-lg font-semibold mb-2 text-red-600 dark:text-red-400">{t('profile.resetData')}</h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              {t('profile.resetDataDesc')}
-            </p>
-            <Button
-              variant="outline"
-              onClick={() => setShowResetDialog(true)}
-              disabled={resetting}
-              className="bg-red-50 hover:bg-red-100 text-red-600 border-red-300"
-            >
-              {resetting ? t('common.loading') : t('profile.resetButton')}
-            </Button>
-          </div>
+        <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatTile value={totalWords} label={t('profile.totalWords')} />
+          <StatTile
+            value={overallAverageTime !== null ? `${overallAverageTime.toFixed(1)}${t('profile.seconds')}` : t('profile.noData')}
+            label={t('profile.averageTime')}
+          />
+          <StatTile
+            value={wordsWithStats.filter(w => w.count > 0).length}
+            label={t('profile.wordsPracticed')}
+          />
+          <StatTile value={`${avgMasteryScore}%`} label={t('profile.avgMastery')} />
         </div>
 
-        {/* Statistics */}
-        <div className="mb-8 p-6 bg-white dark:bg-gray-800 rounded-lg shadow">
-          <h2 className="text-xl font-semibold mb-4">{t('profile.statistics')}</h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="p-4 bg-blue-50 dark:bg-blue-900 rounded-lg">
-              <div className="text-3xl font-bold text-blue-600 dark:text-blue-300">
-                {totalWords}
-              </div>
-              <div className="text-sm text-gray-600 dark:text-gray-300">{t('profile.totalWords')}</div>
-            </div>
-            <div className="p-4 bg-green-50 dark:bg-green-900 rounded-lg">
-              <div className="text-3xl font-bold text-green-600 dark:text-green-300">
-                {overallAverageTime !== null ? `${overallAverageTime.toFixed(1)}${t('profile.seconds')}` : t('profile.noData')}
-              </div>
-              <div className="text-sm text-gray-600 dark:text-gray-300">{t('profile.averageTime')}</div>
-            </div>
-            <div className="p-4 bg-purple-50 dark:bg-purple-900 rounded-lg">
-              <div className="text-3xl font-bold text-purple-600 dark:text-purple-300">
-                {wordsWithStats.filter(w => w.count > 0).length}
-              </div>
-              <div className="text-sm text-gray-600 dark:text-gray-300">{t('profile.wordsPracticed')}</div>
-            </div>
-            <div className="p-4 bg-orange-50 dark:bg-orange-900 rounded-lg">
-              <div className="text-3xl font-bold text-orange-600 dark:text-orange-300">
-                {avgMasteryScore}%
-              </div>
-              <div className="text-sm text-gray-600 dark:text-gray-300">{t('profile.avgMastery')}</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Mastery Distribution */}
-        <div className="mb-8 p-6 bg-white dark:bg-gray-800 rounded-lg shadow">
-          <h2 className="text-xl font-semibold mb-4">{t('profile.masteryDistribution')}</h2>
-          {wordsWithStats.length === 0 ? (
-            <p className="text-sm text-gray-600 dark:text-gray-400">{t('profile.noPracticeData')}</p>
-          ) : (
-            <div className="space-y-3">
-              {MASTERY_SEGMENTS.map(({ key, labelKey }) => {
-                const count = masteryDistribution[key];
-                const pct = totalWords > 0 ? Math.round((count / totalWords) * 100) : 0;
-                return (
-                  <div key={key} className="flex items-center gap-3">
-                    <span className="w-16 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
-                      {t(labelKey)}
-                    </span>
-                    <div className="flex-1 h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full ${MASTERY_BAR_COLORS[key]} transition-all`}
-                        style={{ width: `${pct}%` }}
-                      />
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>{t('profile.masteryDistribution')}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {wordsWithStats.length === 0 ? (
+              <p className="text-sm text-muted-foreground">{t('profile.noPracticeData')}</p>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {MASTERY_SEGMENTS.map(({ key, labelKey }) => {
+                  const count = masteryDistribution[key];
+                  const pct = totalWords > 0 ? Math.round((count / totalWords) * 100) : 0;
+                  return (
+                    <div key={key} className="flex items-center gap-3">
+                      <span className="w-16 text-sm whitespace-nowrap text-muted-foreground">
+                        {t(labelKey)}
+                      </span>
+                      <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-muted inset-shadow-2xs">
+                        <div
+                          className={`h-full rounded-full ${MASTERY_BAR_COLORS[key]} transition-all`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                      <span className="w-12 text-right text-sm tabular-nums text-muted-foreground">{count}</span>
                     </div>
-                    <span className="w-12 text-sm text-gray-600 dark:text-gray-400 text-right">{count}</span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         <WordPerformanceSection
           words={words}
@@ -504,24 +525,14 @@ const Profile = observer(() => {
           t={t}
         />
 
-        {/* No Data Message */}
         {wordsWithStats.length === 0 && (
-          <div className="mb-8 p-6 bg-white dark:bg-gray-800 rounded-lg shadow text-center">
-            <p className="text-gray-600 dark:text-gray-400">
-              {t('profile.noPracticeData')}
-            </p>
-          </div>
+          <Empty className="border">
+            <EmptyHeader>
+              <EmptyTitle>{t('profile.noPracticeData')}</EmptyTitle>
+              <EmptyDescription>{t('profile.practiceTimeDesc')}</EmptyDescription>
+            </EmptyHeader>
+          </Empty>
         )}
-
-        {/* Navigation */}
-        <div className="flex space-x-4">
-          <Button render={<Link href="/words" />} nativeButton={false}>
-            {t('profile.practiceWords')}
-          </Button>
-          <Button render={<Link href="/add-word" />} nativeButton={false} variant="outline">
-            {t('addWord.title')}
-          </Button>
-        </div>
 
         {/* Reset Confirmation Dialog */}
         <ConfirmDialog
@@ -572,7 +583,7 @@ const Profile = observer(() => {
           onConfirm={handleDeleteWord}
           variant="destructive"
         />
-      </main>
+      </PageContainer>
     )
   );
 });
