@@ -9,11 +9,11 @@ import {
 } from "@/lib/masteryCalculator";
 
 export const MASTERY_BAR_COLORS: Record<MasteryLevel, string> = {
-  new: "bg-red-500",
-  learning: "bg-orange-500",
-  familiar: "bg-yellow-500",
-  proficient: "bg-lime-500",
-  mastered: "bg-green-500",
+  new: "bg-primary/20",
+  learning: "bg-primary/35",
+  familiar: "bg-primary/55",
+  proficient: "bg-primary/75",
+  mastered: "bg-primary",
 };
 
 interface MasteryBarProps {
@@ -52,13 +52,13 @@ const MasteryBar = React.forwardRef<HTMLDivElement, MasteryBarProps>(
                 "w-4 h-3 rounded-sm transition-all duration-300",
                 barLevel <= levelIndex
                   ? MASTERY_BAR_COLORS[MASTERY_LEVEL_ORDER[barLevel]]
-                  : "bg-gray-300 dark:bg-gray-600"
+                  : "bg-muted"
               )}
             />
           ))}
         </div>
         {showLabel && (
-          <span className="text-xs text-gray-600 dark:text-gray-400 whitespace-nowrap w-16 text-left">
+          <span className="w-16 text-left text-xs whitespace-nowrap text-muted-foreground">
             {levelLabels[level]}
           </span>
         )}

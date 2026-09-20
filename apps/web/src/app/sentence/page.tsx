@@ -1,6 +1,22 @@
 "use client";
 
-import { Button, Textarea, SyncIndicator } from "@/components/ui";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  Button,
+  Card,
+  CardContent,
+  Empty,
+  EmptyHeader,
+  EmptyTitle,
+  LoadingState,
+  PageContainer,
+  PageHeader,
+  SyncIndicator,
+  Textarea,
+} from "@/components/ui";
+import { CheckIcon, XIcon } from "lucide-react";
 import { useSentencePractice, useLocale, usePracticeTimeTracker } from "@/hooks";
 import { observer } from "mobx-react-lite";
 import Link from "next/link";
@@ -64,9 +80,9 @@ const Sentence = observer(() => {
 
   if (loading) {
     return (
-      <main>
-        <div className="text-center">{t("common.loading")}</div>
-      </main>
+      <PageContainer width="narrow">
+        <LoadingState label={t("common.loading")} />
+      </PageContainer>
     );
   }
 
@@ -77,43 +93,60 @@ const Sentence = observer(() => {
   return (
     <>
       <SyncIndicator syncing={syncing} pendingCount={pendingCount} onManualSync={syncToFirestore} />
-      <main className="w-full max-w-xl px-4">
-        <h1 className="text-xl font-bold mb-4 text-center">{t("sentence.title")}</h1>
+      <PageContainer width="narrow">
+        <PageHeader
+          className="mb-6"
+          title={t("sentence.title")}
+          actions={
+            <Button render={<Link href="/home" />} nativeButton={false} variant="ghost">
+              {t("practiceHub.back")}
+            </Button>
+          }
+        />
 
         {noWords ? (
-          <div className="text-center space-y-4">
-            {loadError ? (
-              <p className="text-red-500">{loadError}</p>
-            ) : (
-              <>
-                <p className="text-gray-500">{t("sentence.needMoreWords")}</p>
-                <Button render={<Link href="/add-word" />} nativeButton={false}>
-                  {t("addWord.title")}
-                </Button>
-              </>
-            )}
-          </div>
+          loadError ? (
+            <Alert variant="destructive">
+              <AlertTitle>{t("common.error")}</AlertTitle>
+              <AlertDescription>{loadError}</AlertDescription>
+            </Alert>
+          ) : (
+            <Empty className="border">
+              <EmptyHeader>
+                <EmptyTitle>{t("sentence.needMoreWords")}</EmptyTitle>
+              </EmptyHeader>
+              <Button render={<Link href="/add-word" />} nativeButton={false} variant="outline">
+                {t("addWord.title")}
+              </Button>
+            </Empty>
+          )
         ) : (
-          <div className="space-y-4">
+          <div className="flex flex-col gap-4">
             {!question && !generating && error && (
-              <div className="text-center">
-                <Button onClick={handleNext}>{t("sentence.next")}</Button>
+              <div className="flex justify-center">
+                <Button onClick={handleNext} variant="outline">{t("sentence.next")}</Button>
               </div>
             )}
 
-            {generating && <div className="text-center text-gray-500">{t("sentence.generating")}</div>}
+            {generating && <LoadingState label={t("sentence.generating")} />}
 
             {error && (
-              <div className="text-center text-red-500">{error === "insufficientWords" ? t("sentence.needMoreWords") : error}</div>
+              <Alert variant="destructive">
+                <AlertDescription>
+                  {error === "insufficientWords" ? t("sentence.needMoreWords") : error}
+                </AlertDescription>
+              </Alert>
             )}
 
             {question && (
-              <div className="space-y-4">
-                <div className="rounded-lg border p-4 space-y-2">
-                  <div className="text-lg font-semibold">{question.chinese}</div>
-                </div>
+              <div className="flex flex-col gap-4">
+                <Card>
+                  <CardContent className="text-base font-medium">
+                    {question.chinese}
+                  </CardContent>
+                </Card>
 
-                <form onSubmit={handleSubmit} className="space-y-2">
+                <form onSubmit={handleSubmit} className="flex flex-col gap-2">
                   <Textarea
                     rows={3}
                     className="max-h-60 resize-y overflow-y-auto"
@@ -124,52 +157,53 @@ const Sentence = observer(() => {
                     onKeyDown={handleKeyDown}
                     onChange={(e) => setAnswer(e.target.value)}
                   />
-                  <div className="flex space-x-2 justify-end">
+                  <div className="flex justify-end gap-2">
                     <Button
                       type="submit"
                       disabled={!answer.trim() || checking || (hasChecked && answer.trim() === lastCheckedAnswer)}
                     >
                       {checking ? t("sentence.checking") : hasChecked ? t("sentence.recheck") : t("sentence.submit")}
                     </Button>
-                    <Button type="button" onClick={handleNext} disabled={generating || checking}>
+                    <Button type="button" variant="outline" onClick={handleNext} disabled={generating || checking}>
                       {t("sentence.next")}
                     </Button>
                   </div>
                 </form>
 
                 {feedback && (
-                  <div className={`rounded-lg border p-4 space-y-2 ${feedback.correct ? "border-green-500" : "border-red-500"}`}>
-                    <div className="font-semibold">
-                      {feedback.correct ? t("sentence.resultCorrect") : t("sentence.resultIncorrect")} · {t("sentence.score")}: {feedback.score}
-                    </div>
-                    {feedback.feedback && <div className="text-sm">{feedback.feedback}</div>}
-                    {feedback.issues.length > 0 && (
-                      <ul className="list-disc list-inside text-sm text-red-600 space-y-1">
-                        {feedback.issues.map((issue, index) => (
-                          <li key={index}>{issue}</li>
-                        ))}
-                      </ul>
-                    )}
-                    {feedback.corrected && (
-                      <div className="text-sm">
-                        <span className="text-gray-500">{t("sentence.reference")}: </span>
-                        {feedback.corrected}
+                  <Card className={feedback.correct ? "ring-success/30" : "ring-destructive/30"}>
+                    <CardContent className="flex flex-col gap-2">
+                      <div className="flex items-center gap-2 font-medium">
+                        {feedback.correct ? (
+                          <CheckIcon className="size-4 text-success" />
+                        ) : (
+                          <XIcon className="size-4 text-destructive" />
+                        )}
+                        {feedback.correct ? t("sentence.resultCorrect") : t("sentence.resultIncorrect")} · {t("sentence.score")}: {feedback.score}
                       </div>
-                    )}
-                    <div className="text-sm text-gray-500">{t("sentence.words")}: {question.words.join(", ")}</div>
-                  </div>
+                      {feedback.feedback && <div className="text-sm">{feedback.feedback}</div>}
+                      {feedback.issues.length > 0 && (
+                        <ul className="flex list-inside list-disc flex-col gap-1 text-sm text-destructive">
+                          {feedback.issues.map((issue, index) => (
+                            <li key={index}>{issue}</li>
+                          ))}
+                        </ul>
+                      )}
+                      {feedback.corrected && (
+                        <div className="text-sm">
+                          <span className="text-muted-foreground">{t("sentence.reference")}: </span>
+                          {feedback.corrected}
+                        </div>
+                      )}
+                      <div className="text-sm text-muted-foreground">{t("sentence.words")}: {question.words.join(", ")}</div>
+                    </CardContent>
+                  </Card>
                 )}
               </div>
             )}
           </div>
         )}
-
-        <div className="flex justify-center mt-6">
-          <Button render={<Link href="/home" />} nativeButton={false} variant="outline">
-            {t("practiceHub.back")}
-          </Button>
-        </div>
-      </main>
+      </PageContainer>
     </>
   );
 });
