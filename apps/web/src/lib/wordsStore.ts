@@ -11,6 +11,45 @@ import {
   getLocalPracticeDate,
 } from "@/lib/practiceDate";
 
+const SHORT_WORD_MAX_LENGTH = 5;
+const MEDIUM_WORD_MAX_LENGTH = 10;
+const WORD_LENGTH_CATEGORY_COUNT = 3;
+
+const average = (values: number[]): number =>
+  values.reduce((sum, value) => sum + value, 0) / values.length;
+
+const arraysEqual = <T>(a: readonly T[], b: readonly T[]): boolean =>
+  a.length === b.length && a.every((value, index) => value === b[index]);
+
+const pickWeightedRandom = <T extends { priority: number }>(
+  candidates: readonly T[],
+  max: number
+): T[] => {
+  const available = [...candidates];
+  const selected: T[] = [];
+  let totalPriority = available.reduce((sum, item) => sum + item.priority, 0);
+
+  for (let i = 0; i < Math.min(max, available.length); i++) {
+    let random = Math.random() * totalPriority;
+    let selectedIndex = 0;
+
+    for (let j = 0; j < available.length; j++) {
+      random -= available[j].priority;
+      if (random <= 0) {
+        selectedIndex = j;
+        break;
+      }
+    }
+
+    const selectedItem = available[selectedIndex];
+    selected.push(selectedItem);
+    available.splice(selectedIndex, 1);
+    totalPriority -= selectedItem.priority;
+  }
+
+  return selected;
+};
+
 export interface WordData {
   word: string;
   translation: string;
@@ -24,6 +63,15 @@ export interface WordData {
   id: string;
 }
 
+export interface PracticeStat {
+  word: string;
+  avgTime: number;
+  count: number;
+  masteryScore: number;
+  correctCount: number;
+  totalAttempts: number;
+}
+
 export class Words {
   static MAX_RANDOM_WORDS = 5;
   static MAX_INPUT_TIMES = 20;
@@ -32,7 +80,7 @@ export class Words {
 
   wordData: Map<string, WordData> = new Map();
   userInputs: Map<string, string> = new Map();
-  #priorityCache = new Map<string, { masteryScore: number; priority: number }>();
+  #priorityCache = new Map<string, number>();
   #masteryCache = new Map<string, MasteryResult>();
 
   constructor() {
@@ -44,10 +92,16 @@ export class Words {
     this.#masteryCache.clear();
   }
 
+  #invalidateWordCaches(...words: string[]) {
+    for (const word of words) {
+      this.#priorityCache.delete(word);
+      this.#masteryCache.delete(word);
+    }
+  }
+
   setWordData(word: string, data: WordData) {
     this.wordData.set(word, data);
-    this.#priorityCache.delete(word);
-    this.#masteryCache.delete(word);
+    this.#invalidateWordCaches(word);
   }
 
   addWord(word: string, translation: string, id: string) {
@@ -67,18 +121,14 @@ export class Words {
 
   deleteWord(word: string) {
     this.wordData.delete(word);
-    this.#priorityCache.delete(word);
-    this.#masteryCache.delete(word);
+    this.#invalidateWordCaches(word);
   }
 
   moveWord(from: string, to: string, data: WordData) {
     this.wordData.delete(from);
     this.wordData.set(to, data);
     this.userInputs.delete(from);
-    this.#priorityCache.delete(from);
-    this.#priorityCache.delete(to);
-    this.#masteryCache.delete(from);
-    this.#masteryCache.delete(to);
+    this.#invalidateWordCaches(from, to);
   }
 
   removeAllWords() {
@@ -86,49 +136,47 @@ export class Words {
     this.invalidateCaches();
   }
 
-  recordCorrectAttempt(word: string, inputTimeSeconds?: number) {
+  #recordAttempt(word: string, correct: boolean, inputTimeSeconds?: number) {
     const data = this.wordData.get(word);
     if (!data) return;
 
     data.totalAttempts += 1;
-    data.correctCount += 1;
-    data.attemptHistory.push(true);
+    if (correct) {
+      data.correctCount += 1;
+    }
+    data.attemptHistory.push(correct);
     if (data.attemptHistory.length > Words.MAX_ATTEMPT_HISTORY) {
       data.attemptHistory = data.attemptHistory.slice(-Words.MAX_ATTEMPT_HISTORY);
     }
-    if (inputTimeSeconds !== undefined) {
+
+    if (correct && inputTimeSeconds !== undefined) {
       data.inputTimes.push(inputTimeSeconds);
-    }
-    const now = new Date();
-    const today = formatLocalPracticeDate(now);
-    if (!data.correctPracticeDates.includes(today)) {
-      data.correctPracticeDates.push(today);
-      if (data.correctPracticeDates.length > Words.MAX_CORRECT_PRACTICE_DATES) {
-        data.correctPracticeDates = data.correctPracticeDates.slice(-Words.MAX_CORRECT_PRACTICE_DATES);
+      if (data.inputTimes.length > Words.MAX_INPUT_TIMES) {
+        data.inputTimes = data.inputTimes.slice(-Words.MAX_INPUT_TIMES);
       }
     }
 
-    if (data.inputTimes.length > Words.MAX_INPUT_TIMES) {
-      data.inputTimes = data.inputTimes.slice(-Words.MAX_INPUT_TIMES);
+    const now = new Date();
+    if (correct) {
+      const today = formatLocalPracticeDate(now);
+      if (!data.correctPracticeDates.includes(today)) {
+        data.correctPracticeDates.push(today);
+        if (data.correctPracticeDates.length > Words.MAX_CORRECT_PRACTICE_DATES) {
+          data.correctPracticeDates = data.correctPracticeDates.slice(-Words.MAX_CORRECT_PRACTICE_DATES);
+        }
+      }
     }
-
     data.lastPracticedAt = now;
-    this.#priorityCache.delete(word);
-    this.#masteryCache.delete(word);
+
+    this.#invalidateWordCaches(word);
+  }
+
+  recordCorrectAttempt(word: string, inputTimeSeconds?: number) {
+    this.#recordAttempt(word, true, inputTimeSeconds);
   }
 
   recordIncorrectAttempt(word: string) {
-    const data = this.wordData.get(word);
-    if (!data) return;
-
-    data.totalAttempts += 1;
-    data.attemptHistory.push(false);
-    if (data.attemptHistory.length > Words.MAX_ATTEMPT_HISTORY) {
-      data.attemptHistory = data.attemptHistory.slice(-Words.MAX_ATTEMPT_HISTORY);
-    }
-    data.lastPracticedAt = new Date();
-    this.#priorityCache.delete(word);
-    this.#masteryCache.delete(word);
+    this.#recordAttempt(word, false);
   }
 
   #getMastery(word: string, data: WordData): MasteryResult {
@@ -138,6 +186,20 @@ export class Words {
       this.#masteryCache.set(word, result);
     }
     return result;
+  }
+
+  #getPriority(word: string, data: WordData): number {
+    let priority = this.#priorityCache.get(word);
+    if (priority === undefined) {
+      const masteryScore = this.#getMastery(word, data).score;
+      priority = calculatePriority(
+        masteryScore,
+        data.lastPracticedAt,
+        data.totalAttempts
+      );
+      this.#priorityCache.set(word, priority);
+    }
+    return priority;
   }
 
   getMasteryScore(word: string): number {
@@ -155,28 +217,28 @@ export class Words {
     this.wordData.forEach((data) => {
       allTimes.push(...data.inputTimes);
     });
-    if (allTimes.length === 0) return null;
-    return allTimes.reduce((sum, time) => sum + time, 0) / allTimes.length;
+    return allTimes.length === 0 ? null : average(allTimes);
   }
 
   getWordLengthCategory(word: string): number {
     const length = word.length;
-    if (length <= 5) return 0;
-    if (length <= 10) return 1;
+    if (length <= SHORT_WORD_MAX_LENGTH) return 0;
+    if (length <= MEDIUM_WORD_MAX_LENGTH) return 1;
     return 2;
   }
 
   get averageTimeByLengthCategory(): (number | null)[] {
-    const categoryTimes: number[][] = [[], [], []];
+    const categoryTimes: number[][] = Array.from(
+      { length: WORD_LENGTH_CATEGORY_COUNT },
+      () => []
+    );
 
     this.wordData.forEach((data, word) => {
       categoryTimes[this.getWordLengthCategory(word)].push(...data.inputTimes);
     });
 
     return categoryTimes.map((times) =>
-      times.length === 0
-        ? null
-        : times.reduce((sum, time) => sum + time, 0) / times.length
+      times.length === 0 ? null : average(times)
     );
   }
 
@@ -197,70 +259,25 @@ export class Words {
   }
 
   getRandomWords(max: number = Words.MAX_RANDOM_WORDS): [string, string][] {
-    const wordEntries = Array.from(this.wordData.entries());
-    if (wordEntries.length === 0) {
-      return [];
-    }
-
-    const wordsWithPriority = wordEntries.map(([word, data]) => {
-      let entry = this.#priorityCache.get(word);
-      if (!entry) {
-        const masteryScore = this.#getMastery(word, data).score;
-        const priority = calculatePriority(
-          masteryScore,
-          data.lastPracticedAt,
-          data.totalAttempts
-        );
-        entry = { masteryScore, priority };
-        this.#priorityCache.set(word, entry);
-      }
-      return { word, translation: data.translation, priority: entry.priority };
-    });
-
-    const selected: [string, string][] = [];
-    const available = [...wordsWithPriority];
-    let totalPriority = available.reduce(
-      (sum, item) => sum + item.priority,
-      0
+    const candidates = Array.from(this.wordData.entries()).map(
+      ([word, data]) => ({
+        word,
+        translation: data.translation,
+        priority: this.#getPriority(word, data),
+      })
     );
 
-    for (let i = 0; i < Math.min(max, available.length); i++) {
-      let random = Math.random() * totalPriority;
-      let selectedIndex = 0;
-
-      for (let j = 0; j < available.length; j++) {
-        random -= available[j].priority;
-        if (random <= 0) {
-          selectedIndex = j;
-          break;
-        }
-      }
-
-      const selectedItem = available[selectedIndex];
-      selected.push([selectedItem.word, selectedItem.translation]);
-      available.splice(selectedIndex, 1);
-      totalPriority -= selectedItem.priority;
-    }
-
-    return selected;
+    return pickWeightedRandom(candidates, max).map(
+      ({ word, translation }): [string, string] => [word, translation]
+    );
   }
 
-  get practiceStats() {
-    const stats: Array<{
-      word: string;
-      avgTime: number;
-      count: number;
-      masteryScore: number;
-      correctCount: number;
-      totalAttempts: number;
-    }> = [];
+  get practiceStats(): PracticeStat[] {
+    const stats: PracticeStat[] = [];
 
     this.wordData.forEach((data, word) => {
       const times = data.inputTimes;
-      const avg =
-        times.length > 0
-          ? times.reduce((sum, t) => sum + t, 0) / times.length
-          : 0;
+      const avg = times.length > 0 ? average(times) : 0;
       stats.push({
         word,
         avgTime: avg,
@@ -345,11 +362,9 @@ export const isWordDataEqual = (a: WordData, b: WordData) => {
     return false;
   }
   return (
-    a.inputTimes.every((time, i) => time === b.inputTimes[i]) &&
-    a.correctPracticeDates.every(
-      (date, i) => date === b.correctPracticeDates[i]
-    ) &&
-    a.attemptHistory.every((ok, i) => ok === b.attemptHistory[i])
+    arraysEqual(a.inputTimes, b.inputTimes) &&
+    arraysEqual(a.correctPracticeDates, b.correctPracticeDates) &&
+    arraysEqual(a.attemptHistory, b.attemptHistory)
   );
 };
 
@@ -375,22 +390,12 @@ export interface MergedSnapshotResult {
 export const isSyncableDataEqual = (
   a: SyncableWordData,
   b: SyncableWordData
-): boolean => {
-  const aDates = a.correctPracticeDates ?? [];
-  const bDates = b.correctPracticeDates ?? [];
-  const aHistory = a.attemptHistory ?? [];
-  const bHistory = b.attemptHistory ?? [];
-  return (
-    a.correctCount === b.correctCount &&
-    a.totalAttempts === b.totalAttempts &&
-    a.inputTimes.length === b.inputTimes.length &&
-    a.inputTimes.every((time, index) => time === b.inputTimes[index]) &&
-    aDates.length === bDates.length &&
-    aDates.every((date, index) => date === bDates[index]) &&
-    aHistory.length === bHistory.length &&
-    aHistory.every((flag, index) => flag === bHistory[index])
-  );
-};
+): boolean =>
+  a.correctCount === b.correctCount &&
+  a.totalAttempts === b.totalAttempts &&
+  arraysEqual(a.inputTimes, b.inputTimes) &&
+  arraysEqual(a.correctPracticeDates ?? [], b.correctPracticeDates ?? []) &&
+  arraysEqual(a.attemptHistory ?? [], b.attemptHistory ?? []);
 
 export const isFirestoreAdvanced = (
   firestore: SyncableWordData,
@@ -470,9 +475,7 @@ export const mergeSnapshotIntoStore = (
 
   for (const [word, data] of byWord) {
     const existing = store.wordData.get(word);
-    if (!existing) {
-      store.setWordData(word, data);
-    } else if (!isWordDataEqual(existing, data)) {
+    if (!existing || !isWordDataEqual(existing, data)) {
       store.setWordData(word, data);
     }
   }
