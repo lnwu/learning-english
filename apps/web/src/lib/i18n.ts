@@ -46,6 +46,7 @@ const zh = {
     'error.deleteWordFailed': '从云端删除单词失败',
     'error.resetFailed': '重置练习记录失败',
     'error.updateTranslationFailed': '更新释义失败，请稍后重试',
+    'error.normalizeWordFailed': '归一化单词失败，请稍后重试',
     'error.wordNotFound': '未找到单词',
     
     // Home page
@@ -123,6 +124,14 @@ const zh = {
     'profile.regenerateSuccess': '已重新生成 {success} 个单词的释义',
     'profile.regeneratePartial': '已重新生成 {success} 个单词的释义，{skipped} 个保留原释义',
     'profile.regenerateFailed': '重新生成释义失败，请稍后重试',
+    'profile.normalizeTitle': '归一化词形',
+    'profile.normalizeDesc': '让 AI 把词库中已有的屈折形式（复数、过去式等）统一为词典原形；重复的单词会合并为一条，练习记录一并保留。',
+    'profile.normalizeButton': '归一化全部单词',
+    'profile.normalizeConfirm': '确定要归一化全部单词吗？',
+    'profile.normalizeConfirmDesc': 'AI 会检查当前所有单词，把屈折形式还原为词典原形；若原形已存在，则合并为一条并保留两边的练习记录。此操作不可撤销。',
+    'profile.normalizeSuccess': '已归一化 {renamed} 个单词，合并 {merged} 个重复单词',
+    'profile.normalizeNone': '没有需要归一化的单词',
+    'profile.normalizeFailed': '归一化失败，请稍后重试',
     'profile.practiceTimeTitle': '每日练习时间',
     'profile.practiceTimeDesc': '统计停留在单词练习或造句练习页面且窗口处于激活状态的时长',
     'profile.weekdayMon': '一',
@@ -144,6 +153,11 @@ const zh = {
     'addWord.confirmAdd': '确认添加',
     'addWord.cancel': '取消',
     'addWord.addSuccess': '单词已添加',
+    'addWord.saveLemma': '保存原形：{word}',
+    'addWord.keepOriginal': '保留原词：{word}',
+    'addWord.existsTitle': '单词已存在',
+    'addWord.baseExists': '「{word}」的原形「{lemma}」已在词库中，无需重复添加。',
+    'addWord.gotIt': '知道了',
 
     // Sync indicator
     'sync.pending': '个单词待同步',
@@ -187,6 +201,7 @@ const en: Record<TranslationKey, string> = {
     'error.deleteWordFailed': 'Failed to delete word from cloud',
     'error.resetFailed': 'Failed to reset practice records',
     'error.updateTranslationFailed': 'Failed to update definitions, please try again',
+    'error.normalizeWordFailed': 'Failed to normalize words, please try again',
     'error.wordNotFound': 'Word not found',
     
     // Home page
@@ -264,6 +279,14 @@ const en: Record<TranslationKey, string> = {
     'profile.regenerateSuccess': 'Regenerated definitions for {success} words',
     'profile.regeneratePartial': 'Regenerated definitions for {success} words, kept {skipped} unchanged',
     'profile.regenerateFailed': 'Failed to regenerate definitions, please try again',
+    'profile.normalizeTitle': 'Normalize Word Forms with AI',
+    'profile.normalizeDesc': 'Let AI convert inflected forms in your library (plurals, past tense, etc.) to their dictionary base form. Duplicates are merged into one entry and both sets of practice records are kept.',
+    'profile.normalizeButton': 'Normalize All Words',
+    'profile.normalizeConfirm': 'Normalize all words?',
+    'profile.normalizeConfirmDesc': 'AI will check all words and convert inflected forms back to their base form. If a base form already exists, the two entries are merged and both sets of practice records are kept. This action cannot be undone.',
+    'profile.normalizeSuccess': 'Normalized {renamed} words, merged {merged} duplicates',
+    'profile.normalizeNone': 'No words need normalization',
+    'profile.normalizeFailed': 'Failed to normalize words, please try again',
     'profile.practiceTimeTitle': 'Daily Practice Time',
     'profile.practiceTimeDesc': 'Time counted while the window is on the word or sentence practice page and is active',
     'profile.weekdayMon': 'Mon',
@@ -285,6 +308,11 @@ const en: Record<TranslationKey, string> = {
     'addWord.confirmAdd': 'Add',
     'addWord.cancel': 'Cancel',
     'addWord.addSuccess': 'Word added',
+    'addWord.saveLemma': 'Save base form: {word}',
+    'addWord.keepOriginal': 'Keep original: {word}',
+    'addWord.existsTitle': 'Word Already Exists',
+    'addWord.baseExists': 'The base form of "{word}" is "{lemma}", which is already in your list.',
+    'addWord.gotIt': 'Got it',
 
     // Sync indicator
     'sync.pending': 'words pending',

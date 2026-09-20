@@ -71,6 +71,16 @@ export class Words {
     this.#masteryCache.delete(word);
   }
 
+  moveWord(from: string, to: string, data: WordData) {
+    this.wordData.delete(from);
+    this.wordData.set(to, data);
+    this.userInputs.delete(from);
+    this.#priorityCache.delete(from);
+    this.#priorityCache.delete(to);
+    this.#masteryCache.delete(from);
+    this.#masteryCache.delete(to);
+  }
+
   removeAllWords() {
     this.wordData.clear();
     this.invalidateCaches();
@@ -265,6 +275,40 @@ export class Words {
     return stats;
   }
 }
+
+export const mergeWordData = (target: WordData, source: WordData): WordData => {
+  const lastPracticedAt =
+    target.lastPracticedAt && source.lastPracticedAt
+      ? new Date(
+          Math.max(
+            target.lastPracticedAt.getTime(),
+            source.lastPracticedAt.getTime()
+          )
+        )
+      : target.lastPracticedAt ?? source.lastPracticedAt;
+
+  return {
+    ...target,
+    correctCount: target.correctCount + source.correctCount,
+    totalAttempts: target.totalAttempts + source.totalAttempts,
+    inputTimes: [...target.inputTimes, ...source.inputTimes].slice(
+      -Words.MAX_INPUT_TIMES
+    ),
+    lastPracticedAt,
+    correctPracticeDates: Array.from(
+      new Set([...target.correctPracticeDates, ...source.correctPracticeDates])
+    )
+      .sort()
+      .slice(-Words.MAX_CORRECT_PRACTICE_DATES),
+    attemptHistory: [...target.attemptHistory, ...source.attemptHistory].slice(
+      -Words.MAX_ATTEMPT_HISTORY
+    ),
+    createdAt:
+      target.createdAt.getTime() <= source.createdAt.getTime()
+        ? target.createdAt
+        : source.createdAt,
+  };
+};
 
 export const parseWordDoc = (id: string, data: DocumentData): WordData => {
   const inputTimes = data.inputTimes ?? [];

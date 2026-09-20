@@ -2,17 +2,21 @@ import { getRedis } from "@/lib/redis";
 import type { WordSense } from "@/lib/parseTranslation";
 
 export interface TranslationCacheEntry {
+  lemma: string;
   senses: WordSense[] | null;
 }
 
 const MAX_CACHE_ENTRIES = 1000;
 const CACHE_TTL_SECONDS = 60 * 60 * 24 * 30;
-const CACHE_KEY_PREFIX = "translation:v1";
+const CACHE_KEY_PREFIX = "translation:v2";
 
 const memoryCache = new Map<string, TranslationCacheEntry>();
 
 const isCacheEntry = (value: unknown): value is TranslationCacheEntry =>
-  typeof value === "object" && value !== null && "senses" in value;
+  typeof value === "object" &&
+  value !== null &&
+  "senses" in value &&
+  typeof (value as { lemma?: unknown }).lemma === "string";
 
 const readMemory = (word: string): TranslationCacheEntry | undefined => {
   const entry = memoryCache.get(word);
