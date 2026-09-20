@@ -18,6 +18,38 @@ const WORD_LENGTH_CATEGORY_COUNT = 3;
 const average = (values: number[]): number =>
   values.reduce((sum, value) => sum + value, 0) / values.length;
 
+const arraysEqual = <T>(a: readonly T[], b: readonly T[]): boolean =>
+  a.length === b.length && a.every((value, index) => value === b[index]);
+
+const pickWeightedRandom = <T extends { priority: number }>(
+  candidates: readonly T[],
+  max: number
+): T[] => {
+  const available = [...candidates];
+  const selected: T[] = [];
+  let totalPriority = available.reduce((sum, item) => sum + item.priority, 0);
+
+  for (let i = 0; i < Math.min(max, available.length); i++) {
+    let random = Math.random() * totalPriority;
+    let selectedIndex = 0;
+
+    for (let j = 0; j < available.length; j++) {
+      random -= available[j].priority;
+      if (random <= 0) {
+        selectedIndex = j;
+        break;
+      }
+    }
+
+    const selectedItem = available[selectedIndex];
+    selected.push(selectedItem);
+    available.splice(selectedIndex, 1);
+    totalPriority -= selectedItem.priority;
+  }
+
+  return selected;
+};
+
 export interface WordData {
   word: string;
   translation: string;
@@ -48,7 +80,7 @@ export class Words {
 
   wordData: Map<string, WordData> = new Map();
   userInputs: Map<string, string> = new Map();
-  #priorityCache = new Map<string, { masteryScore: number; priority: number }>();
+  #priorityCache = new Map<string, number>();
   #masteryCache = new Map<string, MasteryResult>();
 
   constructor() {
@@ -156,6 +188,20 @@ export class Words {
     return result;
   }
 
+  #getPriority(word: string, data: WordData): number {
+    let priority = this.#priorityCache.get(word);
+    if (priority === undefined) {
+      const masteryScore = this.#getMastery(word, data).score;
+      priority = calculatePriority(
+        masteryScore,
+        data.lastPracticedAt,
+        data.totalAttempts
+      );
+      this.#priorityCache.set(word, priority);
+    }
+    return priority;
+  }
+
   getMasteryScore(word: string): number {
     const data = this.wordData.get(word);
     if (!data) return 0;
@@ -213,52 +259,17 @@ export class Words {
   }
 
   getRandomWords(max: number = Words.MAX_RANDOM_WORDS): [string, string][] {
-    const wordEntries = Array.from(this.wordData.entries());
-    if (wordEntries.length === 0) {
-      return [];
-    }
-
-    const wordsWithPriority = wordEntries.map(([word, data]) => {
-      let entry = this.#priorityCache.get(word);
-      if (!entry) {
-        const masteryScore = this.#getMastery(word, data).score;
-        const priority = calculatePriority(
-          masteryScore,
-          data.lastPracticedAt,
-          data.totalAttempts
-        );
-        entry = { masteryScore, priority };
-        this.#priorityCache.set(word, entry);
-      }
-      return { word, translation: data.translation, priority: entry.priority };
-    });
-
-    const selected: [string, string][] = [];
-    const available = [...wordsWithPriority];
-    let totalPriority = available.reduce(
-      (sum, item) => sum + item.priority,
-      0
+    const candidates = Array.from(this.wordData.entries()).map(
+      ([word, data]) => ({
+        word,
+        translation: data.translation,
+        priority: this.#getPriority(word, data),
+      })
     );
 
-    for (let i = 0; i < Math.min(max, available.length); i++) {
-      let random = Math.random() * totalPriority;
-      let selectedIndex = 0;
-
-      for (let j = 0; j < available.length; j++) {
-        random -= available[j].priority;
-        if (random <= 0) {
-          selectedIndex = j;
-          break;
-        }
-      }
-
-      const selectedItem = available[selectedIndex];
-      selected.push([selectedItem.word, selectedItem.translation]);
-      available.splice(selectedIndex, 1);
-      totalPriority -= selectedItem.priority;
-    }
-
-    return selected;
+    return pickWeightedRandom(candidates, max).map(
+      ({ word, translation }): [string, string] => [word, translation]
+    );
   }
 
   get practiceStats(): PracticeStat[] {
@@ -351,11 +362,9 @@ export const isWordDataEqual = (a: WordData, b: WordData) => {
     return false;
   }
   return (
-    a.inputTimes.every((time, i) => time === b.inputTimes[i]) &&
-    a.correctPracticeDates.every(
-      (date, i) => date === b.correctPracticeDates[i]
-    ) &&
-    a.attemptHistory.every((ok, i) => ok === b.attemptHistory[i])
+    arraysEqual(a.inputTimes, b.inputTimes) &&
+    arraysEqual(a.correctPracticeDates, b.correctPracticeDates) &&
+    arraysEqual(a.attemptHistory, b.attemptHistory)
   );
 };
 
@@ -381,22 +390,12 @@ export interface MergedSnapshotResult {
 export const isSyncableDataEqual = (
   a: SyncableWordData,
   b: SyncableWordData
-): boolean => {
-  const aDates = a.correctPracticeDates ?? [];
-  const bDates = b.correctPracticeDates ?? [];
-  const aHistory = a.attemptHistory ?? [];
-  const bHistory = b.attemptHistory ?? [];
-  return (
-    a.correctCount === b.correctCount &&
-    a.totalAttempts === b.totalAttempts &&
-    a.inputTimes.length === b.inputTimes.length &&
-    a.inputTimes.every((time, index) => time === b.inputTimes[index]) &&
-    aDates.length === bDates.length &&
-    aDates.every((date, index) => date === bDates[index]) &&
-    aHistory.length === bHistory.length &&
-    aHistory.every((flag, index) => flag === bHistory[index])
-  );
-};
+): boolean =>
+  a.correctCount === b.correctCount &&
+  a.totalAttempts === b.totalAttempts &&
+  arraysEqual(a.inputTimes, b.inputTimes) &&
+  arraysEqual(a.correctPracticeDates ?? [], b.correctPracticeDates ?? []) &&
+  arraysEqual(a.attemptHistory ?? [], b.attemptHistory ?? []);
 
 export const isFirestoreAdvanced = (
   firestore: SyncableWordData,
@@ -476,9 +475,7 @@ export const mergeSnapshotIntoStore = (
 
   for (const [word, data] of byWord) {
     const existing = store.wordData.get(word);
-    if (!existing) {
-      store.setWordData(word, data);
-    } else if (!isWordDataEqual(existing, data)) {
+    if (!existing || !isWordDataEqual(existing, data)) {
       store.setWordData(word, data);
     }
   }
