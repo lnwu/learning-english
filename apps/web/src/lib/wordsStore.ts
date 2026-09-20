@@ -44,10 +44,16 @@ export class Words {
     this.#masteryCache.clear();
   }
 
+  #invalidateWordCaches(...words: string[]) {
+    for (const word of words) {
+      this.#priorityCache.delete(word);
+      this.#masteryCache.delete(word);
+    }
+  }
+
   setWordData(word: string, data: WordData) {
     this.wordData.set(word, data);
-    this.#priorityCache.delete(word);
-    this.#masteryCache.delete(word);
+    this.#invalidateWordCaches(word);
   }
 
   addWord(word: string, translation: string, id: string) {
@@ -67,18 +73,14 @@ export class Words {
 
   deleteWord(word: string) {
     this.wordData.delete(word);
-    this.#priorityCache.delete(word);
-    this.#masteryCache.delete(word);
+    this.#invalidateWordCaches(word);
   }
 
   moveWord(from: string, to: string, data: WordData) {
     this.wordData.delete(from);
     this.wordData.set(to, data);
     this.userInputs.delete(from);
-    this.#priorityCache.delete(from);
-    this.#priorityCache.delete(to);
-    this.#masteryCache.delete(from);
-    this.#masteryCache.delete(to);
+    this.#invalidateWordCaches(from, to);
   }
 
   removeAllWords() {
@@ -86,49 +88,47 @@ export class Words {
     this.invalidateCaches();
   }
 
-  recordCorrectAttempt(word: string, inputTimeSeconds?: number) {
+  #recordAttempt(word: string, correct: boolean, inputTimeSeconds?: number) {
     const data = this.wordData.get(word);
     if (!data) return;
 
     data.totalAttempts += 1;
-    data.correctCount += 1;
-    data.attemptHistory.push(true);
+    if (correct) {
+      data.correctCount += 1;
+    }
+    data.attemptHistory.push(correct);
     if (data.attemptHistory.length > Words.MAX_ATTEMPT_HISTORY) {
       data.attemptHistory = data.attemptHistory.slice(-Words.MAX_ATTEMPT_HISTORY);
     }
-    if (inputTimeSeconds !== undefined) {
+
+    if (correct && inputTimeSeconds !== undefined) {
       data.inputTimes.push(inputTimeSeconds);
-    }
-    const now = new Date();
-    const today = formatLocalPracticeDate(now);
-    if (!data.correctPracticeDates.includes(today)) {
-      data.correctPracticeDates.push(today);
-      if (data.correctPracticeDates.length > Words.MAX_CORRECT_PRACTICE_DATES) {
-        data.correctPracticeDates = data.correctPracticeDates.slice(-Words.MAX_CORRECT_PRACTICE_DATES);
+      if (data.inputTimes.length > Words.MAX_INPUT_TIMES) {
+        data.inputTimes = data.inputTimes.slice(-Words.MAX_INPUT_TIMES);
       }
     }
 
-    if (data.inputTimes.length > Words.MAX_INPUT_TIMES) {
-      data.inputTimes = data.inputTimes.slice(-Words.MAX_INPUT_TIMES);
+    const now = new Date();
+    if (correct) {
+      const today = formatLocalPracticeDate(now);
+      if (!data.correctPracticeDates.includes(today)) {
+        data.correctPracticeDates.push(today);
+        if (data.correctPracticeDates.length > Words.MAX_CORRECT_PRACTICE_DATES) {
+          data.correctPracticeDates = data.correctPracticeDates.slice(-Words.MAX_CORRECT_PRACTICE_DATES);
+        }
+      }
     }
-
     data.lastPracticedAt = now;
-    this.#priorityCache.delete(word);
-    this.#masteryCache.delete(word);
+
+    this.#invalidateWordCaches(word);
+  }
+
+  recordCorrectAttempt(word: string, inputTimeSeconds?: number) {
+    this.#recordAttempt(word, true, inputTimeSeconds);
   }
 
   recordIncorrectAttempt(word: string) {
-    const data = this.wordData.get(word);
-    if (!data) return;
-
-    data.totalAttempts += 1;
-    data.attemptHistory.push(false);
-    if (data.attemptHistory.length > Words.MAX_ATTEMPT_HISTORY) {
-      data.attemptHistory = data.attemptHistory.slice(-Words.MAX_ATTEMPT_HISTORY);
-    }
-    data.lastPracticedAt = new Date();
-    this.#priorityCache.delete(word);
-    this.#masteryCache.delete(word);
+    this.#recordAttempt(word, false);
   }
 
   #getMastery(word: string, data: WordData): MasteryResult {
