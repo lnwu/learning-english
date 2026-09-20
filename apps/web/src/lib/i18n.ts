@@ -155,6 +155,9 @@ const zh = {
     'addWord.addSuccess': '单词已添加',
     'addWord.saveLemma': '保存原形：{word}',
     'addWord.keepOriginal': '保留原词：{word}',
+    'addWord.existsTitle': '单词已存在',
+    'addWord.baseExists': '「{word}」的原形「{lemma}」已在词库中，无需重复添加。',
+    'addWord.gotIt': '知道了',
 
     // Sync indicator
     'sync.pending': '个单词待同步',
@@ -307,6 +310,9 @@ const en: Record<TranslationKey, string> = {
     'addWord.addSuccess': 'Word added',
     'addWord.saveLemma': 'Save base form: {word}',
     'addWord.keepOriginal': 'Keep original: {word}',
+    'addWord.existsTitle': 'Word Already Exists',
+    'addWord.baseExists': 'The base form of "{word}" is "{lemma}", which is already in your list.',
+    'addWord.gotIt': 'Got it',
 
     // Sync indicator
     'sync.pending': 'words pending',

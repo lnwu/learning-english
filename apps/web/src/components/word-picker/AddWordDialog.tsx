@@ -19,7 +19,7 @@ interface AddWordDialogProps {
   onFinished?: () => void;
 }
 
-type Status = "loading" | "ready";
+type Status = "loading" | "ready" | "exists";
 
 const AddWordDialog = ({ word, onClose, onFinished }: AddWordDialogProps) => {
   const { words, addWord } = useFirestoreWords();
@@ -69,11 +69,10 @@ const AddWordDialog = ({ word, onClose, onFinished }: AddWordDialogProps) => {
 
         const normalized = data.lemma && data.lemma !== word ? data.lemma : word;
         if (normalized !== word && words.wordData.has(normalized)) {
-          toast({
-            title: t("addWord.wordExists", { word: normalized }),
-            variant: "destructive",
-          });
-          onFinishedRef.current?.();
+          if (cancelled) return;
+          setSenses(fetched);
+          setLemma(normalized);
+          setStatus("exists");
           return;
         }
 
@@ -145,14 +144,26 @@ const AddWordDialog = ({ word, onClose, onFinished }: AddWordDialogProps) => {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            {status === "ready" && word
-              ? `${t("addWord.confirmTitle")}: ${word}${isNormalized ? ` → ${lemma}` : ""}`
-              : t("addWord.title")}
+            {status === "exists"
+              ? t("addWord.existsTitle")
+              : status === "ready" && word
+                ? `${t("addWord.confirmTitle")}: ${word}${isNormalized ? ` → ${lemma}` : ""}`
+                : t("addWord.title")}
           </DialogTitle>
         </DialogHeader>
         {status === "loading" && (
           <div className="text-sm text-muted-foreground">
             {t("common.loading")}
+          </div>
+        )}
+        {status === "exists" && word && lemma && (
+          <div className="space-y-2">
+            <div className="text-sm text-muted-foreground">
+              {t("addWord.baseExists", { word, lemma })}
+            </div>
+            <div className="text-sm font-medium">
+              {word} → {lemma}
+            </div>
           </div>
         )}
         {status === "ready" && (
@@ -186,13 +197,21 @@ const AddWordDialog = ({ word, onClose, onFinished }: AddWordDialogProps) => {
           </div>
         )}
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
-            {t("addWord.cancel")}
-          </Button>
-          {status === "ready" && (
-            <Button onClick={handleConfirmAdd} disabled={confirming}>
-              {t("addWord.confirmAdd")}
+          {status === "exists" ? (
+            <Button onClick={() => onFinishedRef.current?.()}>
+              {t("addWord.gotIt")}
             </Button>
+          ) : (
+            <>
+              <Button variant="outline" onClick={onClose}>
+                {t("addWord.cancel")}
+              </Button>
+              {status === "ready" && (
+                <Button onClick={handleConfirmAdd} disabled={confirming}>
+                  {t("addWord.confirmAdd")}
+                </Button>
+              )}
+            </>
           )}
         </DialogFooter>
       </DialogContent>

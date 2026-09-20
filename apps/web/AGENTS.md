@@ -34,7 +34,7 @@
 - 全站任意页面双击英文单词会弹出添加确认弹窗（`src/components/word-picker/WordPicker.tsx` 在根 layout 挂载监听 `dblclick`，用 `window.getSelection()` 取词）。交互与词库校验的纯逻辑在 `src/lib/wordSelection.ts`（`extractWordFromSelection`/`checkWordAddable`，配套测试）。
 - 添加弹窗复用共享组件 `src/components/word-picker/AddWordDialog.tsx`（翻译 → 展示义项 → 确认落库），`/add-word` 页面与全局双击入口共用，不要在别处再复制「调 `/api/translate` + 确认弹窗」逻辑。弹窗内部只做翻译与落库，已存在/非法字符的预校验由调用方（页面或 `WordPicker`）先用 `checkWordAddable` 完成。
 - 双击监听需跳过 `input/textarea/select/[contenteditable]` 与弹窗自身（`[data-slot="dialog-content"]`），未登录时忽略；不要在这些区域或未登录场景触发。
-- 添加弹窗默认保存 `lemma` 原形：标题显示「原词 → 原形」，两者的切换按钮（`addWord.saveLemma`/`addWord.keepOriginal`）只在不同时出现，用户可切回原词。翻译返回后若原形已在词库，直接提示 `addWord.wordExists` 并结束；`handleConfirmAdd` 按最终选中的词再校验一次。选词侧的 `checkWordAddable` 仍用选中的原词，不要在客户端做原形推断。
+- 添加弹窗默认保存 `lemma` 原形：标题显示「原词 → 原形」，两者的切换按钮（`addWord.saveLemma`/`addWord.keepOriginal`）只在不同时出现，用户可切回原词。翻译返回后若原形已在词库，弹窗切到 `exists` 状态展示 `addWord.baseExists`（不自动关闭、不弹 toast），点 `addWord.gotIt` 才走 `onFinished`；`handleConfirmAdd` 按最终选中的词再校验一次。选词侧的 `checkWordAddable` 仍用选中的原词，不要在客户端做原形推断。
 
 ## 词形归一化（批量）
 
