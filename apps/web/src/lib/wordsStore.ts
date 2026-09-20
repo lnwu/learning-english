@@ -11,6 +11,13 @@ import {
   getLocalPracticeDate,
 } from "@/lib/practiceDate";
 
+const SHORT_WORD_MAX_LENGTH = 5;
+const MEDIUM_WORD_MAX_LENGTH = 10;
+const WORD_LENGTH_CATEGORY_COUNT = 3;
+
+const average = (values: number[]): number =>
+  values.reduce((sum, value) => sum + value, 0) / values.length;
+
 export interface WordData {
   word: string;
   translation: string;
@@ -22,6 +29,15 @@ export interface WordData {
   attemptHistory: boolean[];
   createdAt: Date;
   id: string;
+}
+
+export interface PracticeStat {
+  word: string;
+  avgTime: number;
+  count: number;
+  masteryScore: number;
+  correctCount: number;
+  totalAttempts: number;
 }
 
 export class Words {
@@ -155,28 +171,28 @@ export class Words {
     this.wordData.forEach((data) => {
       allTimes.push(...data.inputTimes);
     });
-    if (allTimes.length === 0) return null;
-    return allTimes.reduce((sum, time) => sum + time, 0) / allTimes.length;
+    return allTimes.length === 0 ? null : average(allTimes);
   }
 
   getWordLengthCategory(word: string): number {
     const length = word.length;
-    if (length <= 5) return 0;
-    if (length <= 10) return 1;
+    if (length <= SHORT_WORD_MAX_LENGTH) return 0;
+    if (length <= MEDIUM_WORD_MAX_LENGTH) return 1;
     return 2;
   }
 
   get averageTimeByLengthCategory(): (number | null)[] {
-    const categoryTimes: number[][] = [[], [], []];
+    const categoryTimes: number[][] = Array.from(
+      { length: WORD_LENGTH_CATEGORY_COUNT },
+      () => []
+    );
 
     this.wordData.forEach((data, word) => {
       categoryTimes[this.getWordLengthCategory(word)].push(...data.inputTimes);
     });
 
     return categoryTimes.map((times) =>
-      times.length === 0
-        ? null
-        : times.reduce((sum, time) => sum + time, 0) / times.length
+      times.length === 0 ? null : average(times)
     );
   }
 
@@ -245,22 +261,12 @@ export class Words {
     return selected;
   }
 
-  get practiceStats() {
-    const stats: Array<{
-      word: string;
-      avgTime: number;
-      count: number;
-      masteryScore: number;
-      correctCount: number;
-      totalAttempts: number;
-    }> = [];
+  get practiceStats(): PracticeStat[] {
+    const stats: PracticeStat[] = [];
 
     this.wordData.forEach((data, word) => {
       const times = data.inputTimes;
-      const avg =
-        times.length > 0
-          ? times.reduce((sum, t) => sum + t, 0) / times.length
-          : 0;
+      const avg = times.length > 0 ? average(times) : 0;
       stats.push({
         word,
         avgTime: avg,
