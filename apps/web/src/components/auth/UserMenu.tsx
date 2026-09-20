@@ -47,16 +47,18 @@ export const UserMenu = ({ user }: UserMenuProps) => {
         </Avatar>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel>
-          <span className="block truncate text-sm font-medium text-foreground">
-            {displayName}
-          </span>
-          {user.email && (
-            <span className="block truncate text-xs font-normal text-muted-foreground">
-              {user.email}
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>
+            <span className="block truncate text-sm font-medium text-foreground">
+              {displayName}
             </span>
-          )}
-        </DropdownMenuLabel>
+            {user.email && (
+              <span className="block truncate text-xs font-normal text-muted-foreground">
+                {user.email}
+              </span>
+            )}
+          </DropdownMenuLabel>
+        </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <DropdownMenuItem render={<Link href="/profile" />}>
