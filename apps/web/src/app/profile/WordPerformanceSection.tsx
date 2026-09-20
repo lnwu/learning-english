@@ -140,7 +140,7 @@ export const WordPerformanceSection = observer(
 
               return (
                 <div key={category} className="overflow-hidden rounded-xl border">
-                  <div className="flex items-center justify-between gap-4 bg-muted/40 px-4 py-3">
+                  <div className="flex items-center justify-between gap-4 border-b bg-surface px-4 py-3">
                     <div className="text-sm font-medium">{t(labelKey)}</div>
                     <div className="text-base font-semibold tabular-nums">
                       {avgTime !== null

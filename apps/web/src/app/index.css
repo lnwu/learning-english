@@ -27,6 +27,7 @@
   --color-success-foreground: var(--success-foreground);
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
+  --color-surface: var(--surface);
   --color-heatmap-1: var(--heatmap-1);
   --color-heatmap-2: var(--heatmap-2);
   --color-heatmap-3: var(--heatmap-3);
@@ -70,6 +71,7 @@
   --success-foreground: oklch(0.985 0 0);
   --warning: oklch(0.666 0.179 58.318);
   --warning-foreground: oklch(0.205 0 0);
+  --surface: oklch(0.985 0 0);
   --heatmap-1: oklch(0.871 0.075 152.934);
   --heatmap-2: oklch(0.792 0.135 152.535);
   --heatmap-3: oklch(0.723 0.192 149.579);
@@ -112,6 +114,7 @@
   --success-foreground: oklch(0.205 0 0);
   --warning: oklch(0.828 0.189 84.429);
   --warning-foreground: oklch(0.205 0 0);
+  --surface: oklch(0.205 0 0);
   --heatmap-1: oklch(0.34 0.06 152.934);
   --heatmap-2: oklch(0.45 0.1 151.711);
   --heatmap-3: oklch(0.56 0.14 150.069);

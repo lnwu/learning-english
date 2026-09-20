@@ -18,6 +18,7 @@ import {
   MASTERY_BAR_COLORS,
   PageContainer,
   PageHeader,
+  StatTile,
   ToggleGroup,
   ToggleGroupItem,
   getMasteryLevel,
@@ -474,26 +475,16 @@ const Profile = observer(() => {
         </Card>
 
         <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="flex flex-col gap-1 rounded-xl border bg-muted/40 p-4">
-            <div className="text-2xl font-semibold tabular-nums">{totalWords}</div>
-            <div className="text-sm text-muted-foreground">{t('profile.totalWords')}</div>
-          </div>
-          <div className="flex flex-col gap-1 rounded-xl border bg-muted/40 p-4">
-            <div className="text-2xl font-semibold tabular-nums">
-              {overallAverageTime !== null ? `${overallAverageTime.toFixed(1)}${t('profile.seconds')}` : t('profile.noData')}
-            </div>
-            <div className="text-sm text-muted-foreground">{t('profile.averageTime')}</div>
-          </div>
-          <div className="flex flex-col gap-1 rounded-xl border bg-muted/40 p-4">
-            <div className="text-2xl font-semibold tabular-nums">
-              {wordsWithStats.filter(w => w.count > 0).length}
-            </div>
-            <div className="text-sm text-muted-foreground">{t('profile.wordsPracticed')}</div>
-          </div>
-          <div className="flex flex-col gap-1 rounded-xl border bg-muted/40 p-4">
-            <div className="text-2xl font-semibold tabular-nums">{avgMasteryScore}%</div>
-            <div className="text-sm text-muted-foreground">{t('profile.avgMastery')}</div>
-          </div>
+          <StatTile value={totalWords} label={t('profile.totalWords')} />
+          <StatTile
+            value={overallAverageTime !== null ? `${overallAverageTime.toFixed(1)}${t('profile.seconds')}` : t('profile.noData')}
+            label={t('profile.averageTime')}
+          />
+          <StatTile
+            value={wordsWithStats.filter(w => w.count > 0).length}
+            label={t('profile.wordsPracticed')}
+          />
+          <StatTile value={`${avgMasteryScore}%`} label={t('profile.avgMastery')} />
         </div>
 
         <Card className="mb-6">
@@ -513,7 +504,7 @@ const Profile = observer(() => {
                       <span className="w-16 text-sm whitespace-nowrap text-muted-foreground">
                         {t(labelKey)}
                       </span>
-                      <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
+                      <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-muted inset-shadow-2xs">
                         <div
                           className={`h-full rounded-full ${MASTERY_BAR_COLORS[key]} transition-all`}
                           style={{ width: `${pct}%` }}

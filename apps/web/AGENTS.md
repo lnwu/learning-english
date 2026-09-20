@@ -23,7 +23,8 @@
 - 全站视觉为「中性极简」：白底平铺、1px 描边分层、卡片不用阴影、彩色只用于状态语义。写样式只用语义 token，不要再出现 `gray-*`/`blue-*` 等原始调色板类、`bg-white`、卡片上的 `shadow-*`（浮层组件自带的 `shadow-md/lg` 除外）。
 - 常用映射：`text-gray-*` → `text-muted-foreground`；`bg-white` → `bg-card`；`bg-gray-100/200/700/800` → `bg-muted`；蓝色强调 → `bg-primary`/`text-primary`/`ring-ring`；成功/警告/危险用 `text-success`/`text-warning`/`text-destructive` 以及 `bg-success/10`、`border-destructive/30`、`ring-success/30` 这类同色透明度组合（`--success`/`--warning` 定义在 `index.css` 的 `:root` 与 `.dark`）。
 - 页面骨架统一用 `PageContainer`（`width` 取 `narrow|default|wide`）+ `PageHeader`（左侧标题与灰色副标题、右侧操作按钮）；加载态用 `LoadingState`，空态用 `Empty`，危险操作按钮用 `Button variant="destructive"`。`--radius` 为 `0.5rem`（按钮/输入框 8px、卡片 12px）。
-- 数据可视化是唯一的彩色例外：熟练度 5 级用 `MASTERY_BAR_COLORS`（主色透明度由浅到深），练习热力图用 `--heatmap-1..4` 绿色单色阶（GitHub 风格）；不要在别处新增彩色。
+- 背景分三层（对齐 OpenCode console 的 token 体系）：页面底用 `bg-background`（白），卡片与「表面」用 `bg-surface`（浅色 `#fafafa`、深色 `#242424`），嵌套层用 `bg-muted`。强调用的小块（统计数字、分组表头）用 `StatTile` 或 `rounded-xl border bg-surface shadow-xs`；进度槽用 `bg-muted inset-shadow-2xs` 做出轻微凹槽感。
+- 数据可视化是唯一的彩色例外：熟练度 5 级用 `MASTERY_BAR_COLORS`（rose → orange → amber → lime → emerald），练习热力图用 `--heatmap-1..4` 绿色单色阶（GitHub 风格）；不要在别处新增彩色。
 - 图标统一用 lucide（按钮内图标用 `data-icon="inline-start|inline-end"`），不要用 emoji 当图标；列表分隔用 `divide-y` 或 `Separator`，间距用 `gap-*`，不要用 `space-x-*`/`space-y-*`。
 
 ## 词库状态管理

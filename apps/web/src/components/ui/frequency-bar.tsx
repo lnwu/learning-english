@@ -9,11 +9,11 @@ import {
 } from "@/lib/masteryCalculator";
 
 export const MASTERY_BAR_COLORS: Record<MasteryLevel, string> = {
-  new: "bg-primary/20",
-  learning: "bg-primary/35",
-  familiar: "bg-primary/55",
-  proficient: "bg-primary/75",
-  mastered: "bg-primary",
+  new: "bg-rose-500",
+  learning: "bg-orange-500",
+  familiar: "bg-amber-400",
+  proficient: "bg-lime-500",
+  mastered: "bg-emerald-500",
 };
 
 interface MasteryBarProps {

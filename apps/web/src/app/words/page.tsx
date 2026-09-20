@@ -32,11 +32,11 @@ const WordRow = observer(({ word, translation, words, onInputChange, onHintRevea
   const hasSense = senses.some((sense) => sense.chinese);
 
   return (
-    <li className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-4 gap-y-1 py-3 first:pt-0">
-      <div className="w-full max-w-xs justify-self-end text-left">
+    <li className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-6 gap-y-2 py-4 first:pt-0">
+      <div className="max-w-md min-w-0 text-left">
         <div
           className={cn(
-            "flex min-h-8 flex-col items-start justify-start px-1 py-1 whitespace-pre-line",
+            "flex min-h-8 flex-col items-start justify-start whitespace-pre-line",
             hasSense ? "font-medium" : "text-muted-foreground italic"
           )}
         >
@@ -52,7 +52,7 @@ const WordRow = observer(({ word, translation, words, onInputChange, onHintRevea
           )}
         </div>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3">
         <Input
           className="w-xs"
           type="text"

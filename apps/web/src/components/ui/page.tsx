@@ -71,6 +71,40 @@ function PageHeader({
   )
 }
 
+function StatTile({
+  className,
+  label,
+  value,
+  ...props
+}: React.ComponentProps<"div"> & {
+  label: React.ReactNode
+  value: React.ReactNode
+}) {
+  return (
+    <div
+      data-slot="stat-tile"
+      className={cn(
+        "flex flex-col gap-1 rounded-xl border bg-surface p-4 shadow-xs",
+        className
+      )}
+      {...props}
+    >
+      <div
+        data-slot="stat-tile-value"
+        className="text-2xl font-semibold tabular-nums"
+      >
+        {value}
+      </div>
+      <div
+        data-slot="stat-tile-label"
+        className="text-sm text-muted-foreground"
+      >
+        {label}
+      </div>
+    </div>
+  )
+}
+
 function LoadingState({
   className,
   label,
@@ -91,4 +125,4 @@ function LoadingState({
   )
 }
 
-export { PageContainer, PageHeader, LoadingState, pageWidths }
+export { PageContainer, PageHeader, StatTile, LoadingState, pageWidths }
