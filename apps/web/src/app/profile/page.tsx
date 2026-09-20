@@ -20,6 +20,11 @@ import {
   MAX_REGENERATE_BATCH_SIZE,
   type RegenerateResult,
 } from "@/lib/regenerateDefinitions";
+import {
+  MAX_NORMALIZE_BATCH_SIZE,
+  type NormalizeResult,
+} from "@/lib/normalizeWords";
+import { resolveRenamePlan } from "@/lib/wordNormalization";
 
 const MASTERY_SEGMENTS: Array<{
   key: MasteryLevel;
@@ -34,7 +39,7 @@ const MASTERY_SEGMENTS: Array<{
 
 const Profile = observer(() => {
   const { user } = useAuth();
-  const { words, deleteWord, resetPracticeRecords, updateTranslations, loading, error } =
+  const { words, deleteWord, resetPracticeRecords, updateTranslations, normalizeWordForms, loading, error } =
     useFirestoreWords();
   const [isClient, setIsClient] = useState(false);
   const { locale, setLocale, t } = useLocale();
@@ -46,6 +51,10 @@ const Profile = observer(() => {
   const [regenerating, setRegenerating] = useState(false);
   const [regenerateProgress, setRegenerateProgress] = useState(0);
   const regeneratingRef = useRef(false);
+  const [showNormalizeDialog, setShowNormalizeDialog] = useState(false);
+  const [normalizing, setNormalizing] = useState(false);
+  const [normalizeProgress, setNormalizeProgress] = useState(0);
+  const normalizingRef = useRef(false);
   const [practiceTime, setPracticeTime] = useState<Map<string, number>>(
     new Map()
   );
@@ -228,6 +237,78 @@ const Profile = observer(() => {
     }
   };
 
+  const handleNormalizeWords = async () => {
+    if (normalizingRef.current) return;
+    normalizingRef.current = true;
+
+    const allWords = Array.from(words.wordData.keys());
+    if (allWords.length === 0) {
+      normalizingRef.current = false;
+      return;
+    }
+
+    setNormalizing(true);
+    setNormalizeProgress(0);
+    const total = allWords.length;
+    const renames: Array<{ from: string; to: string }> = [];
+    let batchFailed = 0;
+
+    try {
+      const batches: string[][] = [];
+      for (let i = 0; i < total; i += MAX_NORMALIZE_BATCH_SIZE) {
+        batches.push(allWords.slice(i, i + MAX_NORMALIZE_BATCH_SIZE));
+      }
+
+      for (const batch of batches) {
+        try {
+          const data = await postJson<{ results?: NormalizeResult[] }>(
+            "/api/normalize-words",
+            { words: batch },
+            t("profile.normalizeFailed")
+          );
+          const lemmaByWord = new Map(
+            (data.results ?? []).map((item) => [item.word, item.lemma])
+          );
+          renames.push(...resolveRenamePlan(batch, lemmaByWord));
+        } catch (err) {
+          console.error("Normalize batch failed:", err);
+          batchFailed += batch.length;
+        }
+        setNormalizeProgress((prev) => prev + batch.length);
+      }
+
+      if (batchFailed === total) {
+        toast({
+          title: t("profile.normalizeFailed"),
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (renames.length === 0) {
+        toast({ title: t("profile.normalizeNone"), variant: "success" });
+        return;
+      }
+
+      const { renamed, merged } = await normalizeWordForms(renames);
+      toast({
+        title: t("profile.normalizeSuccess", { renamed, merged }),
+        variant: "success",
+      });
+    } catch (err) {
+      console.error("Normalize all failed:", err);
+      toast({
+        title:
+          err instanceof Error ? err.message : t("profile.normalizeFailed"),
+        variant: "destructive",
+      });
+    } finally {
+      normalizingRef.current = false;
+      setNormalizing(false);
+      setShowNormalizeDialog(false);
+    }
+  };
+
   if (loading) {
     return (
       <main>
@@ -320,6 +401,23 @@ const Profile = observer(() => {
               {regenerating
                 ? `${t('common.loading')} ${regenerateProgress}/${totalWords}`
                 : t('profile.regenerateButton')}
+            </Button>
+          </div>
+
+          {/* AI Normalize Word Forms */}
+          <div className="border-t border-gray-200 dark:border-gray-700 pt-6 mb-6">
+            <h3 className="text-lg font-semibold mb-2">{t('profile.normalizeTitle')}</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              {t('profile.normalizeDesc')}
+            </p>
+            <Button
+              variant="outline"
+              onClick={() => setShowNormalizeDialog(true)}
+              disabled={normalizing || totalWords === 0}
+            >
+              {normalizing
+                ? `${t('common.loading')} ${normalizeProgress}/${totalWords}`
+                : t('profile.normalizeButton')}
             </Button>
           </div>
 
@@ -446,6 +544,18 @@ const Profile = observer(() => {
           confirmText={t('common.confirm')}
           cancelText={t('common.cancel')}
           onConfirm={handleRegenerateAll}
+          variant="default"
+        />
+
+        {/* Normalize Word Forms Confirmation Dialog */}
+        <ConfirmDialog
+          open={showNormalizeDialog}
+          onOpenChange={setShowNormalizeDialog}
+          title={t('profile.normalizeConfirm')}
+          description={t('profile.normalizeConfirmDesc')}
+          confirmText={t('common.confirm')}
+          cancelText={t('common.cancel')}
+          onConfirm={handleNormalizeWords}
           variant="default"
         />
 

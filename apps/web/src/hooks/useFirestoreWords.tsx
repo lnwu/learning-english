@@ -29,6 +29,8 @@ import {
   Words,
   isQueueItemStale,
   mergeSnapshotIntoStore,
+  mergeWordData,
+  type WordData,
 } from "@/lib/wordsStore";
 import { buildAttemptQueueData, buildWordUpdates } from "@/lib/wordSync";
 
@@ -61,6 +63,9 @@ interface WordsContextValue {
   updateTranslations: (
     updates: Array<{ word: string; translation: string }>
   ) => Promise<void>;
+  normalizeWordForms: (
+    renames: Array<{ from: string; to: string }>
+  ) => Promise<{ renamed: number; merged: number }>;
   loading: boolean;
   error: string | null;
   syncing: boolean;
@@ -420,6 +425,94 @@ export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
     [user]
   );
 
+  const normalizeWordForms = useCallback(
+    async (renames: Array<{ from: string; to: string }>) => {
+      if (!user) {
+        throw new Error(tError("error.notAuthenticated"));
+      }
+
+      const plan = renames.filter(
+        ({ from, to }) => from !== to && words.wordData.has(from)
+      );
+      if (plan.length === 0) return { renamed: 0, merged: 0 };
+
+      try {
+        const userId = getEffectiveUserId(user);
+
+        // 先落库待同步的练习数据，避免重命名/合并后旧文档的同步条目被丢弃
+        await syncToFirestore();
+
+        const projected = new Map<string, WordData>();
+        const getData = (word: string) =>
+          projected.get(word) ?? words.wordData.get(word);
+
+        const operations: Array<(batch: WriteBatch) => void> = [];
+        const storeUpdates: Array<{
+          from: string;
+          to: string;
+          data: WordData;
+        }> = [];
+        let renamed = 0;
+        let merged = 0;
+
+        for (const { from, to } of plan) {
+          const source = getData(from);
+          if (!source) continue;
+          const target = getData(to);
+
+          if (target && target.id !== source.id) {
+            const data = mergeWordData(target, source);
+            operations.push((batch) => {
+              batch.update(doc(db, "users", userId, "words", target.id), {
+                correctCount: data.correctCount,
+                totalAttempts: data.totalAttempts,
+                inputTimes: data.inputTimes,
+                correctPracticeDates: data.correctPracticeDates,
+                attemptHistory: data.attemptHistory,
+                lastPracticedAt: data.lastPracticedAt,
+                createdAt: data.createdAt,
+              });
+            });
+            operations.push((batch) => {
+              batch.delete(doc(db, "users", userId, "words", source.id));
+            });
+            projected.set(to, data);
+            projected.delete(from);
+            storeUpdates.push({ from, to, data });
+            merged += 1;
+            continue;
+          }
+
+          if (target) continue;
+
+          const data: WordData = { ...source, word: to };
+          operations.push((batch) => {
+            batch.update(doc(db, "users", userId, "words", source.id), {
+              word: to,
+            });
+          });
+          projected.set(to, data);
+          projected.delete(from);
+          storeUpdates.push({ from, to, data });
+          renamed += 1;
+        }
+
+        if (operations.length > 0) {
+          await commitBatchOperations(operations);
+        }
+        storeUpdates.forEach(({ from, to, data }) => {
+          words.moveWord(from, to, data);
+        });
+
+        return { renamed, merged };
+      } catch (err) {
+        console.error("Failed to normalize word forms:", err);
+        throw new Error(tError("error.normalizeWordFailed"));
+      }
+    },
+    [user, syncToFirestore]
+  );
+
   const resetPracticeRecords = useCallback(async () => {
     if (!user) {
       throw new Error(tError("error.notAuthenticated"));
@@ -470,6 +563,7 @@ export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
       syncToFirestore,
       resetPracticeRecords,
       updateTranslations,
+      normalizeWordForms,
       loading,
       error,
       syncing,
@@ -483,6 +577,7 @@ export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
       syncToFirestore,
       resetPracticeRecords,
       updateTranslations,
+      normalizeWordForms,
       loading,
       error,
       syncing,

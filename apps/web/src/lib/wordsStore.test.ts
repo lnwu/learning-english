@@ -6,6 +6,7 @@ import {
   isQueueItemStale,
   isSyncableDataEqual,
   mergeSnapshotIntoStore,
+  mergeWordData,
   type WordData,
 } from "./wordsStore";
 import { formatLocalPracticeDate } from "./practiceDate";
@@ -494,5 +495,105 @@ describe("mergeSnapshotIntoStore", () => {
       makeSnapshot([["apple", { correctCount: 5, totalAttempts: 5, inputTimes: [1, 1, 1, 1, 1] }]])
     );
     expect(store.getMasteryScore("apple")).toBeGreaterThan(before);
+  });
+});
+
+describe("mergeWordData", () => {
+  it("累加计数、合并数组并保留时间边界", () => {
+    const target = makeWordData({
+      correctCount: 1,
+      totalAttempts: 3,
+      inputTimes: [1, 2],
+      correctPracticeDates: ["2026-01-01"],
+      attemptHistory: [true, false, false],
+      lastPracticedAt: new Date("2026-01-01T00:00:00"),
+      createdAt: new Date("2025-12-01T00:00:00"),
+    });
+    const source = makeWordData({
+      correctCount: 2,
+      totalAttempts: 2,
+      inputTimes: [3],
+      correctPracticeDates: ["2026-01-02", "2026-01-01"],
+      attemptHistory: [true, true],
+      lastPracticedAt: new Date("2026-01-03T00:00:00"),
+      createdAt: new Date("2026-01-02T00:00:00"),
+    });
+
+    const merged = mergeWordData(target, source);
+    expect(merged.correctCount).toBe(3);
+    expect(merged.totalAttempts).toBe(5);
+    expect(merged.inputTimes).toEqual([1, 2, 3]);
+    expect(merged.correctPracticeDates).toEqual(["2026-01-01", "2026-01-02"]);
+    expect(merged.attemptHistory).toEqual([true, false, false, true, true]);
+    expect(merged.lastPracticedAt).toEqual(new Date("2026-01-03T00:00:00"));
+    expect(merged.createdAt).toEqual(new Date("2025-12-01T00:00:00"));
+  });
+
+  it("数组超过上限时保留最近记录", () => {
+    const target = makeWordData({
+      inputTimes: Array.from({ length: 15 }, (_, i) => i),
+      attemptHistory: Array.from({ length: 20 }, () => false),
+      correctPracticeDates: Array.from({ length: 20 }, (_, i) =>
+        `2026-01-${String(i + 1).padStart(2, "0")}`
+      ),
+    });
+    const source = makeWordData({
+      inputTimes: Array.from({ length: 15 }, (_, i) => 100 + i),
+      attemptHistory: Array.from({ length: 20 }, () => true),
+      correctPracticeDates: Array.from({ length: 20 }, (_, i) =>
+        `2026-02-${String(i + 1).padStart(2, "0")}`
+      ),
+    });
+
+    const merged = mergeWordData(target, source);
+    expect(merged.inputTimes).toHaveLength(Words.MAX_INPUT_TIMES);
+    expect(merged.inputTimes[0]).toBe(10);
+    expect(merged.inputTimes[merged.inputTimes.length - 1]).toBe(114);
+    expect(merged.attemptHistory).toHaveLength(Words.MAX_ATTEMPT_HISTORY);
+    expect(merged.attemptHistory[0]).toBe(false);
+    expect(merged.correctPracticeDates).toHaveLength(
+      Words.MAX_CORRECT_PRACTICE_DATES
+    );
+    expect(
+      merged.correctPracticeDates[merged.correctPracticeDates.length - 1]
+    ).toBe("2026-02-20");
+  });
+
+  it("只有一侧有练习时间时取有数据的一侧", () => {
+    const withoutTime = makeWordData({ lastPracticedAt: null });
+    const withTime = makeWordData({
+      lastPracticedAt: new Date("2026-02-01T00:00:00"),
+    });
+    expect(mergeWordData(withoutTime, withTime).lastPracticedAt).toEqual(
+      new Date("2026-02-01T00:00:00")
+    );
+    expect(mergeWordData(withTime, withoutTime).lastPracticedAt).toEqual(
+      new Date("2026-02-01T00:00:00")
+    );
+  });
+
+  it("保留目标词的释义与 id", () => {
+    const target = makeWordData({ translation: "存在", id: "id-exist" });
+    const source = makeWordData({ translation: "存在（过去式）", id: "id-existed" });
+    const merged = mergeWordData(target, source);
+    expect(merged.translation).toBe("存在");
+    expect(merged.id).toBe("id-exist");
+  });
+});
+
+describe("moveWord", () => {
+  it("重命名后旧 key 删除、新 key 保留练习数据并清理输入缓存", () => {
+    const store = new Words();
+    store.addWord("attackers", "攻击者", "id-1");
+    store.recordCorrectAttempt("attackers", 1);
+    store.setUserInput("attackers", "att");
+
+    const data = store.getWordData("attackers")!;
+    store.moveWord("attackers", "attacker", { ...data, word: "attacker" });
+
+    expect(store.wordData.has("attackers")).toBe(false);
+    expect(store.userInputs.has("attackers")).toBe(false);
+    expect(store.getWordData("attacker")?.correctCount).toBe(1);
+    expect(store.getWordId("attacker")).toBe("id-1");
   });
 });

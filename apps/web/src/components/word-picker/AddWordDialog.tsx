@@ -26,6 +26,8 @@ const AddWordDialog = ({ word, onClose, onFinished }: AddWordDialogProps) => {
   const { t } = useLocale();
   const [status, setStatus] = useState<Status>("loading");
   const [senses, setSenses] = useState<WordSense[]>([]);
+  const [lemma, setLemma] = useState<string | null>(null);
+  const [useOriginal, setUseOriginal] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const tRef = useRef(t);
   tRef.current = t;
@@ -36,6 +38,8 @@ const AddWordDialog = ({ word, onClose, onFinished }: AddWordDialogProps) => {
     if (!word) {
       setStatus("loading");
       setSenses([]);
+      setLemma(null);
+      setUseOriginal(false);
       return;
     }
 
@@ -44,13 +48,14 @@ const AddWordDialog = ({ word, onClose, onFinished }: AddWordDialogProps) => {
     const run = async () => {
       setStatus("loading");
       setSenses([]);
+      setLemma(null);
+      setUseOriginal(false);
       const t = tRef.current;
       try {
-        const data = await postJson<{ senses: WordSense[] | null }>(
-          "/api/translate",
-          { word },
-          t("addWord.addFailed")
-        );
+        const data = await postJson<{
+          lemma?: string;
+          senses: WordSense[] | null;
+        }>("/api/translate", { word }, t("addWord.addFailed"));
 
         const fetched = data.senses;
         if (!fetched || fetched.length === 0) {
@@ -62,8 +67,19 @@ const AddWordDialog = ({ word, onClose, onFinished }: AddWordDialogProps) => {
           return;
         }
 
+        const normalized = data.lemma && data.lemma !== word ? data.lemma : word;
+        if (normalized !== word && words.wordData.has(normalized)) {
+          toast({
+            title: t("addWord.wordExists", { word: normalized }),
+            variant: "destructive",
+          });
+          onFinishedRef.current?.();
+          return;
+        }
+
         if (cancelled) return;
         setSenses(fetched);
+        setLemma(normalized);
         setStatus("ready");
       } catch (error) {
         if (cancelled) return;
@@ -82,14 +98,16 @@ const AddWordDialog = ({ word, onClose, onFinished }: AddWordDialogProps) => {
     return () => {
       cancelled = true;
     };
-  }, [word]);
+  }, [word, words]);
 
   const handleConfirmAdd = async () => {
     if (!word || status !== "ready") return;
 
-    if (words.wordData.has(word)) {
+    const finalWord = useOriginal ? word : lemma ?? word;
+
+    if (words.wordData.has(finalWord)) {
       toast({
-        title: tRef.current("addWord.wordExists", { word }),
+        title: tRef.current("addWord.wordExists", { word: finalWord }),
         variant: "destructive",
       });
       onFinishedRef.current?.();
@@ -98,7 +116,7 @@ const AddWordDialog = ({ word, onClose, onFinished }: AddWordDialogProps) => {
 
     setConfirming(true);
     try {
-      await addWord(word, formatSenses(senses));
+      await addWord(finalWord, formatSenses(senses));
       toast({ title: tRef.current("addWord.addSuccess"), variant: "success" });
       onFinishedRef.current?.();
     } catch (error) {
@@ -115,6 +133,8 @@ const AddWordDialog = ({ word, onClose, onFinished }: AddWordDialogProps) => {
     }
   };
 
+  const isNormalized = Boolean(word && lemma && lemma !== word);
+
   return (
     <Dialog
       open={word !== null}
@@ -126,7 +146,7 @@ const AddWordDialog = ({ word, onClose, onFinished }: AddWordDialogProps) => {
         <DialogHeader>
           <DialogTitle>
             {status === "ready" && word
-              ? `${t("addWord.confirmTitle")}: ${word}`
+              ? `${t("addWord.confirmTitle")}: ${word}${isNormalized ? ` → ${lemma}` : ""}`
               : t("addWord.title")}
           </DialogTitle>
         </DialogHeader>
@@ -145,6 +165,24 @@ const AddWordDialog = ({ word, onClose, onFinished }: AddWordDialogProps) => {
                 {formatSenses(senses)}
               </div>
             </div>
+            {isNormalized && word && lemma && (
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  size="sm"
+                  variant={useOriginal ? "outline" : "default"}
+                  onClick={() => setUseOriginal(false)}
+                >
+                  {t("addWord.saveLemma", { word: lemma })}
+                </Button>
+                <Button
+                  size="sm"
+                  variant={useOriginal ? "default" : "outline"}
+                  onClick={() => setUseOriginal(true)}
+                >
+                  {t("addWord.keepOriginal", { word })}
+                </Button>
+              </div>
+            )}
           </div>
         )}
         <DialogFooter>

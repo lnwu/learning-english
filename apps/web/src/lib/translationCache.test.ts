@@ -13,6 +13,7 @@ const REDIS_ENV_KEYS = [
 ] as const;
 
 const makeEntry = (): TranslationCacheEntry => ({
+  lemma: "apple",
   senses: [{ pos: "n.", chinese: "苹果", english: "a fruit" }],
 });
 
@@ -46,7 +47,7 @@ describe("translationCache", () => {
 
   it("未识别单词不写入缓存", async () => {
     const word = `invalid-${Math.random()}`;
-    setCachedTranslation(word, { senses: null });
+    setCachedTranslation(word, { lemma: word, senses: null });
     expect(await getCachedTranslation(word)).toBeUndefined();
   });
 
