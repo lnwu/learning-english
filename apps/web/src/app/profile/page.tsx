@@ -386,7 +386,7 @@ const Profile = observer(() => {
           </Card>
         )}
 
-        <Card className="mb-6">
+        <Card className="mb-6 overflow-visible">
           <CardHeader>
             <CardTitle>{t('profile.practiceTimeTitle')}</CardTitle>
             <p className="text-sm text-muted-foreground">{t('profile.practiceTimeDesc')}</p>
