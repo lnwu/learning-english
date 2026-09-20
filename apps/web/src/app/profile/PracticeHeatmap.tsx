@@ -11,11 +11,11 @@ import {
 } from "@/lib/practiceTime";
 
 const PRACTICE_TIME_LEVEL_CLASSES: Record<PracticeTimeLevel, string> = {
-  0: "bg-gray-100 dark:bg-gray-700",
-  1: "bg-green-200 dark:bg-green-900",
-  2: "bg-green-400 dark:bg-green-700",
-  3: "bg-green-600 dark:bg-green-500",
-  4: "bg-green-800 dark:bg-green-300",
+  0: "bg-muted",
+  1: "bg-heatmap-1",
+  2: "bg-heatmap-2",
+  3: "bg-heatmap-3",
+  4: "bg-heatmap-4",
 };
 
 const HEATMAP_CELL_PITCH_PX = 15;
@@ -61,7 +61,7 @@ const PracticeHeatmap = memo(({ practiceTime }: { practiceTime: Map<string, numb
           {monthLabels.map(({ weekIndex, month }) => (
             <span
               key={weekIndex}
-              className="absolute text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap"
+              className="absolute text-xs whitespace-nowrap text-muted-foreground"
               style={{ left: weekIndex * HEATMAP_CELL_PITCH_PX }}
             >
               {formatMonthLabel(month)}
@@ -70,7 +70,7 @@ const PracticeHeatmap = memo(({ practiceTime }: { practiceTime: Map<string, numb
         </div>
         <div className="flex gap-1">
           <div
-            className="grid grid-rows-7 gap-[3px] text-[10px] leading-3 text-gray-500 dark:text-gray-400"
+            className="grid grid-rows-7 gap-[3px] text-[10px] leading-3 text-muted-foreground"
             style={{ width: HEATMAP_WEEKDAY_COLUMN_PX - 4 }}
           >
             <span className="h-3" />
@@ -90,7 +90,7 @@ const PracticeHeatmap = memo(({ practiceTime }: { practiceTime: Map<string, numb
                     aria-label={`${cell.date} · ${formatPracticeDuration(cell.seconds, locale)}`}
                     className={`relative group w-3 h-3 rounded-sm ${PRACTICE_TIME_LEVEL_CLASSES[cell.level]}`}
                   >
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
+                    <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1 -translate-x-1/2 rounded-md border bg-popover px-2 py-1 text-xs whitespace-nowrap text-popover-foreground opacity-0 shadow-md transition-opacity duration-200 group-hover:opacity-100">
                       {cell.date} · {formatPracticeDuration(cell.seconds, locale)}
                     </div>
                   </div>
@@ -101,7 +101,7 @@ const PracticeHeatmap = memo(({ practiceTime }: { practiceTime: Map<string, numb
             )}
           </div>
         </div>
-        <div className="flex items-center justify-end gap-1 mt-2 text-xs text-gray-500 dark:text-gray-400">
+        <div className="mt-2 flex items-center justify-end gap-1 text-xs text-muted-foreground">
           <span>{t("profile.practiceTimeLess")}</span>
           {PRACTICE_TIME_LEVELS.map((level) => (
             <span

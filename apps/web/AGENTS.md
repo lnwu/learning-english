@@ -10,12 +10,21 @@
 
 ## UI 组件
 
-- `src/components/ui` 是 shadcn/ui 风格组件，底层原语是 **Base UI**（`@base-ui/react`，2026-08 从 Radix 迁移完成，报告在仓库根 `.migration/`）。`components.json` 的 style 为 **`base-nova`**：标准组件（button/dialog/input/alert/sonner）用 `bun x shadcn@latest add <组件> --overwrite` 从官方注册表生成；项目自有组件（confirm-dialog/frequency-bar/sync-indicator）手写，改动时保留现有 API。
+- `src/components/ui` 是 shadcn/ui 风格组件，底层原语是 **Base UI**（`@base-ui/react`，2026-08 从 Radix 迁移完成，报告在仓库根 `.migration/`）。`components.json` 的 style 为 **`base-nova`**：标准组件（button/dialog/input/alert/sonner）用 `bun x shadcn@latest add <组件> --overwrite` 从官方注册表生成；项目自有组件（confirm-dialog/frequency-bar/sync-indicator/page）手写，改动时保留现有 API。
+- 用 CLI 添加组件后必须检查 import：CLI 会把工具函数写成 `import { cn } from "cn"` 并把 `cn@^0.3.0` 写进 `package.json`，本项目统一用 `@/lib/utils` 的 `cn`（clsx + tailwind-merge）。添加后执行 `sed -i 's|from "cn"|from "@/lib/utils"|' src/components/ui/<新文件>.tsx`，从 `package.json` 删除 `cn` 依赖并 `bun install`，否则会多出一个无用的 `cn` 包。
 - toast 用 sonner：`src/components/ui/sonner.tsx`（官方 Toaster，`next-themes` 取主题），业务侧通过 `src/hooks/useToast.ts` 的 `toast({ title, variant })` 调用（映射到 `toast.success/.error`），`richColors` 提供着色，`<Toaster>` 挂载在 `layout.tsx`。
 - 带登录态调 `/api/*` 统一用 `src/lib/apiClient.ts` 的 `postJson<T>(url, payload, fallbackError)`（自动取 ID token、解析错误 JSON），不要在手写 token + fetch 的重复逻辑；目前 `useSentencePractice`、`AddWordDialog`、Profile 页批量释义均已接入。
 - 全局错误兜底：`src/app/error.tsx` 与 `src/app/global-error.tsx` 已存在，未捕获渲染异常不会白屏；不要删除。
 - Base UI 惯例：多态用 `render` prop（不用 radix 的 `asChild`）；render 到非 button 元素时传 `nativeButton={false}`；动画用 keyframe 写法 `data-open:animate-in`/`data-closed:animate-out`（不用 `data-[state=...]`）。
 - 字体：Inter（`next/font` 的 `--font-sans`）只覆盖拉丁字符；中文使用系统字体栈（PingFang SC / 微软雅黑 / Noto Sans CJK），不要再通过 `next/font` 引入 Noto Sans SC，三个字重会产生约 4.5MB 的 CJK 切片资源（`index.css` 的 `body` font-family 已按此约定维护）。
+
+## UI 风格约定（中性极简）
+
+- 全站视觉为「中性极简」：白底平铺、1px 描边分层、卡片不用阴影、彩色只用于状态语义。写样式只用语义 token，不要再出现 `gray-*`/`blue-*` 等原始调色板类、`bg-white`、卡片上的 `shadow-*`（浮层组件自带的 `shadow-md/lg` 除外）。
+- 常用映射：`text-gray-*` → `text-muted-foreground`；`bg-white` → `bg-card`；`bg-gray-100/200/700/800` → `bg-muted`；蓝色强调 → `bg-primary`/`text-primary`/`ring-ring`；成功/警告/危险用 `text-success`/`text-warning`/`text-destructive` 以及 `bg-success/10`、`border-destructive/30`、`ring-success/30` 这类同色透明度组合（`--success`/`--warning` 定义在 `index.css` 的 `:root` 与 `.dark`）。
+- 页面骨架统一用 `PageContainer`（`width` 取 `narrow|default|wide`）+ `PageHeader`（左侧标题与灰色副标题、右侧操作按钮）；加载态用 `LoadingState`，空态用 `Empty`，危险操作按钮用 `Button variant="destructive"`。`--radius` 为 `0.5rem`（按钮/输入框 8px、卡片 12px）。
+- 数据可视化是唯一的彩色例外：熟练度 5 级用 `MASTERY_BAR_COLORS`（主色透明度由浅到深），练习热力图用 `--heatmap-1..4` 绿色单色阶（GitHub 风格）；不要在别处新增彩色。
+- 图标统一用 lucide（按钮内图标用 `data-icon="inline-start|inline-end"`），不要用 emoji 当图标；列表分隔用 `divide-y` 或 `Separator`，间距用 `gap-*`，不要用 `space-x-*`/`space-y-*`。
 
 ## 词库状态管理
 
