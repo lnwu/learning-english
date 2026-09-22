@@ -1,5 +1,6 @@
 import type { SyncQueueItem } from "@/lib/syncQueue";
 import { isQueueItemStale, type WordData } from "@/lib/wordsStore";
+import { commitInChunks } from "@/lib/chunkedCommit";
 
 export interface WordSyncUpdate {
   word: string;
@@ -92,4 +93,75 @@ export const classifySyncBatchFailure = (input: {
   }
 
   return { goneQueueItemIds, retryQueueItemIds };
+};
+
+export interface WordSyncQueuePort {
+  remove: (ids: string[]) => void;
+  incrementRetries: (ids: string[]) => string[];
+}
+
+export interface WordSyncResult {
+  committed: string[];
+  gone: string[];
+  retried: string[];
+  discarded: string[];
+}
+
+export interface RunWordSyncInput {
+  entries: Array<[string, WordSyncUpdate]>;
+  chunkSize: number;
+  isWordsLoaded: () => boolean;
+  wordExists: (word: string) => boolean;
+  writeChunk: (chunk: Array<[string, WordSyncUpdate]>) => Promise<void>;
+  queue: WordSyncQueuePort;
+}
+
+export const runWordSync = async (
+  input: RunWordSyncInput
+): Promise<WordSyncResult> => {
+  const result: WordSyncResult = {
+    committed: [],
+    gone: [],
+    retried: [],
+    discarded: [],
+  };
+
+  await commitInChunks({
+    items: input.entries,
+    chunkSize: input.chunkSize,
+    commitChunk: input.writeChunk,
+    onChunkCommitted: (chunk) => {
+      const ids = chunk.flatMap(([, update]) => update.queueItemIds);
+      input.queue.remove(ids);
+      result.committed.push(...ids);
+    },
+    onChunkFailed: (chunk, error) => {
+      console.error("Failed to sync batch:", error);
+
+      const { goneQueueItemIds, retryQueueItemIds } =
+        classifySyncBatchFailure({
+          errorCode: (error as { code?: string }).code,
+          wordsLoaded: input.isWordsLoaded(),
+          updates: chunk.map(([, update]) => ({
+            word: update.word,
+            queueItemIds: update.queueItemIds,
+          })),
+          wordExists: input.wordExists,
+        });
+
+      if (goneQueueItemIds.length > 0) {
+        input.queue.remove(goneQueueItemIds);
+        result.gone.push(...goneQueueItemIds);
+      }
+
+      const discardedIds = input.queue.incrementRetries(retryQueueItemIds);
+      const discardedSet = new Set(discardedIds);
+      result.discarded.push(...discardedIds);
+      result.retried.push(
+        ...retryQueueItemIds.filter((id) => !discardedSet.has(id))
+      );
+    },
+  });
+
+  return result;
 };

@@ -1,6 +1,6 @@
 # 词库同步与状态管理设计
 
-本文记录 words 数据流的**设计动机与背景**；必须遵守的行为规则在 `apps/web/AGENTS.md`。实现分布：`src/hooks/useWordsSync.ts`（订阅/同步/记分入队）、`src/hooks/useWordActions.ts`（增删改/归一化/重置）、`src/hooks/useFirestoreWords.tsx`（context 组合层）、`src/lib/{wordsStore,wordSync,syncQueue,wordNormalization,firestoreBatch}.ts`（纯逻辑，均有测试）。
+本文记录 words 数据流的**设计动机与背景**；必须遵守的行为规则在 `apps/web/AGENTS.md`。实现分布：`src/hooks/useWordsSync.ts`（订阅/同步/记分入队）、`src/hooks/useWordActions.ts`（增删改/归一化/重置）、`src/hooks/useFirestoreWords.tsx`（context 组合层）、`src/lib/{wordsStore,wordSync,syncQueue,wordNormalization,chunkedCommit}.ts`（纯逻辑，均有测试）、`src/lib/firestoreBatch.ts`（分片写入的 Firestore 包装）。
 
 ## 数据模型
 
@@ -25,6 +25,7 @@
   - 其他失败 → `incrementRetries`，达到上限丢弃并 toast `sync.dataLost`。**不允许静默丢弃**——用户需要知道数据没同步上。
   - localStorage 写失败 → 队列回退内存副本并 toast `sync.storageFailed`，此时刷新页面会丢队列，所以必须提示。
 - 触发时机：30s 定时、`visibilitychange`、`online`、手动按钮；`syncingRef` 防并发（这些触发源会重叠）。
+- 批量写入走 `lib/chunkedCommit.ts` 的 `commitInChunks`（纯分片执行器：`commitChunk` 注入，成功/失败逐片回报；不注入失败回调时错误向外抛），Firestore 侧的包装是 `lib/firestoreBatch.ts`（500/批，增删改与重置走 `commitBatchOperations`）。同步链路的队列处置在 `lib/wordSync.ts` 的 `runWordSync`：成功即出队、失败分类后分流（词已删则出队、否则加一次重试）、重试超限丢弃，单片失败不阻断后续分片；跨片被丢弃的条目汇总后只提示一次 `sync.dataLost`，hook 只注入 `writeChunk` 与队列端口。
 - 登出清空 store 与队列、按 uid 隔离 key：防止把旧账号的 wordId 写进新账号路径。
 
 ## 批量写与归一化

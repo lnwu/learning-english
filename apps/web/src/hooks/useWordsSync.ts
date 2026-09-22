@@ -15,8 +15,8 @@ import {
   buildAttemptQueueData,
   buildAttemptUpdateFields,
   buildWordUpdates,
-  classifySyncBatchFailure,
   collectStaleQueueItemIds,
+  runWordSync,
 } from "@/lib/wordSync";
 import { FIRESTORE_BATCH_LIMIT } from "@/lib/firestoreBatch";
 
@@ -155,52 +155,33 @@ export const useWordsSync = (words: Words, user: User | null) => {
     try {
       const userId = getEffectiveUserId(user);
       const updates = buildWordUpdates(queue);
-      const updateEntries = Array.from(updates.entries());
-      for (let i = 0; i < updateEntries.length; i += FIRESTORE_BATCH_LIMIT) {
-        const chunk = updateEntries.slice(i, i + FIRESTORE_BATCH_LIMIT);
-        const batch = writeBatch(db);
-
-        chunk.forEach(([wordId, { data, lastPracticedAt }]) => {
-          const wordDocRef = doc(db, "users", userId, "words", wordId);
-          batch.update(
-            wordDocRef,
-            buildAttemptUpdateFields(data, lastPracticedAt)
-          );
-        });
-
-        try {
+      const result = await runWordSync({
+        entries: Array.from(updates.entries()),
+        chunkSize: FIRESTORE_BATCH_LIMIT,
+        isWordsLoaded: () => wordsLoadedRef.current,
+        wordExists: (word) => words.wordData.has(word),
+        writeChunk: async (chunk) => {
+          const batch = writeBatch(db);
+          chunk.forEach(([wordId, { data, lastPracticedAt }]) => {
+            batch.update(
+              doc(db, "users", userId, "words", wordId),
+              buildAttemptUpdateFields(data, lastPracticedAt)
+            );
+          });
           await batch.commit();
-          SyncQueueManager.removeFromQueue(
-            chunk.flatMap(([, { queueItemIds }]) => queueItemIds)
-          );
-        } catch (error) {
-          console.error("Failed to sync batch:", error);
+        },
+        queue: {
+          remove: (ids) => SyncQueueManager.removeFromQueue(ids),
+          incrementRetries: (ids) =>
+            SyncQueueManager.incrementRetries(ids).map((item) => item.id),
+        },
+      });
 
-          const { goneQueueItemIds, retryQueueItemIds } =
-            classifySyncBatchFailure({
-              errorCode: (error as { code?: string }).code,
-              wordsLoaded: wordsLoadedRef.current,
-              updates: chunk.map(([, { word, queueItemIds }]) => ({
-                word,
-                queueItemIds,
-              })),
-              wordExists: (word) => words.wordData.has(word),
-            });
-
-          if (goneQueueItemIds.length > 0) {
-            SyncQueueManager.removeFromQueue(goneQueueItemIds);
-          }
-
-          const discarded = SyncQueueManager.incrementRetries(
-            retryQueueItemIds
-          );
-          if (discarded.length > 0) {
-            toast({
-              title: tNow("sync.dataLost"),
-              variant: "destructive",
-            });
-          }
-        }
+      if (result.discarded.length > 0) {
+        toast({
+          title: tNow("sync.dataLost"),
+          variant: "destructive",
+        });
       }
 
       refreshPendingCount();
