@@ -1,10 +1,13 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it, expect, beforeEach, afterEach, spyOn } from "bun:test";
 import {
   buildAttemptQueueData,
   buildAttemptUpdateFields,
   buildWordUpdates,
   classifySyncBatchFailure,
   collectStaleQueueItemIds,
+  runWordSync,
+  type WordSyncQueuePort,
+  type WordSyncUpdate,
 } from "./wordSync";
 import type { SyncQueueItem } from "./syncQueue";
 import type { WordData } from "./wordsStore";
@@ -198,5 +201,197 @@ describe("classifySyncBatchFailure", () => {
 
     expect(result.goneQueueItemIds).toEqual([]);
     expect(result.retryQueueItemIds).toEqual(["q1", "q2"]);
+  });
+});
+
+const makeUpdate = (
+  overrides: Partial<WordSyncUpdate> = {}
+): WordSyncUpdate => ({
+  word: "apple",
+  data: { correctCount: 1, totalAttempts: 1, inputTimes: [1] },
+  lastPracticedAt: 1000,
+  queueItemIds: ["q1"],
+  ...overrides,
+});
+
+const createQueuePort = () => {
+  const removed: string[] = [];
+  const incrementCalls: string[][] = [];
+  let discardedIds: string[] = [];
+
+  const port: WordSyncQueuePort = {
+    remove: (ids) => {
+      removed.push(...ids);
+    },
+    incrementRetries: (ids) => {
+      incrementCalls.push(ids);
+      return ids.filter((id) => discardedIds.includes(id));
+    },
+  };
+
+  return {
+    port,
+    removed,
+    incrementCalls,
+    setDiscardedIds: (ids: string[]) => {
+      discardedIds = ids;
+    },
+  };
+};
+
+describe("runWordSync", () => {
+  let errorSpy: ReturnType<typeof spyOn>;
+
+  beforeEach(() => {
+    errorSpy = spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    errorSpy.mockRestore();
+  });
+
+  it("逐片写入成功后出队，并汇总 committed", async () => {
+    const queue = createQueuePort();
+    const chunks: string[][] = [];
+
+    const result = await runWordSync({
+      entries: [
+        ["id-apple", makeUpdate({ queueItemIds: ["q1"] })],
+        ["id-banana", makeUpdate({ word: "banana", queueItemIds: ["q2"] })],
+        ["id-cherry", makeUpdate({ word: "cherry", queueItemIds: ["q3"] })],
+      ],
+      chunkSize: 2,
+      isWordsLoaded: () => true,
+      wordExists: () => true,
+      writeChunk: async (chunk) => {
+        chunks.push(chunk.map(([wordId]) => wordId));
+      },
+      queue: queue.port,
+    });
+
+    expect(chunks).toEqual([["id-apple", "id-banana"], ["id-cherry"]]);
+    expect(queue.removed).toEqual(["q1", "q2", "q3"]);
+    expect(result).toEqual({
+      committed: ["q1", "q2", "q3"],
+      gone: [],
+      retried: [],
+      discarded: [],
+    });
+  });
+
+  it("单片写入失败不阻断后续分片，失败片计入 retried", async () => {
+    const queue = createQueuePort();
+
+    const result = await runWordSync({
+      entries: [
+        ["id-apple", makeUpdate({ queueItemIds: ["q1"] })],
+        ["id-banana", makeUpdate({ word: "banana", queueItemIds: ["q2"] })],
+        ["id-cherry", makeUpdate({ word: "cherry", queueItemIds: ["q3"] })],
+      ],
+      chunkSize: 2,
+      isWordsLoaded: () => true,
+      wordExists: () => true,
+      writeChunk: async (chunk) => {
+        if (chunk.some(([wordId]) => wordId === "id-apple")) {
+          throw { code: "unavailable" };
+        }
+      },
+      queue: queue.port,
+    });
+
+    expect(queue.removed).toEqual(["q3"]);
+    expect(queue.incrementCalls).toEqual([["q1", "q2"]]);
+    expect(result.committed).toEqual(["q3"]);
+    expect(result.retried).toEqual(["q1", "q2"]);
+    expect(result.gone).toEqual([]);
+  });
+
+  it("not-found 且词库已加载时，已删除单词的条目出队，其余重试", async () => {
+    const queue = createQueuePort();
+
+    const result = await runWordSync({
+      entries: [
+        ["id-gone", makeUpdate({ word: "gone", queueItemIds: ["q1"] })],
+        ["id-kept", makeUpdate({ word: "kept", queueItemIds: ["q2"] })],
+      ],
+      chunkSize: 500,
+      isWordsLoaded: () => true,
+      wordExists: (word) => word === "kept",
+      writeChunk: async () => {
+        throw { code: "not-found" };
+      },
+      queue: queue.port,
+    });
+
+    expect(queue.removed).toEqual(["q1"]);
+    expect(queue.incrementCalls).toEqual([["q2"]]);
+    expect(result.gone).toEqual(["q1"]);
+    expect(result.retried).toEqual(["q2"]);
+  });
+
+  it("词库尚未加载完成时 not-found 也全部重试", async () => {
+    const queue = createQueuePort();
+
+    const result = await runWordSync({
+      entries: [["id-gone", makeUpdate({ word: "gone", queueItemIds: ["q1"] })]],
+      chunkSize: 500,
+      isWordsLoaded: () => false,
+      wordExists: () => false,
+      writeChunk: async () => {
+        throw { code: "not-found" };
+      },
+      queue: queue.port,
+    });
+
+    expect(queue.removed).toEqual([]);
+    expect(queue.incrementCalls).toEqual([["q1"]]);
+    expect(result.gone).toEqual([]);
+    expect(result.retried).toEqual(["q1"]);
+  });
+
+  it("重试达到上限被丢弃时计入 discarded，不再计入 retried", async () => {
+    const queue = createQueuePort();
+    queue.setDiscardedIds(["q1"]);
+
+    const result = await runWordSync({
+      entries: [
+        ["id-apple", makeUpdate({ queueItemIds: ["q1"] })],
+        ["id-banana", makeUpdate({ word: "banana", queueItemIds: ["q2"] })],
+      ],
+      chunkSize: 500,
+      isWordsLoaded: () => true,
+      wordExists: () => true,
+      writeChunk: async () => {
+        throw { code: "unavailable" };
+      },
+      queue: queue.port,
+    });
+
+    expect(result.discarded).toEqual(["q1"]);
+    expect(result.retried).toEqual(["q2"]);
+  });
+
+  it("空队列不写入且汇总为空", async () => {
+    const queue = createQueuePort();
+    const chunks: string[][] = [];
+
+    const result = await runWordSync({
+      entries: [],
+      chunkSize: 500,
+      isWordsLoaded: () => true,
+      wordExists: () => true,
+      writeChunk: async (chunk) => {
+        chunks.push(chunk.map(([wordId]) => wordId));
+      },
+      queue: queue.port,
+    });
+
+    expect(chunks).toEqual([]);
+    expect(result).toEqual({
+      committed: [],
+      gone: [],
+      retried: [],
+      discarded: [],
+    });
   });
 });
