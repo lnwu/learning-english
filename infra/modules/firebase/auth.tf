@@ -18,7 +18,7 @@ resource "google_identity_platform_config" "this" {
   provider = google-beta
   project  = google_project.this.project_id
 
-  autodelete_anonymous_users = false
+  autodelete_anonymous_users = true
 
   multi_tenant {
     allow_tenants = false

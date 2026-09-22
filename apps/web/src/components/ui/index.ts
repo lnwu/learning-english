@@ -12,7 +12,7 @@ export * from "./input";
 export * from "./page";
 export * from "./progress";
 export * from "./separator";
-export * from "./sonner";
+export { Toaster } from "./toaster";
 export * from "./spinner";
 export * from "./switch";
 export * from "./sync-indicator";

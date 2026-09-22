@@ -3,10 +3,10 @@
 import { Button, Empty, EmptyDescription, EmptyHeader, EmptyTitle, Input, LoadingState, MasteryBar, PageContainer, PageHeader, SyncIndicator } from "@/components/ui";
 import { CheckIcon, XIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useCallback, useEffect, useState, useRef, type FormEvent, type RefObject } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef, type FormEvent, type RefObject } from "react";
 import { observer } from "mobx-react-lite";
 import Link from "next/link";
-import { useFirestoreWords, useLocale, usePracticeTimeTracker } from "@/hooks";
+import { useFirestoreWords, useSyncStatus, useLocale, usePracticeTimeTracker } from "@/hooks";
 import { parseTranslation } from "@/lib/parseTranslation";
 import {
   createPracticeInputState,
@@ -28,7 +28,7 @@ interface WordRowProps {
 
 const WordRow = observer(({ word, translation, words, onInputChange, onHintReveal, inputRefs, t }: WordRowProps) => {
   const inputValue = words.userInputs.get(word) || "";
-  const { senses } = parseTranslation(translation);
+  const { senses } = useMemo(() => parseTranslation(translation), [translation]);
   const hasSense = senses.some((sense) => sense.chinese);
 
   return (
@@ -122,7 +122,8 @@ const SubmitButton = observer(({ randomWords, words, label }: { randomWords: [st
 });
 
 const WordsPractice = observer(() => {
-  const { words, recordCorrectAttempt, recordIncorrectAttempt, syncToFirestore, syncing, pendingCount, loading, error } = useFirestoreWords();
+  const { words, recordCorrectAttempt, recordIncorrectAttempt, syncToFirestore, loading, error } = useFirestoreWords();
+  const { syncing, pendingCount } = useSyncStatus();
   const { t } = useLocale();
   usePracticeTimeTracker();
   const [isClient, setIsClient] = useState(false);

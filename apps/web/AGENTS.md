@@ -1,6 +1,21 @@
 # Learning English Web
 
-本文件包含 AI 在本项目中工作时必须遵守的规则和项目信息。
+本文件包含 AI 在本项目中工作时必须遵守的规则和项目信息。设计动机与背景在 `docs/`：`architecture/word-sync.md`（词库同步）、`architecture/sentence-deepseek.md`（造句/DeepSeek）、`WORD_FAMILIARITY_ALGORITHM.md`（熟练度）、`DEPLOYMENT.md`（部署与环境变量）。**改代码后本文件与这些文档要成对更新。**
+
+## 硬规则
+
+- API Key 只允许在服务端使用，禁止加 `NEXT_PUBLIC_` 前缀或下发到前端。
+- 新增 `/api/*` 必须：`serverAuth` 校验 ID token + `await checkRateLimit` + 输入长度上限。
+- 带登录态调 `/api/*` 统一用 `lib/apiClient.ts` 的 `postJson<T>(url, payload, fallbackError)`，不要手写 token + fetch。
+- Firestore 客户端**只在 `WordsProvider` 订阅**（登录后单次 `onSnapshot`），页面里不要自己订阅。
+- 练习计时不能伪造：造句不传 `inputTimeSeconds`（仅单词拼写练习传入）；`correctPracticeDates` 存 `YYYY-MM-DD` 本地日期字符串，不存 ISO 时间戳。
+- 造句「每题一考」只按首次提交计分，不要改回可重复计分；重新批改只更新反馈、不改变计分。
+- locale 只从 cookie 读（layout 服务端决定），不要用 localStorage 或硬编码。
+- i18n 插值用 `t(key, params)` 占位符（`{name}`），不要手写 `.replace`；en 表是 `Record<TranslationKey, string>`，缺 key 编译报错，key 一致性由 `lib/i18n.test.ts` 守护。
+- 中文不要用 `next/font` 引 Noto Sans SC（三个字重约 4.5MB CJK 切片），用系统字体栈（`index.css` 的 `body` 已按此维护）。
+- 不要删除 `src/app/error.tsx` 与 `global-error.tsx`（全局错误兜底）。
+- 改 Firestore 写入字段必须成对修改 `infra/modules/firebase/firestore.rules` 的字段校验，否则线上写入被拒（见 `infra/AGENTS.md`）。
+- 改 translate 的 prompt 或默认模型必须 bump 翻译缓存 key 前缀（当前 `translation:v2`），否则旧释义长期复用。
 
 ## TypeScript 6/7 并排
 
@@ -10,13 +25,11 @@
 
 ## UI 组件
 
-- `src/components/ui` 是 shadcn/ui 风格组件，底层原语是 **Base UI**（`@base-ui/react`，2026-08 从 Radix 迁移完成，报告在仓库根 `.migration/`）。`components.json` 的 style 为 **`base-nova`**：标准组件（button/dialog/input/alert/sonner）用 `bun x shadcn@latest add <组件> --overwrite` 从官方注册表生成；项目自有组件（confirm-dialog/frequency-bar/sync-indicator/page）手写，改动时保留现有 API。
+- `components/ui` 是 shadcn/ui 风格组件，底层原语是 Base UI（`base-nova` 样式，Radix 迁移报告在仓库根 `.migration/`）：标准组件（button/dialog/input/alert/sonner）用 `bun x shadcn@latest add <组件> --overwrite` 从官方注册表生成；项目自有组件（confirm-dialog/frequency-bar/sync-indicator/page）手写，改时保留现有 API。⚠️ `--overwrite` 会覆盖手改内容，重生成 dialog/sonner 后必须检查非标准改动是否还在。
 - 用 CLI 添加组件后必须检查 import：CLI 会把工具函数写成 `import { cn } from "cn"` 并把 `cn@^0.3.0` 写进 `package.json`，本项目统一用 `@/lib/utils` 的 `cn`（clsx + tailwind-merge）。添加后执行 `sed -i 's|from "cn"|from "@/lib/utils"|' src/components/ui/<新文件>.tsx`，从 `package.json` 删除 `cn` 依赖并 `bun install`，否则会多出一个无用的 `cn` 包。
-- toast 用 sonner：`src/components/ui/sonner.tsx`（官方 Toaster，`next-themes` 取主题），业务侧通过 `src/hooks/useToast.ts` 的 `toast({ title, variant })` 调用（映射到 `toast.success/.error`），`richColors` 提供着色，`<Toaster>` 挂载在 `layout.tsx`。
-- 带登录态调 `/api/*` 统一用 `src/lib/apiClient.ts` 的 `postJson<T>(url, payload, fallbackError)`（自动取 ID token、解析错误 JSON），不要在手写 token + fetch 的重复逻辑；目前 `useSentencePractice`、`AddWordDialog`、Profile 页批量释义均已接入。
-- 全局错误兜底：`src/app/error.tsx` 与 `src/app/global-error.tsx` 已存在，未捕获渲染异常不会白屏；不要删除。
-- Base UI 惯例：多态用 `render` prop（不用 radix 的 `asChild`）；render 到非 button 元素时传 `nativeButton={false}`；动画用 keyframe 写法 `data-open:animate-in`/`data-closed:animate-out`（不用 `data-[state=...]`）。
-- 字体：Inter（`next/font` 的 `--font-sans`）只覆盖拉丁字符；中文使用系统字体栈（PingFang SC / 微软雅黑 / Noto Sans CJK），不要再通过 `next/font` 引入 Noto Sans SC，三个字重会产生约 4.5MB 的 CJK 切片资源（`index.css` 的 `body` font-family 已按此约定维护）。
+- Base UI 惯例：多态用 `render` prop（不用 `asChild`）；render 到非 button 元素时传 `nativeButton={false}`；动画用 `data-open:animate-in`/`data-closed:animate-out`（不用 `data-[state=...]`）。
+- toast 通过 `hooks/useToast.ts` 的 `toast({ title, variant })`（映射 sonner）；`<Toaster>` 挂在 layout 且是惰性组件（`ui/toaster.tsx` 的 `dynamic(ssr:false)`），`WordPicker` 同理经 `word-picker/WordPickerLazy.tsx` 挂载——不要改回静态 import，会把 sonner/选词逻辑塞回首屏。
+- 非组件代码要当前 locale 的文案用 `lib/i18n.ts` 的 `tNow(key, params)`。
 
 ## UI 风格约定（中性极简）
 
@@ -29,52 +42,45 @@
 
 ## 词库状态管理
 
-- `src/lib/wordsStore.ts`：`Words` MobX store 类与 `mergeSnapshotIntoStore`/`parseWordDoc`/`isWordDataEqual` 等纯逻辑，不依赖 Firebase 运行时，配套测试 `wordsStore.test.ts`；`src/hooks/useFirestoreWords.tsx` 持有模块级单例并负责 Firestore 订阅与同步。`WordsProvider`（挂在根 layout）在登录后全局只做一次 `onSnapshot` 订阅，`useFirestoreWords` 只是读 Context，不要在页面里再订阅 Firestore。
-- 熟练度结果通过 `#masteryCache` 缓存（随 `recordCorrect/IncorrectAttempt`、`setWordData`/`deleteWord`/`removeAllWords` 失效），全量统计用 computed getter（`overallAverageInputTime`、`averageTimeByLengthCategory`、`practiceStats`），新增派生数据时优先用 computed getter 而非每次渲染重算。
-- Firestore `onSnapshot` 结果通过 `mergeSnapshotIntoStore(store, snapshot, pending)` 增量合并到 store（仅更新变化单词、只对变化词局部失效缓存），第三个参数是本地同步队列的待写数据：远端在 `totalAttempts`/`correctCount` 两个维度都不低于本地且至少一个更高（支配本地）时用远端，否则用本地覆盖，避免未同步的练习记录被旧快照回退；返回值 `{ byWord, byId }` 中 `byId` 是未叠加队列的 Firestore 原始数据，供 `isQueueItemStale` 判断队列条目是否已被远端覆盖（远端支配本地、或可同步字段完全一致才算 stale；计数打平但数组不同时保留本地，防止丢练习日期）。不要改成全量替换 `wordData`，否则会导致所有 observer 组件无谓重渲染。
-- `correctPracticeDates` 存 `YYYY-MM-DD` 本地日期字符串（`formatLocalPracticeDate`），不要存 ISO 时间戳，避免时区解析偏移；`getLocalPracticeDate` 对纯日期字符串短路返回。
-- `attemptHistory` 存最近 30 条练习对错序列（`true`/`false`），随 `recordCorrectAttempt`/`recordIncorrectAttempt` 更新并随同步队列落库；老数据没有该字段时 `parseWordDoc` 兜底为空数组，熟练度正确率回退为全量统计。
-- `syncToFirestore` 落库的 `lastPracticedAt` 取同步队列条目的 `timestamp`（即真实练习时刻），不要用同步时的 `new Date()`。
-- 批量更新释义用 `updateTranslations(updates)`：先 `setWordData` 即时更新 store（失效缓存），再按 wordId 用 `commitBatchOperations` 写 Firestore（onSnapshot 幂等合并）。同步批次聚合与入队载荷构造在 `src/lib/wordSync.ts`（`buildWordUpdates`/`buildAttemptQueueData`，配套测试），不要再写回 hook 内联。
-- 练习页的输入值在 `words.userInputs` 中，单词行是独立的 observer 组件（`WordRow`），只有对应行会随击键重渲染，不要在父组件渲染路径里读 `userInputs`。
-- 单词拼写练习的输入判定抽在 `src/lib/practiceInput.ts`（`evaluatePracticeInput`，配套测试）：一轮内首字符开始计时；输入与单词完全一致即标记 `completed`，之后继续多打、清空重打都不再记录对错；正确只在首次达成且有计时时记录一次（防止答对后清空重打刷分），错误按「删到长度不足后可再记」去重；页面用单个 `inputStatesRef` 保存每词状态，不要退回多个 ref 分散判断。
+架构：`hooks/useFirestoreWords.tsx` 是 context 组合层（模块级单例 `words`、`WordsProvider`、`useFirestoreWords`、`useSyncStatus`）；`hooks/useWordsSync.ts` 负责订阅、同步触发与记分入队，`hooks/useWordActions.ts` 负责增删改、归一化、重置；纯逻辑在 `lib/{wordsStore,wordSync,wordNormalization,firestoreBatch}.ts`，全部有 `*.test.ts`。动机与细节见 `docs/architecture/word-sync.md`。要守的行为：
+
+- `useFirestoreWords()` 只读稳定 context；高频变化的 `syncing`/`pendingCount` 走独立的 `useSyncStatus()`——不要把这两个加回主 context（会让所有消费者随每次记分重渲染）。
+- 新增派生数据用 `Words` 的 computed getter，不要每次渲染重算；熟练度结果由 `#masteryCache` 缓存且已随现有写入口失效，新增写入口时必须同样失效缓存。
+- 快照合并 `mergeSnapshotIntoStore` 是增量合并，**不要改成全量替换 `wordData`**（所有 observer 会无谓重渲染），也不要改支配判定语义（会丢练习数据）。
+- `attemptHistory` 存最近 30 条对错序列；老数据缺字段由 `parseWordDoc` 兜底空数组，正确率回退全量统计。`lastPracticedAt` 落库取同步队列条目的 `timestamp`（真实练习时刻），不要用同步时的 `new Date()`。
+- 批量写一律走 `commitBatchOperations`（`lib/firestoreBatch.ts`，500/批）；同步载荷构造、失败分类、过期队列判定在 `lib/wordSync.ts`，归一化落库计划在 `lib/wordNormalization.ts`（均有测试），不要内联回 hook。
+- 队列条目重试到上限被丢弃必须 toast `sync.dataLost`；localStorage 写失败回退内存必须 toast `sync.storageFailed`——都不要改成静默丢弃。
+- `normalizeWordForms`：先 `syncToFirestore()`，按计划落库，Firestore 提交成功后才 `words.moveWord` 更新 store，返回 `{ renamed, merged }`；`mergeWordData` 的合并与上限语义调整时同步 `Words.MAX_*` 与 rules 校验上限。
+- `updateTranslations`：先 `setWordData` 即时更新 store（失效缓存）再 batch 写 `translation`，onSnapshot 幂等合并兜底。
+- 练习页输入判定用 `lib/practiceInput.ts` + 单个 `inputStatesRef`（有测试，语义见 `docs/architecture/word-sync.md`）；`WordRow` 是独立 observer，父组件渲染路径不要读 `words.userInputs`。
+- 热力图 `PracticeHeatmap` 保持隔离（`memo`、只接收 `practiceTime`、网格构建已 `useMemo`）；网格与分档纯逻辑在 `lib/practiceTime.ts`（有测试）。
+- 练习时间 tracker 只在 visible+focus 计时，每 60s 用 `increment` 写 `practiceTime/{YYYY-MM-DD}` 的 `seconds`，写失败把秒数放回池下次重试。
+- `lib/firebase.ts` 用 `initializeFirestore` 配 `persistentLocalCache` + `persistentMultipleTabManager`（多标签页共享缓存）；SSR 只创建实例不发起操作，不要在服务端组件里直接用 `db` 读写。
 
 ## 双击选词添加（Word Picker）
 
-- 全站任意页面双击英文单词会弹出添加确认弹窗（`src/components/word-picker/WordPicker.tsx` 在根 layout 挂载监听 `dblclick`，用 `window.getSelection()` 取词）。交互与词库校验的纯逻辑在 `src/lib/wordSelection.ts`（`extractWordFromSelection`/`checkWordAddable`，配套测试）。
-- 添加弹窗复用共享组件 `src/components/word-picker/AddWordDialog.tsx`（翻译 → 展示义项 → 确认落库），`/add-word` 页面与全局双击入口共用，不要在别处再复制「调 `/api/translate` + 确认弹窗」逻辑。弹窗内部只做翻译与落库，已存在/非法字符的预校验由调用方（页面或 `WordPicker`）先用 `checkWordAddable` 完成。
-- 双击监听需跳过 `input/textarea/select/[contenteditable]` 与弹窗自身（`[data-slot="dialog-content"]`），未登录时忽略；不要在这些区域或未登录场景触发。
-- 添加弹窗默认保存 `lemma` 原形：标题显示「原词 → 原形」，两者的切换按钮（`addWord.saveLemma`/`addWord.keepOriginal`）只在不同时出现，用户可切回原词。翻译返回后若原形已在词库，弹窗切到 `exists` 状态展示 `addWord.baseExists`（不自动关闭、不弹 toast），点 `addWord.gotIt` 才走 `onFinished`；`handleConfirmAdd` 按最终选中的词再校验一次。选词侧的 `checkWordAddable` 仍用选中的原词，不要在客户端做原形推断。
+- 任意页面双击英文单词弹添加确认弹窗；取词与校验纯逻辑在 `lib/wordSelection.ts`（`extractWordFromSelection`/`checkWordAddable`，有测试）。双击监听跳过 `input/textarea/select/[contenteditable]` 与弹窗自身（`[data-slot="dialog-content"]`），未登录忽略。
+- 添加弹窗 `AddWordDialog` 与 `/add-word` 页共用，不要在别处复制「调 `/api/translate` + 确认弹窗」逻辑；预校验由调用方先 `checkWordAddable`，客户端不做原形推断。
+- 默认保存 `lemma` 原形：标题「原词 → 原形」，切换按钮只在两者不同时出现；原形已存在时弹窗切 `exists` 态（不自动关闭、不弹 toast），点 `gotIt` 才走 `onFinished`；`handleConfirmAdd` 按最终选中的词再校验一次。
 
-## 词形归一化（批量）
+## Profile 页与批量 AI 操作
 
-- Profile 页「归一化词形」调用 `/api/normalize-words`（请求 `{ words: string[] }`，≤50/批，auth 与限流同其他路由）返回 `{ results: [{ word, lemma }] }`；消息构造与解析在 `src/lib/normalizeWords.ts`（`buildNormalizeMessages`/`parseNormalizeResults`，配套测试），lemma 清洗复用 `src/lib/lemma.ts` 的 `sanitizeLemma`。
-- 前端用 `src/lib/wordNormalization.ts` 的 `resolveRenamePlan(words, lemmaByWord)` 把逐词 lemma 解析成重命名计划：链式映射收敛到最终原形、自身映射跳过、循环映射忽略（配套测试）。
-- 落库走 `useFirestoreWords` 的 `normalizeWordForms(renames)`：先 `syncToFirestore()`，再按本地 `projected` 视图顺序处理（原形不存在 → `batch.update` 旧文档的 `word` 字段，保留 doc id 与练习数据；原形已存在 → 用 `mergeWordData` 合并后写目标文档并删除旧文档），Firestore 提交成功后才调 `words.moveWord` 更新 store，返回 `{ renamed, merged }` 供 UI 提示。
-- `mergeWordData`（`src/lib/wordsStore.ts`，配套测试）合并语义：计数相加、`inputTimes`/`attemptHistory` 取最近 20/30、`correctPracticeDates` 去重后取最近 30、`lastPracticedAt` 取较晚、`createdAt` 取较早、`translation` 与 `id` 保留目标词；调整这些上限时同步 `Words.MAX_*`。
-
-## 每日练习时间统计
-
-- `src/hooks/usePracticeTimeTracker.ts` 挂载在 `/words` 与 `/sentence` 页面：仅当 `document.visibilityState === 'visible'` 且 `document.hasFocus()` 时计时（纯逻辑在 `src/lib/practiceTime.ts` 的 `ActiveTimeTracker`，配套测试；`formatPracticeDuration` 负责中英格式化）。每 60s 及页面隐藏/卸载时把累计秒数用 Firestore `increment` 原子累加写入 `users/{userId}/practiceTime/{YYYY-MM-DD}`（文档 ID 为本地日期，字段为 `seconds`），写失败时把秒数放回待累计池下次重试。
-- Profile 页用 `getDocs` 读取全部 `practiceTime` 文档，以 GitHub Contributions 风格热力图展示（N 周 × 7 天网格，周数由 `ResizeObserver` 按容器宽度自适应、上限 53 周，避免横向滚动；月份标签、少→多图例）；热力图 UI 独立在 `src/app/profile/PracticeHeatmap.tsx`（`memo` 子组件，仅接收 `practiceTime`，避免搜索输入等无关重渲染波及 371 格网格），改动热力图时保持该隔离。网格构建与分档纯逻辑在 `practiceTime.ts`（`buildPracticeTimeWeeks`/`getPracticeTimeLevel`/`getPracticeTimeMonthLabels`，配套测试），不做实时订阅；该子集合的 Firestore 规则与 `words` 一致（本人读写、preview 匿名可写）。
+- 结构：父页面（`profile/page.tsx`）只留账号信息、语言切换、热力图、统计、熟练度分布、单词列表（`WordPerformanceSection`）与删除/重置确认；「AI 重新生成释义」「归一化词形」的按钮、进度、确认弹窗独立在 `profile/ProfileAiSection.tsx`，不要把批量逻辑塞回父页面。
+- 归一化链路：`/api/normalize-words`（≤50/批）→ `resolveRenamePlan` → `normalizeWordForms`；消息构造与解析在 `lib/normalizeWords.ts`（有测试），lemma 清洗复用 `lib/lemma.ts`。
+- 重新生成释义：`/api/regenerate-definitions`（≤50/批），`senses: null` 的词保留原释义；通过 `updateTranslations` 落库，只改 `translation` 不碰练习数据；前端串行分批并显示进度。
 
 ## 多语言
 
-- locale 持久化在 cookie（`locale=zh|en`）：`layout.tsx` 服务端读 cookie（无 cookie 时回退 `accept-language`）决定 `<html lang>` 并通过 `LocaleProvider` 下发初始 locale；`useLocale` 的 `getServerSnapshot` 用该初始值，保证 SSR 与客户端一致。不要再从 localStorage 或硬编码读取 locale。
-- `t()` 支持占位符参数：`t(key, locale, params)`（`useLocale` 返回的 `t` 为 `t(key, params)`），占位符写法 `{name}`（如 `profile.deleteConfirm` 的 `{word}`、`profile.regeneratePartial` 的 `{success}/{skipped}`）；需要插值时传 params，不要手写 `.replace('{xxx}', ...)`。en 表以 `Record<TranslationKey, string>` 约束，缺 key 会编译报错；key 一致性与占位符匹配由 `src/lib/i18n.test.ts` 守护。
+- locale 持久化在 cookie（`locale=zh|en`）：`layout.tsx` 服务端读 cookie（无则回退 `accept-language`）决定 `<html lang>` 并经 `LocaleProvider` 下发初始值；`useLocale` 的 `getServerSnapshot` 用同一初始值保证 SSR/客户端一致。
+- `useLocale` 返回的 `t(key, params)` 支持占位符插值（见硬规则）；`t()` 的 locale 版本签名是 `t(key, locale, params)`。
 
 ## 造句练习与 DeepSeek 集成
 
-- 造句/批改功能通过服务端 Route Handler（`src/app/api/sentence/*`）代理调用 DeepSeek，浏览器只请求本站 `/api/*`。
-- `/api/*` 要求请求头携带 Firebase ID token（`Authorization: Bearer <token>`），由 `src/lib/serverAuth.ts` 通过 Identity Toolkit REST API 校验；校验通过返回 `{ uid }`，失败返回 401 的 NextResponse（用 `instanceof NextResponse` 区分）。校验结果按 token 进程内缓存，上限 1000 条、超出淘汰最旧，防止长驻实例内存无界增长。
-- `/api/*` 按 uid 限流（`src/lib/rateLimit.ts`），超限返回 429：配置了 `KV_REST_API_URL`/`KV_REST_API_TOKEN`（或 `UPSTASH_REDIS_REST_*`，Vercel Marketplace 装 Upstash Redis 后自动注入）时用 Upstash 全局限流；未配置或 Upstash 请求失败时回退进程内固定窗口限流（本地开发用）。`checkRateLimit` 是 async，调用时必须 await；新增 API 路由时应加上限流与输入长度上限。
-- DeepSeek 封装位于 `src/lib/deepseek.ts`，读取环境变量 `DEEPSEEK_API_KEY`、`DEEPSEEK_BASE_URL`、`DEEPSEEK_MODEL`；`chatCompletionJson` 支持可选 `temperature`（默认 0.7），对网络错误与 429/5xx 自动重试一次，超时（504）不重试以免总耗时翻倍，非 JSON 响应统一归类为 `DeepSeekError(502)`，配套测试 `deepseek.test.ts`。
-- `/api/translate` 由 DeepSeek 一次调用返回 `{ lemma, senses }`：`lemma` 为该词的词典原形（复数/时态/比较级还原，`excited`、`left` 这类本身是常见独立词条的拼写保留原词），经 `src/lib/lemma.ts` 的 `sanitizeLemma` 清洗、非法时回退原词；`senses` 为结构化义项数组 `[{ pos, chinese, english }]`（2~4 个义项，最常用在前），不再使用 Google Translate/Datamuse 等外部免费源或回退词典（`lib/dictionary.ts` 已删除）；模型判定非有效单词时返回 `senses: null`（前端提示未识别），调用失败时返回错误且前端不落库。义项字段校验与清洗统一在 `src/lib/senses.ts`（`sanitizeWordSenses` 与长度上限），`/api/translate` 与 `regenerateDefinitions` 共用，不要再各写一份。翻译缓存（`src/lib/translationCache.ts`）L1 为进程内 LRU、配置 Upstash 时 L2 为 Redis（30 天 TTL，key 前缀 `translation:v2`；改动 translate 的 prompt 或默认模型时同步 bump 版本前缀，避免旧释义长期复用），只存 `senses` 非空数组的成功结果；Redis 客户端统一用 `src/lib/redis.ts` 的 `getRedis()`（限流同源）。前端用 `src/lib/parseTranslation.ts` 的 `formatSenses` 把 `senses` 拼成「每义项一行（词性+中文 — 英文）」存入 `translation` 字段，`parseTranslation` 兼容旧格式（首行英文、其余中文）。
-- API Key 只允许在服务端使用，禁止加 `NEXT_PUBLIC_` 前缀或下发到前端。
-- 造句练习复用 `useFirestoreWords` 的单词库与 `recordCorrectAttempt`/`recordIncorrectAttempt`，练习结果计入单词熟练度并同步到 Firebase；造句场景没有真实输入计时，`recordCorrectAttempt(word)` 不传 `inputTimeSeconds`（该参数仅单词拼写练习传入），不要伪造输入时间以免抬高 speedScore。`calculateMasteryScore` 对无计时数据的词让速度/稳定性因子不参与加权（避免纯造句词被压级），详见 `docs/WORD_FAMILIARITY_ALGORITHM.md`。
-- 批改接口返回 `usedWords`（用户实际用到的目标词，同义表达替代也算），客户端只对 `usedWords` 中的词调用 `recordCorrect/IncorrectAttempt`，未用到的目标词不记分；模型未返回该字段时回退为全部目标词。造句是「每题一考」：同一道题只按首次提交的结果计分（`useSentencePractice` 的 `scoredQuestionRef` 去重，防止重复提交刷熟练度），不要改回可重复计分。页面提交后不锁定答案：输入框保持可编辑，提交按钮常驻并在首次批改后显示「重新批改」（`sentence.recheck`），答案与上次批改一致时禁用；重新批改只更新反馈、不改变计分。首次批改满分自动下一题，重新批改满分停留在本题让用户看反馈。答案输入用 `Textarea`（`src/components/ui/textarea.tsx`，随内容自动变高，`max-h-60` 后内部滚动），Enter 提交、Shift+Enter 换行，`onKeyDown` 需检查 `isComposing` 防止中文输入法回车上屏误提交。
-- 同步队列（`src/lib/syncQueue.ts`）按 uid 隔离、每个条目独立存一个 key（`sync_queue:{uid}:{wordId}`，旧的整体数组格式会在 `setUser` 时自动迁移），不同单词的写入不会互相覆盖，避免多标签页 read-modify-write 互相丢条目；登录/登出由 `useFirestoreWords` 负责切换并在登出时清空 store 与队列，切换账号不会把旧账号的 wordId 写到新账号路径下。`addToQueue` 同一 wordId 覆盖为最新一条（重试计数归零，已有条目的尝试次数更多时直接忽略较低计数的写入，防止旧标签页回退进度）。条目重试达到上限被丢弃时，`incrementRetries` 返回被丢弃条目，`syncToFirestore` 会 toast 提示用户（文案 `sync.dataLost`），不要改回静默丢弃。远端已删除的单词（`batch.update` 返回 `not-found` 且 store 已加载确认该词不存在）直接丢弃对应队列条目、不重试不提示；其余失败仍走重试与提示。localStorage 写失败时队列自动回退到内存副本（`hasMemoryFallback()`）并 toast 提示（文案 `sync.storageFailed`）。
-- 造句题目界面不直接显示目标单词（答题后的反馈区才显示），这是有意设计：学生凭中文句子推断用词，因此造句请求会把词库中存的中文译法随目标词一并传给模型，prompt 要求中文译文自然地道、使用参考译法且能让学生反推出目标词；批改时对目标词的同义表达不判错、仅提示。
-- 批改接口在调用模型前先对答案与参考译文做规范化判等（`src/lib/sentenceCompare.ts` 的 `normalizeForComparison`），完全一致直接返回满分，不消耗模型调用；用户实际用到的目标词由同文件的 `resolveUsedWords`/`sanitizeUsedWords` 计算（配套测试），不要在路由里内联重复实现。
-- `/api/regenerate-definitions` 批量重新生成释义：请求 `{ words: string[] }`（每批上限 50，服务端会过滤掉非小写字母或超长词并去重，合法词为空时 400），一次 DeepSeek 调用返回 `{ results: [{ word, senses }] }`；纯逻辑在 `src/lib/regenerateDefinitions.ts`（`buildRegenerateMessages`/`parseRegenerateResults`，配套测试），未识别或非法的词 `senses` 为 `null`，前端保留原释义。Profile 页「AI 重新生成释义」前端串行分批调用并显示进度，通过 `useFirestoreWords` 的 `updateTranslations`（store 即时更新 + Firestore batch 写 `translation`）落库，不改动练习数据。
-- 纯函数测试用 bun test（`bun:test`，`bun run test`），核心算法（熟练度、翻译解析、句意判等、日期处理）新增改动时应同步补测试。
+架构、动机与「有意为之」的交互设计（题面不显示目标词、每题一考、重新批改、usedWords 计分、不传计时）见 `docs/architecture/sentence-deepseek.md`，本节只列硬性约定：
+
+- 浏览器只请求本站 `/api/*`，服务端代理 DeepSeek；`serverAuth` 的 token 缓存、`rateLimit` 必须 `await`、`deepseek.ts` 的重试语义（网络/429/5xx 重试一次、504 不重试、非 JSON 归 502）均有测试，改时同步。
+- 限流与缓存的 Redis 客户端统一用 `lib/redis.ts` 的 `getRedis()`；未配置 Upstash 时回退进程内实现（本地开发）。
+- 义项清洗统一 `lib/senses.ts` 的 `sanitizeWordSenses`，`/api/translate` 与 `regenerate-definitions` 共用，不要再各写一份。
+- 批改前先 `lib/sentenceCompare.ts` 的 `normalizeForComparison` 规范化判等（完全一致直接满分、省模型调用）；`resolveUsedWords`/`sanitizeUsedWords` 同文件有测试，不在路由内联重复实现。
+- 造句复用词库与 `recordCorrect/IncorrectAttempt` 计分；答案输入用 `Textarea`（Enter 提交、Shift+Enter 换行），`onKeyDown` 必须检查 `isComposing` 防中文输入法回车误提交。
+- 纯函数测试用 bun test（根目录 `bun run test`）；核心算法（熟练度、翻译解析、句意判等、日期、同步合并）新增改动时同步补测试。

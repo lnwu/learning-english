@@ -14,18 +14,20 @@
 - 在 `apps/web` 改代码时，遵循 `apps/web/AGENTS.md` 与本文件。
 - 在 `infra` 改代码时，遵循 `infra/AGENTS.md` 与本文件。
 - 就近规则优先（子目录 `AGENTS.md` 优先于根目录）。
+- 设计文档在 `docs/`（架构动机 `docs/architecture/`、算法 `WORD_FAMILIARITY_ALGORITHM.md`、部署 `DEPLOYMENT.md`），改行为时与 AGENTS.md 成对更新。
 
 ## 工具链
 
 - 本项目使用 bun（turbo monorepo，根目录有 `bun.lock`）。本机环境没有 node/npm/npx，运行脚本、安装依赖、执行测试一律用 `bun` / `bun x <命令>`。
-- 单元测试：`apps/web` 使用 bun test（`bun:test`），在 `apps/web` 下运行 `bun run test`（即 `bun test`），测试文件与源码同目录（`*.test.ts`）。
+- 根目录统一入口：`bun run lint` / `bun run typecheck` / `bun run test` / `bun run build`（均走 turbo），`bun run check` 一次执行 lint + typecheck + test；CI 使用同一组入口，不要在 workflow 里直接调 `tsc`/`eslint`。
+- 单元测试：`apps/web` 使用 bun test（`bun:test`），测试文件与源码同目录（`*.test.ts`）。
 
 ## 交付流程：直接提 PR + Preview 验收
 
 - 完成任务后不要停在本地验证：直接提交、推送分支、用 `gh pr create` 开 PR，然后把 Vercel Preview 链接发给用户，由用户自己在预览环境验收。
 - 不要为了验证去起 dev server、跑浏览器截图或做人工点击核对；把能自动化的检查跑完即可：`apps/web` 下 `bun run lint`、`bun x tsc`、`bun run test`，必要时 `bun run build`。
 - 取 Preview 链接：`gh pr checks <PR号>` 里 Vercel 那一行的部署详情，或 PR 上 Vercel 机器人评论表格里的 Preview 链接，形如 `https://learning-english-web-git-<分支名>-wu-linings-projects.vercel.app`（分支别名固定，后续推送会更新同一链接）。
-- 交付前确认 PR 上 `lint-build` 与 `Vercel` 两个检查都是 pass；失败要修到通过再把链接给用户。
+- 交付前确认 PR 上 CI（`checks` 与 `build` 两个 job）与 `Vercel` 检查都是 pass；失败要修到通过再把链接给用户。
 
 ## 预览环境与 sync-preview-words
 

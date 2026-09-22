@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, type ReactNode, FC } from "react";
+import { useState, useEffect, useMemo, type ReactNode, FC } from "react";
 import { auth, onAuthStateChanged, isPreviewEnv, signInAnonymously, type User } from "@/lib/firebase";
 import { AuthContext } from "@/hooks/useAuth";
 
@@ -24,8 +24,10 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
     return () => unsubscribe();
   }, []);
 
+  const value = useMemo(() => ({ user, loading }), [user, loading]);
+
   return (
-    <AuthContext.Provider value={{ user, loading }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
