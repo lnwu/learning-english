@@ -6,6 +6,7 @@ import { UserMenu } from "@/components/auth";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect } from "react";
+import { Spinner } from "@/components/ui";
 
 export const AppShell: FC<{ children: ReactNode }> = ({ children }) => {
   const { user, loading } = useAuth();
@@ -25,7 +26,7 @@ export const AppShell: FC<{ children: ReactNode }> = ({ children }) => {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" />
+        <Spinner className="size-5 text-muted-foreground" />
       </div>
     );
   }
@@ -37,9 +38,12 @@ export const AppShell: FC<{ children: ReactNode }> = ({ children }) => {
   return (
     <>
       {user && (
-        <header className="border-b">
-          <div className="container mx-auto flex items-center justify-between p-4">
-            <Link href="/home" className="text-xl font-bold hover:text-blue-600 transition-colors cursor-pointer">
+        <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur-sm">
+          <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between gap-4 px-4">
+            <Link
+              href="/home"
+              className="text-sm font-semibold tracking-tight transition-colors hover:text-muted-foreground"
+            >
               Learning English
             </Link>
             <UserMenu user={user} />

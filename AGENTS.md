@@ -22,6 +22,13 @@
 - 根目录统一入口：`bun run lint` / `bun run typecheck` / `bun run test` / `bun run build`（均走 turbo），`bun run check` 一次执行 lint + typecheck + test；CI 使用同一组入口，不要在 workflow 里直接调 `tsc`/`eslint`。
 - 单元测试：`apps/web` 使用 bun test（`bun:test`），测试文件与源码同目录（`*.test.ts`）。
 
+## 交付流程：直接提 PR + Preview 验收
+
+- 完成任务后不要停在本地验证：直接提交、推送分支、用 `gh pr create` 开 PR，然后把 Vercel Preview 链接发给用户，由用户自己在预览环境验收。
+- 不要为了验证去起 dev server、跑浏览器截图或做人工点击核对；把能自动化的检查跑完即可：`apps/web` 下 `bun run lint`、`bun x tsc`、`bun run test`，必要时 `bun run build`。
+- 取 Preview 链接：`gh pr checks <PR号>` 里 Vercel 那一行的部署详情，或 PR 上 Vercel 机器人评论表格里的 Preview 链接，形如 `https://learning-english-web-git-<分支名>-wu-linings-projects.vercel.app`（分支别名固定，后续推送会更新同一链接）。
+- 交付前确认 PR 上 CI（`checks` 与 `build` 两个 job）与 `Vercel` 检查都是 pass；失败要修到通过再把链接给用户。
+
 ## 预览环境与 sync-preview-words
 
 - Vercel preview 环境使用匿名登录，`getEffectiveUserId` 会把所有用户映射到 `preview` 用户，读写 `users/preview/*`。

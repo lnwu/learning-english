@@ -2,6 +2,15 @@
 
 import { useLocale } from "@/hooks";
 import Link from "next/link";
+import { MessageSquareIcon, PenLineIcon } from "lucide-react";
+import {
+  Card,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  PageContainer,
+  PageHeader,
+} from "@/components/ui";
 
 const Home = () => {
   const { t } = useLocale();
@@ -11,39 +20,43 @@ const Home = () => {
       href: "/words",
       title: t("practiceHub.words.title"),
       description: t("practiceHub.words.description"),
-      icon: "✍️",
+      Icon: PenLineIcon,
     },
     {
       href: "/sentence",
       title: t("practiceHub.sentence.title"),
       description: t("practiceHub.sentence.description"),
-      icon: "💬",
+      Icon: MessageSquareIcon,
     },
   ];
 
   return (
-    <main className="w-full max-w-3xl px-4 py-8">
-      <div className="text-center mb-8">
-        <h1 className="text-2xl font-bold">{t("practiceHub.title")}</h1>
-        <p className="text-gray-500 mt-2">{t("practiceHub.subtitle")}</p>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {cards.map((card) => (
+    <PageContainer>
+      <PageHeader
+        className="mb-6"
+        title={t("practiceHub.title")}
+        description={t("practiceHub.subtitle")}
+      />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {cards.map(({ href, title, description, Icon }) => (
           <Link
-            key={card.href}
-            href={card.href}
-            className="group rounded-xl border p-6 flex flex-col items-center text-center transition-all hover:border-blue-500 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            key={href}
+            href={href}
+            className="rounded-xl outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
           >
-            <div className="text-4xl mb-3" aria-hidden>
-              {card.icon}
-            </div>
-            <h2 className="text-lg font-semibold group-hover:text-blue-600">{card.title}</h2>
-            <p className="text-sm text-gray-500 mt-2">{card.description}</p>
+            <Card className="h-full transition-colors hover:bg-muted/40">
+              <CardHeader>
+                <span className="flex size-8 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                  <Icon className="size-4" />
+                </span>
+                <CardTitle>{title}</CardTitle>
+                <CardDescription>{description}</CardDescription>
+              </CardHeader>
+            </Card>
           </Link>
         ))}
       </div>
-    </main>
+    </PageContainer>
   );
 };
 

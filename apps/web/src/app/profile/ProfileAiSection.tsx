@@ -187,13 +187,14 @@ export const ProfileAiSection = observer(() => {
 
   return (
     <>
-      <div className="border-t border-gray-200 dark:border-gray-700 pt-6 mb-6">
-        <h3 className="text-lg font-semibold mb-2">{t('profile.regenerateTitle')}</h3>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-          {t('profile.regenerateDesc')}
-        </p>
+      <div className="flex flex-col gap-2 py-6 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+        <div className="flex flex-col gap-1">
+          <h3 className="text-sm font-medium">{t('profile.regenerateTitle')}</h3>
+          <p className="text-sm text-muted-foreground">{t('profile.regenerateDesc')}</p>
+        </div>
         <Button
           variant="outline"
+          className="shrink-0 self-start sm:self-auto"
           onClick={() => setShowRegenerateDialog(true)}
           disabled={regenerating || totalWords === 0}
         >
@@ -203,13 +204,14 @@ export const ProfileAiSection = observer(() => {
         </Button>
       </div>
 
-      <div className="border-t border-gray-200 dark:border-gray-700 pt-6 mb-6">
-        <h3 className="text-lg font-semibold mb-2">{t('profile.normalizeTitle')}</h3>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-          {t('profile.normalizeDesc')}
-        </p>
+      <div className="flex flex-col gap-2 py-6 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+        <div className="flex flex-col gap-1">
+          <h3 className="text-sm font-medium">{t('profile.normalizeTitle')}</h3>
+          <p className="text-sm text-muted-foreground">{t('profile.normalizeDesc')}</p>
+        </div>
         <Button
           variant="outline"
+          className="shrink-0 self-start sm:self-auto"
           onClick={() => setShowNormalizeDialog(true)}
           disabled={normalizing || totalWords === 0}
         >

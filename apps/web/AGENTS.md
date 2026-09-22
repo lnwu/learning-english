@@ -25,10 +25,20 @@
 
 ## UI 组件
 
-- `components/ui` 底层原语是 Base UI（`base-nova` 样式）：标准组件（button/dialog/input/alert/sonner）用 `bun x shadcn@latest add <组件> --overwrite` 从官方注册表生成；项目自有组件（confirm-dialog/frequency-bar/sync-indicator）手写，改时保留现有 API。⚠️ `--overwrite` 会覆盖手改内容，重生成 dialog/sonner 后必须检查非标准改动是否还在。
+- `components/ui` 是 shadcn/ui 风格组件，底层原语是 Base UI（`base-nova` 样式，Radix 迁移报告在仓库根 `.migration/`）：标准组件（button/dialog/input/alert/sonner）用 `bun x shadcn@latest add <组件> --overwrite` 从官方注册表生成；项目自有组件（confirm-dialog/frequency-bar/sync-indicator/page）手写，改时保留现有 API。⚠️ `--overwrite` 会覆盖手改内容，重生成 dialog/sonner 后必须检查非标准改动是否还在。
+- 用 CLI 添加组件后必须检查 import：CLI 会把工具函数写成 `import { cn } from "cn"` 并把 `cn@^0.3.0` 写进 `package.json`，本项目统一用 `@/lib/utils` 的 `cn`（clsx + tailwind-merge）。添加后执行 `sed -i 's|from "cn"|from "@/lib/utils"|' src/components/ui/<新文件>.tsx`，从 `package.json` 删除 `cn` 依赖并 `bun install`，否则会多出一个无用的 `cn` 包。
 - Base UI 惯例：多态用 `render` prop（不用 `asChild`）；render 到非 button 元素时传 `nativeButton={false}`；动画用 `data-open:animate-in`/`data-closed:animate-out`（不用 `data-[state=...]`）。
 - toast 通过 `hooks/useToast.ts` 的 `toast({ title, variant })`（映射 sonner）；`<Toaster>` 挂在 layout 且是惰性组件（`ui/toaster.tsx` 的 `dynamic(ssr:false)`），`WordPicker` 同理经 `word-picker/WordPickerLazy.tsx` 挂载——不要改回静态 import，会把 sonner/选词逻辑塞回首屏。
 - 非组件代码要当前 locale 的文案用 `lib/i18n.ts` 的 `tNow(key, params)`。
+
+## UI 风格约定（中性极简）
+
+- 全站视觉为「中性极简」：白底平铺、1px 描边分层、卡片不用阴影、彩色只用于状态语义。写样式只用语义 token，不要再出现 `gray-*`/`blue-*` 等原始调色板类、`bg-white`、卡片上的 `shadow-*`（浮层组件自带的 `shadow-md/lg` 除外）。
+- 常用映射：`text-gray-*` → `text-muted-foreground`；`bg-white` → `bg-card`；`bg-gray-100/200/700/800` → `bg-muted`；蓝色强调 → `bg-primary`/`text-primary`/`ring-ring`；成功/警告/危险用 `text-success`/`text-warning`/`text-destructive` 以及 `bg-success/10`、`border-destructive/30`、`ring-success/30` 这类同色透明度组合（`--success`/`--warning` 定义在 `index.css` 的 `:root` 与 `.dark`）。
+- 页面骨架统一用 `PageContainer`（`width` 取 `narrow|default|wide`）+ `PageHeader`（左侧标题与灰色副标题、右侧操作按钮）；加载态用 `LoadingState`，空态用 `Empty`，危险操作按钮用 `Button variant="destructive"`。`--radius` 为 `0.5rem`（按钮/输入框 8px、卡片 12px）。
+- 背景分三层（对齐 OpenCode console 的 token 体系）：页面底用 `bg-background`（白），卡片与「表面」用 `bg-surface`（浅色 `#fafafa`、深色 `#242424`），嵌套层用 `bg-muted`。强调用的小块（统计数字、分组表头）用 `StatTile` 或 `rounded-xl border bg-surface shadow-xs`；进度槽用 `bg-muted inset-shadow-2xs` 做出轻微凹槽感。
+- 数据可视化是唯一的彩色例外：熟练度 5 级用 `MASTERY_BAR_COLORS`（rose → orange → amber → lime → emerald），练习热力图用 `--heatmap-1..4` 绿色单色阶（GitHub 风格）；不要在别处新增彩色。
+- 图标统一用 lucide（按钮内图标用 `data-icon="inline-start|inline-end"`），不要用 emoji 当图标；列表分隔用 `divide-y` 或 `Separator`，间距用 `gap-*`，不要用 `space-x-*`/`space-y-*`。
 
 ## 词库状态管理
 
