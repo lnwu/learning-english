@@ -1,4 +1,4 @@
-export { useFirestoreWords, WordsProvider } from "./useFirestoreWords";
+export { useFirestoreWords, useSyncStatus, WordsProvider } from "./useFirestoreWords";
 export { useSentencePractice } from "./useSentencePractice";
 export { useLocale, LocaleProvider } from "./useLocale";
 export { toast } from "./useToast";

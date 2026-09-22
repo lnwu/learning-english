@@ -4,27 +4,17 @@ import { Button, ConfirmDialog, getMasteryLevel, MASTERY_BAR_COLORS } from "@/co
 import { useFirestoreWords, useLocale, toast, useAuth } from "@/hooks";
 import { observer } from "mobx-react-lite";
 import Link from "next/link";
-import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { type Locale, type TranslationKey } from "@/lib/i18n";
 import { db, getEffectiveUserId } from "@/lib/firebase";
 import {
   collection,
   getDocs,
 } from "firebase/firestore";
-import { postJson } from "@/lib/apiClient";
 import PracticeHeatmap from "./PracticeHeatmap";
+import { ProfileAiSection } from "./ProfileAiSection";
 import { WordPerformanceSection } from "./WordPerformanceSection";
-import { formatSenses } from "@/lib/parseTranslation";
 import type { MasteryLevel } from "@/lib/masteryCalculator";
-import {
-  MAX_REGENERATE_BATCH_SIZE,
-  type RegenerateResult,
-} from "@/lib/regenerateDefinitions";
-import {
-  MAX_NORMALIZE_BATCH_SIZE,
-  type NormalizeResult,
-} from "@/lib/normalizeWords";
-import { resolveRenamePlan } from "@/lib/wordNormalization";
 
 const MASTERY_SEGMENTS: Array<{
   key: MasteryLevel;
@@ -39,7 +29,7 @@ const MASTERY_SEGMENTS: Array<{
 
 const Profile = observer(() => {
   const { user } = useAuth();
-  const { words, deleteWord, resetPracticeRecords, updateTranslations, normalizeWordForms, loading, error } =
+  const { words, deleteWord, resetPracticeRecords, loading, error } =
     useFirestoreWords();
   const [isClient, setIsClient] = useState(false);
   const { locale, setLocale, t } = useLocale();
@@ -47,14 +37,6 @@ const Profile = observer(() => {
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [wordToDelete, setWordToDelete] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const [showRegenerateDialog, setShowRegenerateDialog] = useState(false);
-  const [regenerating, setRegenerating] = useState(false);
-  const [regenerateProgress, setRegenerateProgress] = useState(0);
-  const regeneratingRef = useRef(false);
-  const [showNormalizeDialog, setShowNormalizeDialog] = useState(false);
-  const [normalizing, setNormalizing] = useState(false);
-  const [normalizeProgress, setNormalizeProgress] = useState(0);
-  const normalizingRef = useRef(false);
   const [practiceTime, setPracticeTime] = useState<Map<string, number>>(
     new Map()
   );
@@ -87,10 +69,13 @@ const Profile = observer(() => {
 
   const wordsWithStats = words.practiceStats;
 
-  // Calculate average mastery score
-  const avgMasteryScore = wordsWithStats.length > 0
-    ? Math.round(wordsWithStats.reduce((sum, w) => sum + w.masteryScore, 0) / wordsWithStats.length)
-    : 0;
+  const avgMasteryScore = useMemo(() => {
+    if (wordsWithStats.length === 0) return 0;
+    return Math.round(
+      wordsWithStats.reduce((sum, w) => sum + w.masteryScore, 0) /
+        wordsWithStats.length
+    );
+  }, [wordsWithStats]);
 
   const masteryDistribution = useMemo(() => {
     const counts: Record<MasteryLevel, number> = {
@@ -154,161 +139,6 @@ const Profile = observer(() => {
     setWordToDelete(word);
   }, []);
 
-  const handleRegenerateAll = async () => {
-    if (regeneratingRef.current) return;
-    regeneratingRef.current = true;
-
-    const allWords = Array.from(words.wordData.keys());
-    if (allWords.length === 0) {
-      regeneratingRef.current = false;
-      return;
-    }
-
-    setRegenerating(true);
-    setRegenerateProgress(0);
-    const total = allWords.length;
-    let success = 0;
-    let skipped = 0;
-    let batchFailed = 0;
-    const batches: string[][] = [];
-
-    try {
-      for (let i = 0; i < total; i += MAX_REGENERATE_BATCH_SIZE) {
-        batches.push(allWords.slice(i, i + MAX_REGENERATE_BATCH_SIZE));
-      }
-
-      for (const batch of batches) {
-        let batchSuccess = 0;
-        try {
-          const data = await postJson<{ results?: RegenerateResult[] }>(
-            "/api/regenerate-definitions",
-            { words: batch },
-            t("profile.regenerateFailed")
-          );
-
-          const results = data.results ?? [];
-          const updates: Array<{ word: string; translation: string }> = [];
-          for (const item of results) {
-            if (item.senses && item.senses.length > 0) {
-              updates.push({ word: item.word, translation: formatSenses(item.senses) });
-              batchSuccess += 1;
-            }
-          }
-          if (updates.length > 0) {
-            await updateTranslations(updates);
-          }
-          success += batchSuccess;
-          skipped += batch.length - batchSuccess;
-        } catch (err) {
-          console.error("Regenerate batch failed:", err);
-          batchFailed += batch.length;
-          skipped += batch.length;
-        }
-        setRegenerateProgress((prev) => prev + batch.length);
-      }
-
-      if (batchFailed === total) {
-        toast({
-          title: t('profile.regenerateFailed'),
-          variant: "destructive",
-        });
-      } else if (skipped > 0) {
-        toast({
-          title: t('profile.regeneratePartial', { success, skipped }),
-          variant: "success",
-        });
-      } else {
-        toast({
-          title: t('profile.regenerateSuccess', { success }),
-          variant: "success",
-        });
-      }
-    } catch (err) {
-      console.error("Regenerate all failed:", err);
-      toast({
-        title:
-          err instanceof Error ? err.message : t('profile.regenerateFailed'),
-        variant: "destructive",
-      });
-    } finally {
-      regeneratingRef.current = false;
-      setRegenerating(false);
-      setShowRegenerateDialog(false);
-    }
-  };
-
-  const handleNormalizeWords = async () => {
-    if (normalizingRef.current) return;
-    normalizingRef.current = true;
-
-    const allWords = Array.from(words.wordData.keys());
-    if (allWords.length === 0) {
-      normalizingRef.current = false;
-      return;
-    }
-
-    setNormalizing(true);
-    setNormalizeProgress(0);
-    const total = allWords.length;
-    const renames: Array<{ from: string; to: string }> = [];
-    let batchFailed = 0;
-
-    try {
-      const batches: string[][] = [];
-      for (let i = 0; i < total; i += MAX_NORMALIZE_BATCH_SIZE) {
-        batches.push(allWords.slice(i, i + MAX_NORMALIZE_BATCH_SIZE));
-      }
-
-      for (const batch of batches) {
-        try {
-          const data = await postJson<{ results?: NormalizeResult[] }>(
-            "/api/normalize-words",
-            { words: batch },
-            t("profile.normalizeFailed")
-          );
-          const lemmaByWord = new Map(
-            (data.results ?? []).map((item) => [item.word, item.lemma])
-          );
-          renames.push(...resolveRenamePlan(batch, lemmaByWord));
-        } catch (err) {
-          console.error("Normalize batch failed:", err);
-          batchFailed += batch.length;
-        }
-        setNormalizeProgress((prev) => prev + batch.length);
-      }
-
-      if (batchFailed === total) {
-        toast({
-          title: t("profile.normalizeFailed"),
-          variant: "destructive",
-        });
-        return;
-      }
-
-      if (renames.length === 0) {
-        toast({ title: t("profile.normalizeNone"), variant: "success" });
-        return;
-      }
-
-      const { renamed, merged } = await normalizeWordForms(renames);
-      toast({
-        title: t("profile.normalizeSuccess", { renamed, merged }),
-        variant: "success",
-      });
-    } catch (err) {
-      console.error("Normalize all failed:", err);
-      toast({
-        title:
-          err instanceof Error ? err.message : t("profile.normalizeFailed"),
-        variant: "destructive",
-      });
-    } finally {
-      normalizingRef.current = false;
-      setNormalizing(false);
-      setShowNormalizeDialog(false);
-    }
-  };
-
   if (loading) {
     return (
       <main>
@@ -330,7 +160,6 @@ const Profile = observer(() => {
       <main className="container mx-auto p-4 max-w-4xl">
         <h1 className="text-3xl font-bold mb-6">{t('profile.title')}</h1>
 
-        {/* User Info */}
         {user && (
           <div className="mb-8 p-6 bg-white dark:bg-gray-800 rounded-lg shadow">
             <h2 className="text-xl font-semibold mb-4">{t('profile.accountInfo')}</h2>
@@ -341,7 +170,6 @@ const Profile = observer(() => {
           </div>
         )}
 
-        {/* Daily Practice Time */}
         <div className="mb-8 p-6 bg-white dark:bg-gray-800 rounded-lg shadow">
           <h2 className="text-xl font-semibold mb-4">{t('profile.practiceTimeTitle')}</h2>
           <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
@@ -356,11 +184,9 @@ const Profile = observer(() => {
           )}
         </div>
 
-        {/* Settings */}
         <div className="mb-8 p-6 bg-white dark:bg-gray-800 rounded-lg shadow">
           <h2 className="text-xl font-semibold mb-4">{t('profile.settings')}</h2>
-          
-          {/* Language Selector */}
+
           <div className="mb-6">
             <label className="block text-sm font-medium mb-2">{t('profile.language')}</label>
             <div className="flex gap-2">
@@ -387,41 +213,8 @@ const Profile = observer(() => {
             </div>
           </div>
 
-          {/* AI Regenerate Definitions */}
-          <div className="border-t border-gray-200 dark:border-gray-700 pt-6 mb-6">
-            <h3 className="text-lg font-semibold mb-2">{t('profile.regenerateTitle')}</h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              {t('profile.regenerateDesc')}
-            </p>
-            <Button
-              variant="outline"
-              onClick={() => setShowRegenerateDialog(true)}
-              disabled={regenerating || totalWords === 0}
-            >
-              {regenerating
-                ? `${t('common.loading')} ${regenerateProgress}/${totalWords}`
-                : t('profile.regenerateButton')}
-            </Button>
-          </div>
+          <ProfileAiSection />
 
-          {/* AI Normalize Word Forms */}
-          <div className="border-t border-gray-200 dark:border-gray-700 pt-6 mb-6">
-            <h3 className="text-lg font-semibold mb-2">{t('profile.normalizeTitle')}</h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              {t('profile.normalizeDesc')}
-            </p>
-            <Button
-              variant="outline"
-              onClick={() => setShowNormalizeDialog(true)}
-              disabled={normalizing || totalWords === 0}
-            >
-              {normalizing
-                ? `${t('common.loading')} ${normalizeProgress}/${totalWords}`
-                : t('profile.normalizeButton')}
-            </Button>
-          </div>
-
-          {/* Reset Practice Records */}
           <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
             <h3 className="text-lg font-semibold mb-2 text-red-600 dark:text-red-400">{t('profile.resetData')}</h3>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
@@ -438,7 +231,6 @@ const Profile = observer(() => {
           </div>
         </div>
 
-        {/* Statistics */}
         <div className="mb-8 p-6 bg-white dark:bg-gray-800 rounded-lg shadow">
           <h2 className="text-xl font-semibold mb-4">{t('profile.statistics')}</h2>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -469,7 +261,6 @@ const Profile = observer(() => {
           </div>
         </div>
 
-        {/* Mastery Distribution */}
         <div className="mb-8 p-6 bg-white dark:bg-gray-800 rounded-lg shadow">
           <h2 className="text-xl font-semibold mb-4">{t('profile.masteryDistribution')}</h2>
           {wordsWithStats.length === 0 ? (
@@ -504,7 +295,6 @@ const Profile = observer(() => {
           t={t}
         />
 
-        {/* No Data Message */}
         {wordsWithStats.length === 0 && (
           <div className="mb-8 p-6 bg-white dark:bg-gray-800 rounded-lg shadow text-center">
             <p className="text-gray-600 dark:text-gray-400">
@@ -513,7 +303,6 @@ const Profile = observer(() => {
           </div>
         )}
 
-        {/* Navigation */}
         <div className="flex space-x-4">
           <Button render={<Link href="/words" />} nativeButton={false}>
             {t('profile.practiceWords')}
@@ -523,7 +312,6 @@ const Profile = observer(() => {
           </Button>
         </div>
 
-        {/* Reset Confirmation Dialog */}
         <ConfirmDialog
           open={showResetDialog}
           onOpenChange={setShowResetDialog}
@@ -535,31 +323,6 @@ const Profile = observer(() => {
           variant="destructive"
         />
 
-        {/* Regenerate Definitions Confirmation Dialog */}
-        <ConfirmDialog
-          open={showRegenerateDialog}
-          onOpenChange={setShowRegenerateDialog}
-          title={t('profile.regenerateConfirm')}
-          description={t('profile.regenerateConfirmDesc')}
-          confirmText={t('common.confirm')}
-          cancelText={t('common.cancel')}
-          onConfirm={handleRegenerateAll}
-          variant="default"
-        />
-
-        {/* Normalize Word Forms Confirmation Dialog */}
-        <ConfirmDialog
-          open={showNormalizeDialog}
-          onOpenChange={setShowNormalizeDialog}
-          title={t('profile.normalizeConfirm')}
-          description={t('profile.normalizeConfirmDesc')}
-          confirmText={t('common.confirm')}
-          cancelText={t('common.cancel')}
-          onConfirm={handleNormalizeWords}
-          variant="default"
-        />
-
-        {/* Delete Word Confirmation Dialog */}
         <ConfirmDialog
           open={wordToDelete !== null}
           onOpenChange={(open) => {

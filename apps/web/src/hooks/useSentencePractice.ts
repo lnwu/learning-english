@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { useFirestoreWords } from "@/hooks/useFirestoreWords";
+import { useFirestoreWords, useSyncStatus } from "@/hooks/useFirestoreWords";
 import { postJson } from "@/lib/apiClient";
 
 export interface SentenceQuestion {
@@ -35,6 +35,7 @@ function shuffle<T>(items: T[]): T[] {
 export const useSentencePractice = () => {
   const firestore = useFirestoreWords();
   const { words, recordCorrectAttempt, recordIncorrectAttempt } = firestore;
+  const { syncing, pendingCount } = useSyncStatus();
 
   const [question, setQuestion] = useState<SentenceQuestion | null>(null);
   const [feedback, setFeedback] = useState<SentenceFeedback | null>(null);
@@ -151,8 +152,8 @@ export const useSentencePractice = () => {
     error,
     generate,
     check,
-    syncing: firestore.syncing,
-    pendingCount: firestore.pendingCount,
+    syncing,
+    pendingCount,
     syncToFirestore: firestore.syncToFirestore,
   };
 };

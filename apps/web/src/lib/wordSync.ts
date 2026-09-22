@@ -1,5 +1,5 @@
 import type { SyncQueueItem } from "@/lib/syncQueue";
-import type { WordData } from "@/lib/wordsStore";
+import { isQueueItemStale, type WordData } from "@/lib/wordsStore";
 
 export interface WordSyncUpdate {
   word: string;
@@ -41,3 +41,55 @@ export const buildAttemptQueueData = (
   correctPracticeDates: data.correctPracticeDates,
   attemptHistory: data.attemptHistory,
 });
+
+export const buildAttemptUpdateFields = (
+  data: SyncQueueItem["data"],
+  lastPracticedAt: number
+) => ({
+  correctCount: data.correctCount,
+  totalAttempts: data.totalAttempts,
+  inputTimes: data.inputTimes,
+  ...(data.correctPracticeDates !== undefined && {
+    correctPracticeDates: data.correctPracticeDates,
+  }),
+  ...(data.attemptHistory !== undefined && {
+    attemptHistory: data.attemptHistory,
+  }),
+  lastPracticedAt: new Date(lastPracticedAt),
+});
+
+export const collectStaleQueueItemIds = (
+  firestoreWords: Map<string, WordData>,
+  queue: SyncQueueItem[]
+): string[] => {
+  const staleIds: string[] = [];
+  queue.forEach((item) => {
+    const firestoreWord = firestoreWords.get(item.wordId);
+    if (firestoreWord && isQueueItemStale(firestoreWord, item.data)) {
+      staleIds.push(item.id);
+    }
+  });
+  return staleIds;
+};
+
+export const classifySyncBatchFailure = (input: {
+  errorCode: string | undefined;
+  wordsLoaded: boolean;
+  updates: Array<{ word: string; queueItemIds: string[] }>;
+  wordExists: (word: string) => boolean;
+}): { goneQueueItemIds: string[]; retryQueueItemIds: string[] } => {
+  const wordWasDeleted =
+    input.errorCode === "not-found" && input.wordsLoaded;
+  const goneQueueItemIds: string[] = [];
+  const retryQueueItemIds: string[] = [];
+
+  for (const update of input.updates) {
+    if (wordWasDeleted && !input.wordExists(update.word)) {
+      goneQueueItemIds.push(...update.queueItemIds);
+    } else {
+      retryQueueItemIds.push(...update.queueItemIds);
+    }
+  }
+
+  return { goneQueueItemIds, retryQueueItemIds };
+};

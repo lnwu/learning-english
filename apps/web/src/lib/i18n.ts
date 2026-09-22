@@ -364,6 +364,10 @@ export function getCurrentLocale(): Locale {
   return detectBrowserLocale();
 }
 
+export function tNow(key: TranslationKey, params?: TranslationParams): string {
+  return t(key, getCurrentLocale(), params);
+}
+
 export function setLocale(locale: Locale): void {
   if (typeof window !== 'undefined') {
     document.cookie = `${LOCALE_COOKIE}=${locale}; path=/; max-age=31536000; samesite=lax`;
