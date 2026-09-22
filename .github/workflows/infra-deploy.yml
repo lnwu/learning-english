@@ -12,6 +12,7 @@ on:
 jobs:
   apply:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     concurrency:
       group: infra-terraform-apply
       cancel-in-progress: false
@@ -23,6 +24,7 @@ jobs:
         working-directory: infra
     env:
       TF_IN_AUTOMATION: true
+      TF_PLUGIN_CACHE_DIR: ${{ github.workspace }}/.terraform-plugin-cache
       TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
       TF_VAR_google_oauth_client_id: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
       TF_VAR_google_oauth_client_secret: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
@@ -30,6 +32,17 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+
+      - name: Prepare Terraform plugin cache
+        run: mkdir -p "$TF_PLUGIN_CACHE_DIR"
+
+      - name: Cache Terraform providers
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/.terraform-plugin-cache
+          key: terraform-${{ runner.os }}-${{ hashFiles('infra/.terraform.lock.hcl') }}
+          restore-keys: |
+            terraform-${{ runner.os }}-
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v4

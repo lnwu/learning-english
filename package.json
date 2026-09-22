@@ -4,6 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "test -d apps/web/.vercel || bun x vercel link --cwd apps/web; turbo dev",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "test": "turbo test",
+    "build": "turbo build",
+    "check": "turbo lint typecheck test",
     "sync:preview": "bun run scripts/sync-preview-words.mjs"
   },
   "workspaces": [
