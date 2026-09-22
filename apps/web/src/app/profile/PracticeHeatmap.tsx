@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { useLocale } from "@/hooks";
 import {
   buildPracticeTimeWeeks,
@@ -44,8 +44,11 @@ const PracticeHeatmap = memo(({ practiceTime }: { practiceTime: Map<string, numb
     return () => observer.disconnect();
   }, []);
 
-  const weeks = buildPracticeTimeWeeks(practiceTime, new Date(), weekCount);
-  const monthLabels = getPracticeTimeMonthLabels(weeks);
+  const weeks = useMemo(
+    () => buildPracticeTimeWeeks(practiceTime, new Date(), weekCount),
+    [practiceTime, weekCount]
+  );
+  const monthLabels = useMemo(() => getPracticeTimeMonthLabels(weeks), [weeks]);
   const formatMonthLabel = (month: number) =>
     locale === "zh"
       ? `${month}月`
