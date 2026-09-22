@@ -29,6 +29,20 @@
 - 取 Preview 链接：`gh pr checks <PR号>` 里 Vercel 那一行的部署详情，或 PR 上 Vercel 机器人评论表格里的 Preview 链接，形如 `https://learning-english-web-git-<分支名>-wu-linings-projects.vercel.app`（分支别名固定，后续推送会更新同一链接）。
 - 交付前确认 PR 上 CI（`checks` 与 `build` 两个 job）与 `Vercel` 检查都是 pass；失败要修到通过再把链接给用户。
 
+## 连接用户已打开的浏览器（agent-browser）
+
+- 用户 Windows 侧 Chrome 的远程调试由用户在 `chrome://inspect` 打开（“Allow remote debugging for this browser instance”），端口固定 `127.0.0.1:9222`。该模式只提供 WebSocket 端点、**不提供 `/json/*` HTTP 发现接口**：`http://127.0.0.1:9222/json/version` 会 404，`agent-browser --auto-connect` 会报 `No running Chrome instance found`；这不代表端口没开，别据此放弃。
+- 用 `--cdp` 接入这个 ws 端点即可，之后按 agent-browser 的常规用法操作（`--cdp` 传一次，同一 session 后续命令不用再传）：
+  ```bash
+  agent-browser --session user-chrome --cdp "ws://127.0.0.1:9222/devtools/browser" open <url>  # 接入
+  agent-browser --session user-chrome snapshot -i                                                  # 之后正常用
+  ```
+- 接入时 Chrome 会弹批准框，用户 Approve 后即可访问；未批准时 WS 握手会一直挂起（不报错），命令卡住就是这个原因，提醒用户点批准框。
+- 仅当 9222 被占用时 Chrome 才会 fallback 到其他端口，此时读 `<profile>/DevToolsActivePort` 第一行拿端口。
+- WSL 内可直接访问 `127.0.0.1:9222` 到达 Windows 侧 Chrome（实测），无需端口转发。
+- 用完执行 `agent-browser --session user-chrome close` 断开即可，不会关闭用户的浏览器（实测）。
+- 该连接使用用户真实登录态（cookies），只做用户明确要求的操作，不做未经确认的写操作。
+
 ## 预览环境与 sync-preview-words
 
 - Vercel preview 环境使用匿名登录，`getEffectiveUserId` 会把所有用户映射到 `preview` 用户，读写 `users/preview/*`。
