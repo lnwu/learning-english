@@ -14,7 +14,6 @@
 - i18n 插值用 `t(key, params)` 占位符（`{name}`），不要手写 `.replace`；en 表是 `Record<TranslationKey, string>`，缺 key 编译报错，key 一致性由 `lib/i18n.test.ts` 守护。
 - 中文不要用 `next/font` 引 Noto Sans SC（三个字重约 4.5MB CJK 切片），用系统字体栈（`index.css` 的 `body` 已按此维护）。
 - 不要删除 `src/app/error.tsx` 与 `global-error.tsx`（全局错误兜底）。
-- 改 Firestore 写入字段必须成对修改 `infra/modules/firebase/firestore.rules` 的字段校验，否则线上写入被拒（见 `infra/AGENTS.md`）。
 - 改 translate 的 prompt 或默认模型必须 bump 翻译缓存 key 前缀（当前 `translation:v2`），否则旧释义长期复用。
 
 ## TypeScript 6/7 并排
@@ -50,7 +49,7 @@
 - `attemptHistory` 存最近 30 条对错序列；老数据缺字段由 `parseWordDoc` 兜底空数组，正确率回退全量统计。`lastPracticedAt` 落库取同步队列条目的 `timestamp`（真实练习时刻），不要用同步时的 `new Date()`。
 - 批量写一律走 `commitBatchOperations`（`lib/firestoreBatch.ts`，500/批）；同步载荷构造、失败分类、过期队列判定在 `lib/wordSync.ts`，归一化落库计划在 `lib/wordNormalization.ts`（均有测试），不要内联回 hook。
 - 队列条目重试到上限被丢弃必须 toast `sync.dataLost`；localStorage 写失败回退内存必须 toast `sync.storageFailed`——都不要改成静默丢弃。
-- `normalizeWordForms`：先 `syncToFirestore()`，按计划落库，Firestore 提交成功后才 `words.moveWord` 更新 store，返回 `{ renamed, merged }`；`mergeWordData` 的合并与上限语义调整时同步 `Words.MAX_*` 与 rules 校验上限。
+- `normalizeWordForms`：先 `syncToFirestore()`，按计划落库，Firestore 提交成功后才 `words.moveWord` 更新 store，返回 `{ renamed, merged }`；`mergeWordData` 的合并与上限语义调整时同步 `Words.MAX_*`。
 - `updateTranslations`：先 `setWordData` 即时更新 store（失效缓存）再 batch 写 `translation`，onSnapshot 幂等合并兜底。
 - 练习页输入判定用 `lib/practiceInput.ts` + 单个 `inputStatesRef`（有测试，语义见 `docs/architecture/word-sync.md`）；`WordRow` 是独立 observer，父组件渲染路径不要读 `words.userInputs`。
 - 热力图 `PracticeHeatmap` 保持隔离（`memo`、只接收 `practiceTime`、网格构建已 `useMemo`）；网格与分档纯逻辑在 `lib/practiceTime.ts`（有测试）。
