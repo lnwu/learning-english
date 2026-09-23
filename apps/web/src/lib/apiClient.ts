@@ -1,10 +1,10 @@
 import { getAuthInstance } from "@/lib/firebase";
-import { getCurrentLocale, t } from "@/lib/i18n";
+import { getCurrentLocale, t, tNow } from "@/lib/i18n";
 
 export async function postJson<T>(
   url: string,
   payload: unknown,
-  fallbackError = "请求失败，请稍后重试"
+  fallbackError = tNow("error.requestFailed")
 ): Promise<T> {
   const idToken = await getAuthInstance().currentUser?.getIdToken();
   if (!idToken) {

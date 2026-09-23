@@ -1,7 +1,6 @@
 import type { ChatMessage } from "@/lib/deepseek";
 import { sanitizeUsedWords } from "@/lib/sentenceCompare";
 
-export const MAX_SENTENCE_WORDS = 3;
 export const MAX_SENTENCE_LENGTH = 500;
 export const MAX_TRANSLATION_LENGTH = 2000;
 

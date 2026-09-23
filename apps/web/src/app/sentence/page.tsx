@@ -21,9 +21,10 @@ import { useSentencePractice, useLocale, usePracticeTimeTracker } from "@/hooks"
 import { observer } from "mobx-react-lite";
 import Link from "next/link";
 import { useEffect, useState, type FormEvent, type KeyboardEvent } from "react";
+import { MIN_SENTENCE_WORDS } from "@/lib/sentenceWords";
 
 const Sentence = observer(() => {
-  const { loading, loadError, question, feedback, generating, checking, error, generate, check, words, syncing, pendingCount, syncToFirestore } = useSentencePractice();
+  const { loading, loadError, question, feedback, generating, checking, error, insufficientWords, generate, check, words, syncing, pendingCount, syncToFirestore } = useSentencePractice();
   const { t } = useLocale();
   usePracticeTimeTracker();
   const [answer, setAnswer] = useState("");
@@ -31,7 +32,7 @@ const Sentence = observer(() => {
   const [lastCheckedAnswer, setLastCheckedAnswer] = useState("");
   const [isClient, setIsClient] = useState(false);
   const [hasTriedInitialGenerate, setHasTriedInitialGenerate] = useState(false);
-  const noWords = words.wordCount < 2;
+  const noWords = words.wordCount < MIN_SENTENCE_WORDS;
 
   useEffect(() => {
     setIsClient(true);
@@ -122,7 +123,7 @@ const Sentence = observer(() => {
           )
         ) : (
           <div className="flex flex-col gap-4">
-            {!question && !generating && error && (
+            {!question && !generating && (error || insufficientWords) && (
               <div className="flex justify-center">
                 <Button onClick={handleNext} variant="outline">{t("sentence.next")}</Button>
               </div>
@@ -130,12 +131,18 @@ const Sentence = observer(() => {
 
             {generating && <LoadingState label={t("sentence.generating")} />}
 
-            {error && (
+            {insufficientWords ? (
               <Alert variant="destructive">
                 <AlertDescription>
-                  {error === "insufficientWords" ? t("sentence.needMoreWords") : error}
+                  {t("sentence.needMoreWords")}
                 </AlertDescription>
               </Alert>
+            ) : (
+              error && (
+                <Alert variant="destructive">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )
             )}
 
             {question && (

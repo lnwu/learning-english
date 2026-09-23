@@ -48,6 +48,7 @@ const zh = {
     'error.updateTranslationFailed': '更新释义失败，请稍后重试',
     'error.normalizeWordFailed': '归一化单词失败，请稍后重试',
     'error.wordNotFound': '未找到单词',
+    'error.requestFailed': '请求失败，请稍后重试',
     
     // Home page
     'home.refresh': '刷新单词',
@@ -68,6 +69,8 @@ const zh = {
     'sentence.score': '得分',
     'sentence.reference': '参考答案',
     'sentence.needMoreWords': '词汇库单词不足，请先添加至少 2 个单词。',
+    'sentence.generateFailed': '生成失败，请稍后重试',
+    'sentence.checkFailed': '批改失败，请稍后重试',
 
     // Practice hub (home)
     'practiceHub.title': '练习中心',
@@ -203,6 +206,7 @@ const en: Record<TranslationKey, string> = {
     'error.updateTranslationFailed': 'Failed to update definitions, please try again',
     'error.normalizeWordFailed': 'Failed to normalize words, please try again',
     'error.wordNotFound': 'Word not found',
+    'error.requestFailed': 'Request failed, please try again later',
     
     // Home page
     'home.refresh': 'Refresh Words',
@@ -223,6 +227,8 @@ const en: Record<TranslationKey, string> = {
     'sentence.score': 'Score',
     'sentence.reference': 'Reference',
     'sentence.needMoreWords': 'Not enough words. Please add at least 2 words first.',
+    'sentence.generateFailed': 'Failed to generate the question, please try again',
+    'sentence.checkFailed': 'Failed to check the answer, please try again',
 
     // Practice hub (home)
     'practiceHub.title': 'Practice Hub',
