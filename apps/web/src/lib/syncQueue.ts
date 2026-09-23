@@ -1,16 +1,12 @@
+import type { SyncableWordData } from "@/lib/wordsStore";
+
 // 同步队列项类型
 export interface SyncQueueItem {
   id: string;
   type: 'attempt';
   word: string;
   wordId: string;
-  data: {
-    correctCount: number;
-    totalAttempts: number;
-    inputTimes: number[];
-    correctPracticeDates?: string[];
-    attemptHistory?: boolean[];
-  };
+  data: SyncableWordData;
   timestamp: number;
   retryCount: number;
 }

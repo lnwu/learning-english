@@ -2,7 +2,6 @@ import type { SyncQueueItem } from "@/lib/syncQueue";
 import {
   isQueueItemStale,
   type MergedSnapshotResult,
-  type WordData,
 } from "@/lib/wordsStore";
 import { commitInChunks } from "@/lib/chunkedCommit";
 
@@ -36,32 +35,6 @@ export const buildWordUpdates = (
 
   return updates;
 };
-
-export const buildAttemptQueueData = (
-  data: Readonly<WordData>
-): SyncQueueItem["data"] => ({
-  correctCount: data.correctCount,
-  totalAttempts: data.totalAttempts,
-  inputTimes: data.inputTimes,
-  correctPracticeDates: data.correctPracticeDates,
-  attemptHistory: data.attemptHistory,
-});
-
-export const buildAttemptUpdateFields = (
-  data: SyncQueueItem["data"],
-  lastPracticedAt: number
-) => ({
-  correctCount: data.correctCount,
-  totalAttempts: data.totalAttempts,
-  inputTimes: data.inputTimes,
-  ...(data.correctPracticeDates !== undefined && {
-    correctPracticeDates: data.correctPracticeDates,
-  }),
-  ...(data.attemptHistory !== undefined && {
-    attemptHistory: data.attemptHistory,
-  }),
-  lastPracticedAt: new Date(lastPracticedAt),
-});
 
 export const collectStaleQueueItemIds = (
   snapshot: MergedSnapshotResult,

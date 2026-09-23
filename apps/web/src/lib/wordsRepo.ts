@@ -12,6 +12,7 @@ import {
 } from "firebase/firestore";
 import { commitInChunks } from "@/lib/chunkedCommit";
 import { getDb } from "@/lib/firebase";
+import { newWordDocFields } from "@/lib/wordDoc";
 
 export const WORD_BATCH_LIMIT = 500;
 
@@ -61,17 +62,7 @@ export const createWordsRepo = (userId: string): WordsRepo => {
     },
 
     async addWord(word, translation) {
-      await addDoc(wordsCollection(), {
-        word,
-        translation,
-        correctCount: 0,
-        totalAttempts: 0,
-        inputTimes: [],
-        lastPracticedAt: null,
-        correctPracticeDates: [],
-        attemptHistory: [],
-        createdAt: new Date(),
-      });
+      await addDoc(wordsCollection(), newWordDocFields(word, translation));
     },
 
     async deleteWord(wordId) {

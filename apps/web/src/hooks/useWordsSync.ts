@@ -6,12 +6,11 @@ import { toast } from "@/hooks/useToast";
 import { tNow } from "@/lib/i18n";
 import { mergeSnapshotIntoStore, type Words } from "@/lib/wordsStore";
 import {
-  buildAttemptQueueData,
-  buildAttemptUpdateFields,
   buildWordUpdates,
   collectStaleQueueItemIds,
   runWordSync,
 } from "@/lib/wordSync";
+import { attemptUpdateFields, practiceFields } from "@/lib/wordDoc";
 import { WORD_BATCH_LIMIT, type WordsRepo } from "@/lib/wordsRepo";
 
 export const useWordsSync = (words: Words, repo: WordsRepo | null) => {
@@ -100,7 +99,7 @@ export const useWordsSync = (words: Words, repo: WordsRepo | null) => {
         type: "attempt",
         word,
         wordId,
-        data: buildAttemptQueueData(data),
+        data: practiceFields(data),
       });
       notifyIfStorageFallback();
       refreshPendingCount();
@@ -154,7 +153,7 @@ export const useWordsSync = (words: Words, repo: WordsRepo | null) => {
             chunk.map(([wordId, { data, lastPracticedAt }]) => ({
               type: "update" as const,
               wordId,
-              fields: buildAttemptUpdateFields(data, lastPracticedAt),
+              fields: attemptUpdateFields(data, lastPracticedAt),
             }))
           );
         },

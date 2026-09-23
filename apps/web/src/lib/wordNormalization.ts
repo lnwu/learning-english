@@ -1,4 +1,5 @@
 import { mergeWordData, type WordData } from "./wordsStore";
+import { practiceFields } from "./wordDoc";
 import type { WordOperation } from "./wordsRepo";
 
 export interface WordRename {
@@ -69,11 +70,7 @@ export const buildNormalizeDocPlan = (
         type: "update",
         wordId: target.id,
         fields: {
-          correctCount: data.correctCount,
-          totalAttempts: data.totalAttempts,
-          inputTimes: data.inputTimes,
-          correctPracticeDates: data.correctPracticeDates,
-          attemptHistory: data.attemptHistory,
+          ...practiceFields(data),
           lastPracticedAt: data.lastPracticedAt,
           createdAt: data.createdAt,
         },
