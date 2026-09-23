@@ -1,21 +1,18 @@
 "use client";
 
 import { useEffect } from "react";
-import { doc, increment, setDoc } from "firebase/firestore";
-import { db, getEffectiveUserId } from "@/lib/firebase";
-import { useAuth } from "@/hooks/useAuth";
+import { useWordsRepo } from "@/hooks/useFirestoreWords";
 import { formatLocalPracticeDate } from "@/lib/practiceDate";
 import { ActiveTimeTracker } from "@/lib/practiceTime";
 
 const FLUSH_INTERVAL_MS = 60_000;
 
 export const usePracticeTimeTracker = () => {
-  const { user } = useAuth();
+  const repo = useWordsRepo();
 
   useEffect(() => {
-    if (!user) return;
+    if (!repo) return;
 
-    const userId = getEffectiveUserId(user);
     const tracker = new ActiveTimeTracker();
     let pendingSeconds = 0;
 
@@ -32,11 +29,7 @@ export const usePracticeTimeTracker = () => {
       pendingSeconds -= wholeSeconds;
       const dateId = formatLocalPracticeDate(new Date());
       try {
-        await setDoc(
-          doc(db, "users", userId, "practiceTime", dateId),
-          { seconds: increment(wholeSeconds) },
-          { merge: true }
-        );
+        await repo.addPracticeTime(dateId, wholeSeconds);
       } catch (err) {
         console.error("Failed to record practice time:", err);
         pendingSeconds += wholeSeconds;
@@ -65,5 +58,5 @@ export const usePracticeTimeTracker = () => {
       window.removeEventListener("pagehide", flush);
       flush();
     };
-  }, [user]);
+  }, [repo]);
 };

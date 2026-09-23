@@ -10,6 +10,8 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useWordsSync } from "@/hooks/useWordsSync";
 import { useWordActions } from "@/hooks/useWordActions";
+import { getEffectiveUserId } from "@/lib/firebase";
+import { createWordsRepo, type WordsRepo } from "@/lib/wordsRepo";
 import { Words } from "@/lib/wordsStore";
 
 const words = new Words();
@@ -39,9 +41,14 @@ interface SyncStatusValue {
 
 const WordsContext = createContext<WordsContextValue | null>(null);
 const SyncStatusContext = createContext<SyncStatusValue | null>(null);
+const WordsRepoContext = createContext<WordsRepo | null>(null);
 
 export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const { user } = useAuth();
+  const repo = useMemo(
+    () => (user ? createWordsRepo(getEffectiveUserId(user)) : null),
+    [user]
+  );
   const {
     loading,
     error,
@@ -51,14 +58,14 @@ export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
     recordCorrectAttempt,
     recordIncorrectAttempt,
     refreshPendingCount,
-  } = useWordsSync(words, user);
+  } = useWordsSync(words, repo);
   const {
     addWord,
     deleteWord,
     updateTranslations,
     normalizeWordForms,
     resetPracticeRecords,
-  } = useWordActions(words, user, {
+  } = useWordActions(words, repo, {
     syncToFirestore,
     refreshPendingCount,
   });
@@ -99,7 +106,9 @@ export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
   return (
     <WordsContext.Provider value={value}>
       <SyncStatusContext.Provider value={syncStatus}>
-        {children}
+        <WordsRepoContext.Provider value={repo}>
+          {children}
+        </WordsRepoContext.Provider>
       </SyncStatusContext.Provider>
     </WordsContext.Provider>
   );
@@ -120,3 +129,6 @@ export const useSyncStatus = (): SyncStatusValue => {
   }
   return context;
 };
+
+export const useWordsRepo = (): WordsRepo | null =>
+  useContext(WordsRepoContext);

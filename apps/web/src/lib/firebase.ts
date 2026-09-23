@@ -1,9 +1,10 @@
-import { initializeApp, getApps } from "firebase/app";
+import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
 import {
   getFirestore,
   initializeFirestore,
   persistentLocalCache,
   persistentMultipleTabManager,
+  type Firestore,
 } from "firebase/firestore";
 import {
   getAuth,
@@ -12,62 +13,73 @@ import {
   signInAnonymously as firebaseSignInAnonymously,
   signOut as firebaseSignOut,
   onAuthStateChanged,
+  type Auth,
   type User,
 } from "firebase/auth";
 
-const firebaseApiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
-const firebaseAuthDomain = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
-const firebaseProjectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-const firebaseStorageBucket = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
-const firebaseMessagingSenderId = process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID;
-const firebaseAppId = process.env.NEXT_PUBLIC_FIREBASE_APP_ID;
-const firebaseMeasurementId = process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID;
+const REQUIRED_ENV_NAMES = [
+  "NEXT_PUBLIC_FIREBASE_API_KEY",
+  "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN",
+  "NEXT_PUBLIC_FIREBASE_PROJECT_ID",
+  "NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET",
+  "NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID",
+  "NEXT_PUBLIC_FIREBASE_APP_ID",
+  "NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID",
+] as const;
 
-const missingFirebaseEnvs = [
-  ["NEXT_PUBLIC_FIREBASE_API_KEY", firebaseApiKey],
-  ["NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN", firebaseAuthDomain],
-  ["NEXT_PUBLIC_FIREBASE_PROJECT_ID", firebaseProjectId],
-  ["NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET", firebaseStorageBucket],
-  ["NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID", firebaseMessagingSenderId],
-  ["NEXT_PUBLIC_FIREBASE_APP_ID", firebaseAppId],
-  ["NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID", firebaseMeasurementId],
-].filter(([, value]) => !value);
+const readFirebaseConfig = () => {
+  const missing = REQUIRED_ENV_NAMES.filter((name) => !process.env[name]);
+  if (missing.length > 0) {
+    throw new Error(
+      `Missing Firebase environment variables: ${missing.join(", ")}.`
+    );
+  }
 
-if (missingFirebaseEnvs.length > 0) {
-  throw new Error(
-    `Missing Firebase environment variables: ${missingFirebaseEnvs
-      .map(([name]) => name)
-      .join(", ")}.`
-  );
-}
-
-const firebaseConfig = {
-  apiKey: firebaseApiKey,
-  authDomain: firebaseAuthDomain,
-  projectId: firebaseProjectId,
-  storageBucket: firebaseStorageBucket,
-  messagingSenderId: firebaseMessagingSenderId,
-  appId: firebaseAppId,
-  measurementId: firebaseMeasurementId,
+  return {
+    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+    measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
+  };
 };
 
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+let app: FirebaseApp | null = null;
+let db: Firestore | null = null;
+let auth: Auth | null = null;
 
-initializeFirestore(app, {
-  localCache: persistentLocalCache({
-    tabManager: persistentMultipleTabManager(),
-  }),
-});
-
-export const db = getFirestore(app);
-
-export const auth = getAuth(app);
-
-const googleProvider = new GoogleAuthProvider();
-
-export const signInWithGoogle = async () => {
-  return signInWithPopup(auth, googleProvider);
+const getFirebaseApp = (): FirebaseApp => {
+  if (!app) {
+    const config = readFirebaseConfig();
+    app = getApps().length === 0 ? initializeApp(config) : getApps()[0];
+  }
+  return app;
 };
+
+export const getDb = (): Firestore => {
+  if (!db) {
+    const firebaseApp = getFirebaseApp();
+    initializeFirestore(firebaseApp, {
+      localCache: persistentLocalCache({
+        tabManager: persistentMultipleTabManager(),
+      }),
+    });
+    db = getFirestore(firebaseApp);
+  }
+  return db;
+};
+
+export const getAuthInstance = (): Auth => {
+  if (!auth) {
+    auth = getAuth(getFirebaseApp());
+  }
+  return auth;
+};
+
+export const signInWithGoogle = async () =>
+  signInWithPopup(getAuthInstance(), new GoogleAuthProvider());
 
 export const isPreviewEnv = process.env.NEXT_PUBLIC_VERCEL_ENV === "preview";
 
@@ -76,12 +88,9 @@ export const PREVIEW_USER_ID = "preview";
 export const getEffectiveUserId = (user: User): string =>
   isPreviewEnv ? PREVIEW_USER_ID : user.uid;
 
-export const signInAnonymously = async () => {
-  return firebaseSignInAnonymously(auth);
-};
+export const signInAnonymously = async () =>
+  firebaseSignInAnonymously(getAuthInstance());
 
-export const signOut = async () => {
-  return firebaseSignOut(auth);
-};
+export const signOut = async () => firebaseSignOut(getAuthInstance());
 
 export { onAuthStateChanged, type User };

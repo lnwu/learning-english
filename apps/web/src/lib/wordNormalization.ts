@@ -1,4 +1,5 @@
 import { mergeWordData, type WordData } from "./wordsStore";
+import type { WordOperation } from "./wordsRepo";
 
 export interface WordRename {
   from: string;
@@ -39,25 +40,8 @@ export const resolveRenamePlan = (
   return plan;
 };
 
-export type NormalizeDocOperation =
-  | {
-      type: "updateStats";
-      wordId: string;
-      fields: {
-        correctCount: number;
-        totalAttempts: number;
-        inputTimes: number[];
-        correctPracticeDates: string[];
-        attemptHistory: boolean[];
-        lastPracticedAt: Date | null;
-        createdAt: Date;
-      };
-    }
-  | { type: "deleteWord"; wordId: string }
-  | { type: "renameWord"; wordId: string; word: string };
-
 export interface NormalizeDocPlan {
-  operations: NormalizeDocOperation[];
+  operations: WordOperation[];
   storeUpdates: Array<{ from: string; to: string; data: WordData }>;
   renamed: number;
   merged: number;
@@ -69,7 +53,7 @@ export const buildNormalizeDocPlan = (
 ): NormalizeDocPlan => {
   const projected = new Map<string, WordData>();
   const read = (word: string) => projected.get(word) ?? getData(word);
-  const operations: NormalizeDocOperation[] = [];
+  const operations: WordOperation[] = [];
   const storeUpdates: Array<{ from: string; to: string; data: WordData }> = [];
   let renamed = 0;
   let merged = 0;
@@ -82,7 +66,7 @@ export const buildNormalizeDocPlan = (
     if (target && target.id !== source.id) {
       const data = mergeWordData(target, source);
       operations.push({
-        type: "updateStats",
+        type: "update",
         wordId: target.id,
         fields: {
           correctCount: data.correctCount,
@@ -94,7 +78,7 @@ export const buildNormalizeDocPlan = (
           createdAt: data.createdAt,
         },
       });
-      operations.push({ type: "deleteWord", wordId: source.id });
+      operations.push({ type: "delete", wordId: source.id });
       projected.set(to, data);
       projected.delete(from);
       storeUpdates.push({ from, to, data });
@@ -105,7 +89,7 @@ export const buildNormalizeDocPlan = (
     if (target) continue;
 
     const data: WordData = { ...source, word: to };
-    operations.push({ type: "renameWord", wordId: source.id, word: to });
+    operations.push({ type: "rename", wordId: source.id, word: to });
     projected.set(to, data);
     projected.delete(from);
     storeUpdates.push({ from, to, data });

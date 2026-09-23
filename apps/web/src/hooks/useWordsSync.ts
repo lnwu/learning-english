@@ -1,16 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { User } from "firebase/auth";
-import { collection, doc, onSnapshot, writeBatch } from "firebase/firestore";
-import { db, getEffectiveUserId } from "@/lib/firebase";
 import { SyncQueueManager } from "@/lib/syncQueue";
 import { toast } from "@/hooks/useToast";
 import { tNow } from "@/lib/i18n";
-import {
-  mergeSnapshotIntoStore,
-  type Words,
-} from "@/lib/wordsStore";
+import { mergeSnapshotIntoStore, type Words } from "@/lib/wordsStore";
 import {
   buildAttemptQueueData,
   buildAttemptUpdateFields,
@@ -18,9 +12,9 @@ import {
   collectStaleQueueItemIds,
   runWordSync,
 } from "@/lib/wordSync";
-import { FIRESTORE_BATCH_LIMIT } from "@/lib/firestoreBatch";
+import { WORD_BATCH_LIMIT, type WordsRepo } from "@/lib/wordsRepo";
 
-export const useWordsSync = (words: Words, user: User | null) => {
+export const useWordsSync = (words: Words, repo: WordsRepo | null) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
@@ -44,7 +38,7 @@ export const useWordsSync = (words: Words, user: User | null) => {
   }, []);
 
   useEffect(() => {
-    if (!user) {
+    if (!repo) {
       SyncQueueManager.setUser(null);
       words.removeAllWords();
       words.clearUserInputs();
@@ -54,22 +48,18 @@ export const useWordsSync = (words: Words, user: User | null) => {
       return;
     }
 
-    SyncQueueManager.setUser(getEffectiveUserId(user));
+    SyncQueueManager.setUser(repo.userId);
     wordsLoadedRef.current = false;
     setLoading(true);
     setError(null);
 
     try {
-      const userId = getEffectiveUserId(user);
-      const wordsCollection = collection(db, "users", userId, "words");
-
-      return onSnapshot(
-        wordsCollection,
-        (snapshot) => {
+      return repo.subscribeWords({
+        onDocs: (docs) => {
           const queue = SyncQueueManager.getQueue();
           const merged = mergeSnapshotIntoStore(
             words,
-            snapshot,
+            { docs },
             queue.map((item) => ({
               wordId: item.wordId,
               data: item.data,
@@ -87,18 +77,18 @@ export const useWordsSync = (words: Words, user: User | null) => {
           setLoading(false);
           setError(null);
         },
-        (err) => {
+        onError: (err) => {
           console.error("Firestore error:", err);
           setError(tNow("error.loadWordsFailed"));
           setLoading(false);
-        }
-      );
+        },
+      });
     } catch (err) {
       console.error("Firebase Auth error:", err);
       setError(tNow("error.authFailed"));
       setLoading(false);
     }
-  }, [user, words, refreshPendingCount]);
+  }, [repo, words, refreshPendingCount]);
 
   const enqueueAttempt = useCallback(
     (word: string) => {
@@ -135,7 +125,7 @@ export const useWordsSync = (words: Words, user: User | null) => {
   );
 
   const syncToFirestore = useCallback(async () => {
-    if (!user) {
+    if (!repo) {
       console.warn("User not authenticated, skipping sync");
       return;
     }
@@ -153,22 +143,20 @@ export const useWordsSync = (words: Words, user: User | null) => {
     setSyncing(true);
 
     try {
-      const userId = getEffectiveUserId(user);
       const updates = buildWordUpdates(queue);
       const result = await runWordSync({
         entries: Array.from(updates.entries()),
-        chunkSize: FIRESTORE_BATCH_LIMIT,
+        chunkSize: WORD_BATCH_LIMIT,
         isWordsLoaded: () => wordsLoadedRef.current,
         wordExists: (word) => words.hasWord(word),
         writeChunk: async (chunk) => {
-          const batch = writeBatch(db);
-          chunk.forEach(([wordId, { data, lastPracticedAt }]) => {
-            batch.update(
-              doc(db, "users", userId, "words", wordId),
-              buildAttemptUpdateFields(data, lastPracticedAt)
-            );
-          });
-          await batch.commit();
+          await repo.commitWordOperations(
+            chunk.map(([wordId, { data, lastPracticedAt }]) => ({
+              type: "update" as const,
+              wordId,
+              fields: buildAttemptUpdateFields(data, lastPracticedAt),
+            }))
+          );
         },
         queue: {
           remove: (ids) => SyncQueueManager.removeFromQueue(ids),
@@ -192,10 +180,10 @@ export const useWordsSync = (words: Words, user: User | null) => {
       setSyncing(false);
       syncingRef.current = false;
     }
-  }, [user, words, refreshPendingCount]);
+  }, [repo, words, refreshPendingCount]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!repo) return;
 
     refreshPendingCount();
 
@@ -205,7 +193,7 @@ export const useWordsSync = (words: Words, user: User | null) => {
     syncToFirestore();
 
     return () => clearInterval(timer);
-  }, [user, syncToFirestore, refreshPendingCount]);
+  }, [repo, syncToFirestore, refreshPendingCount]);
 
   useEffect(() => {
     const handleVisibilityChange = () => {
