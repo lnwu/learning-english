@@ -8,8 +8,8 @@ import {
 } from "@/lib/masteryCalculator";
 import {
   formatLocalPracticeDate,
-  getLocalPracticeDate,
 } from "@/lib/practiceDate";
+import { parseWordDoc } from "@/lib/wordDoc";
 
 const SHORT_WORD_MAX_LENGTH = 5;
 const MEDIUM_WORD_MAX_LENGTH = 10;
@@ -352,26 +352,6 @@ export const mergeWordData = (
   };
 };
 
-export const parseWordDoc = (id: string, data: DocumentData): WordData => {
-  const inputTimes = data.inputTimes ?? [];
-  const lastPracticedAt = data.lastPracticedAt?.toDate() ?? null;
-
-  return {
-    word: data.word,
-    translation: data.translation,
-    correctCount: data.correctCount ?? 0,
-    totalAttempts: data.totalAttempts ?? 0,
-    inputTimes,
-    lastPracticedAt,
-    correctPracticeDates: (data.correctPracticeDates ?? []).map(
-      getLocalPracticeDate
-    ),
-    attemptHistory: (data.attemptHistory ?? []).map(Boolean),
-    createdAt: data.createdAt?.toDate() ?? new Date(),
-    id,
-  };
-};
-
 export const isWordDataEqual = (a: Readonly<WordData>, b: Readonly<WordData>) => {
   if (
     a.id !== b.id ||
@@ -469,7 +449,6 @@ export const mergeSnapshotIntoStore = (
     byId.set(doc.id, parsed);
     byWord.set(parsed.word, parsed);
   });
-
   for (const item of pending) {
     const firestoreWord = byId.get(item.wordId);
     if (!firestoreWord || isFirestoreAdvanced(firestoreWord, item.data)) {

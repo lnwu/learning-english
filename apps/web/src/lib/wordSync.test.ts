@@ -1,7 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, spyOn } from "bun:test";
 import {
-  buildAttemptQueueData,
-  buildAttemptUpdateFields,
   buildWordUpdates,
   classifySyncBatchFailure,
   collectStaleQueueItemIds,
@@ -69,52 +67,6 @@ describe("buildWordUpdates", () => {
 
   it("空队列返回空 Map", () => {
     expect(buildWordUpdates([]).size).toBe(0);
-  });
-});
-
-describe("buildAttemptQueueData", () => {
-  it("只保留需要同步的字段", () => {
-    expect(buildAttemptQueueData(makeWordData())).toEqual({
-      correctCount: 2,
-      totalAttempts: 3,
-      inputTimes: [1, 2],
-      correctPracticeDates: ["2026-01-01"],
-      attemptHistory: [true, false, true],
-    });
-  });
-});
-
-describe("buildAttemptUpdateFields", () => {
-  it("可选字段存在时写入，lastPracticedAt 取队列时间戳", () => {
-    const fields = buildAttemptUpdateFields(
-      {
-        correctCount: 2,
-        totalAttempts: 3,
-        inputTimes: [1, 2],
-        correctPracticeDates: ["2026-01-01"],
-        attemptHistory: [true, false],
-      },
-      1767225600000
-    );
-
-    expect(fields.correctCount).toBe(2);
-    expect(fields.totalAttempts).toBe(3);
-    expect(fields.inputTimes).toEqual([1, 2]);
-    expect(fields.correctPracticeDates).toEqual(["2026-01-01"]);
-    expect(fields.attemptHistory).toEqual([true, false]);
-    expect(fields.lastPracticedAt).toBeInstanceOf(Date);
-    expect(fields.lastPracticedAt.getTime()).toBe(1767225600000);
-  });
-
-  it("可选字段缺失时不写入对应键", () => {
-    const fields = buildAttemptUpdateFields(
-      { correctCount: 0, totalAttempts: 1, inputTimes: [] },
-      1000
-    );
-
-    expect("correctPracticeDates" in fields).toBe(false);
-    expect("attemptHistory" in fields).toBe(false);
-    expect(fields.lastPracticedAt.getTime()).toBe(1000);
   });
 });
 

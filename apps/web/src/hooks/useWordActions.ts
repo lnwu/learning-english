@@ -5,6 +5,7 @@ import { SyncQueueManager } from "@/lib/syncQueue";
 import { tNow } from "@/lib/i18n";
 import { type Words } from "@/lib/wordsStore";
 import { buildNormalizeDocPlan } from "@/lib/wordNormalization";
+import { resetPracticeFields } from "@/lib/wordDoc";
 import type { WordsRepo } from "@/lib/wordsRepo";
 
 export const useWordActions = (
@@ -151,14 +152,7 @@ export const useWordActions = (
         resetDocs.map((data) => ({
           type: "update" as const,
           wordId: data.id,
-          fields: {
-            correctCount: 0,
-            totalAttempts: 0,
-            inputTimes: [],
-            lastPracticedAt: null,
-            correctPracticeDates: [],
-            attemptHistory: [],
-          },
+          fields: resetPracticeFields(),
         }))
       );
 

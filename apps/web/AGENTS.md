@@ -45,6 +45,7 @@
 - `hooks/useFirestoreWords.tsx` 是 context 组合层，提供模块级单例 `words`、`WordsProvider`、`useFirestoreWords` 与 `useSyncStatus`。
 - `hooks/useWordsSync.ts` 负责订阅、同步触发与记分入队；`hooks/useWordActions.ts` 负责增删改、归一化与重置。
 - 纯逻辑位于 `lib/wordsStore.ts`、`lib/wordSync.ts`、`lib/wordNormalization.ts`、`lib/chunkedCommit.ts` 并配有测试；`lib/wordsRepo.ts` 是唯一接触 Firestore SDK 的模块（订阅、批量写、practiceTime），按 effective uid 构造，`lib/firebase.ts` 惰性创建 app/db/auth（`getDb()`/`getAuthInstance()`）。动机与细节见 `docs/architecture/word-sync.md`。
+- 单词文档的字段投影与解析集中在 `lib/wordDoc.ts`（`newWordDocFields`/`practiceFields`/`attemptUpdateFields`/`resetPracticeFields`/`parseWordDoc`）：新增同步字段时只改 `WordData`、`SyncableWordData` 与这个文件，不要在调用方内联字段清单。
 
 ### 必须保持的行为
 

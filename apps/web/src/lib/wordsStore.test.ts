@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach } from "bun:test";
 import {
   Words,
-  parseWordDoc,
   isWordDataEqual,
   isQueueItemStale,
   isSyncableDataEqual,
@@ -168,40 +167,6 @@ describe("Words store", () => {
     expect(short).toBe(2);
     expect(mid).toBeNull();
     expect(long).toBe(6);
-  });
-});
-
-describe("parseWordDoc", () => {
-  it("缺失字段使用默认值", () => {
-    const data = parseWordDoc("id-1", { word: "apple", translation: "苹果" });
-    expect(data.correctCount).toBe(0);
-    expect(data.totalAttempts).toBe(0);
-    expect(data.inputTimes).toEqual([]);
-    expect(data.lastPracticedAt).toBeNull();
-    expect(data.correctPracticeDates).toEqual([]);
-    expect(data.attemptHistory).toEqual([]);
-    expect(data.id).toBe("id-1");
-  });
-
-  it("时间戳字段调用 toDate 转换", () => {
-    const practiced = new Date("2026-02-01T10:00:00");
-    const data = parseWordDoc("id-1", {
-      word: "apple",
-      translation: "苹果",
-      lastPracticedAt: { toDate: () => practiced },
-      createdAt: { toDate: () => new Date("2026-01-01") },
-    });
-    expect(data.lastPracticedAt).toBe(practiced);
-  });
-
-  it("correctPracticeDates 统一归一化为本地日期", () => {
-    const data = parseWordDoc("id-1", {
-      word: "apple",
-      translation: "苹果",
-      correctPracticeDates: ["2026-01-02", "2026-01-03T12:00:00.000Z"],
-    });
-    expect(data.correctPracticeDates[0]).toBe("2026-01-02");
-    expect(data.correctPracticeDates[1]).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 });
 
