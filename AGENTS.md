@@ -23,10 +23,12 @@
 
 ## 交付与验收
 
-- 用户明确要求的实现任务完成后，运行相关本地检查，只提交本任务改动，推送分支并创建或更新 PR；分析、评审和仅制定方案的任务不自动提交或推送。
-- `apps/web` 变更在仓库根目录运行 `bun run check`，影响构建时再运行 `bun run build`。交付前确认 PR 的 Web `checks`、`build` 与 Vercel 检查均通过，并从 `gh pr checks` 或 Vercel 评论中提供实际 Preview 链接，不推测 URL。
-- `infra` 变更按 `infra/AGENTS.md` 检查 Terraform plan 评论；文档或 `AGENTS.md` 单独变更无需等待 Vercel Preview。
-- 默认不启动 dev server、不做浏览器截图或人工点击验收；只有用户明确要求浏览器操作时才使用 `agent-browser`。不要修改外部管理的 `.agents/skills/agent-browser`，项目特有连接方式见 `.agents/skills/user-chrome/SKILL.md`。连接真实登录态时，不执行未经确认的写操作。
+- 用户明确要求的功能实现任务完成后，按以下顺序交付：`apps/web` 在仓库根目录运行 `bun run check`（影响构建时再运行 `bun run build`）→ 只提交本任务改动并推送独立分支 → 创建或更新 PR。
+- `apps/web` 功能 PR 必须等待 Web `checks`、`build` 与 Vercel Preview 部署完成；从 `gh pr checks` 或 Vercel 评论读取实际 Preview URL，不推测 URL。
+- Preview 就绪后，必须按 `.agents/skills/user-chrome/SKILL.md` 使用 `agent-browser` 的 `user-chrome` session 连接用户已经打开的 Chrome，在 Preview 中验证本次功能改动。验证应检查实际行为和关键页面状态，不只确认页面能打开。
+- 只有自动化检查和 Preview 浏览器验证均通过后，才使用 `gh pr merge` 合并 PR；验证失败时不得合并，先修复、重新推送并重新完成部署与验证。用户未批准 Chrome 远程调试时暂停流程，不得把未验证视为通过。
+- `infra` 变更按 `infra/AGENTS.md` 检查 Terraform plan 评论；纯文档或 `AGENTS.md` 变更不要求浏览器验收。
+- 除上述功能验收外，默认不启动 dev server、不做浏览器截图或人工点击验收。不要修改外部管理的 `.agents/skills/agent-browser`，项目特有连接方式见 `.agents/skills/user-chrome/SKILL.md`；连接真实登录态时，不执行未经确认的写操作。
 
 ## 关键环境不变量
 
