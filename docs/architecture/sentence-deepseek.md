@@ -1,11 +1,12 @@
 # 造句练习与 DeepSeek 集成设计
 
-本文记录造句/翻译链路的**设计动机**；必须遵守的规则在 `apps/web/AGENTS.md`。实现：`src/app/api/*`（Route Handler）、`src/lib/{deepseek,serverAuth,rateLimit,translationCache,sentenceCompare,senses,lemma,parseTranslation}.ts`、`src/hooks/useSentencePractice.ts`。
+本文记录造句/翻译链路的**设计动机**；必须遵守的规则在 `apps/web/AGENTS.md`。实现：`src/app/api/*`（Route Handler）、`src/lib/{apiRoute,deepseek,serverAuth,rateLimit,translationCache,sentenceCompare,senses,lemma,parseTranslation,wordLookup,sentenceMessages}.ts`、`src/hooks/useSentencePractice.ts`。
 
 ## 架构
 
 - 浏览器只请求本站 `/api/*`，服务端代理调用 DeepSeek。原因：API Key 只能留在服务端；同时便于在服务端加鉴权、限流、缓存三道闸。
 - `postJson<T>`（`lib/apiClient.ts`）统一负责取 ID token 与错误解析，避免每个调用点手写 token + fetch。
+- 路由骨架统一走 `withApiPost`（`lib/apiRoute.ts`）：`serverAuth` → `checkRateLimit` → JSON 解析 → `handle` → DeepSeek 错误映射与兜底文案；各路由只提供 `parse`（输入校验）与 `handle`（调模型、返回响应），限额集中在 `API_RATE_LIMITS`（默认窗口 60s）。
 
 ## 鉴权与限流
 
@@ -21,6 +22,7 @@
 
 - `/api/translate` 一次调用同时返回 `lemma`（词典原形）与结构化 `senses`（2~4 个义项，最常用在前）。不再回退 Google Translate/Datamuse 等免费源：质量与可用性不稳定，`lib/dictionary.ts` 已删除，不要复活回退词典。模型判定非有效单词时 `senses: null`（前端提示、不落库）；调用失败返回错误且前端不落库。
 - 义项校验统一 `sanitizeWordSenses`（`lib/senses.ts`），`/api/translate` 与 `regenerate-definitions` 共用，防止模型输出超长字段撑大文档（也是 rules 字段上限的第一道闸）。
+- translate 的 prompt 与解析在 `lib/wordLookup.ts`：`parseWordLookupResult` 负责 lemma 清洗、义项清洗与非单词判定（`senses: null`），`isWord` 为真但义项全非法时抛 502；路由只做取参与缓存读写。
 - 翻译缓存（`translationCache.ts`）：L1 进程内 LRU + L2 Redis（30 天，key 前缀 `translation:v2`），只存 `senses` 非空的成功结果。**改 translate 的 prompt 或默认模型必须 bump 前缀**，否则旧释义会在缓存里长期复用。
 - 前端 `formatSenses` 把 `senses` 拼成「词性+中文 — 英文」逐行存入 `translation`；`parseTranslation` 兼容旧格式（首行英文、其余中文），旧数据无需迁移。
 
@@ -32,6 +34,7 @@
 - `usedWords` 计分：批改接口只返回用户实际用到的目标词（同义替代也算），未用到的不记分；模型没返回该字段时回退全部目标词。
 - 造句**不传 `inputTimeSeconds`**：没有真实输入计时，伪造会抬高 speedScore；`calculateMasteryScore` 对无计时词让速度/稳定性因子不参与加权（见 `docs/WORD_FAMILIARITY_ALGORITHM.md`）。
 - 提交前先 `normalizeForComparison` 规范化判等：与参考译文完全一致直接满分，**省一次模型调用**；`resolveUsedWords`/`sanitizeUsedWords` 同文件可测，不在路由内联重复实现。
+- 生成与批改的 prompt、消息构造与响应解析在 `lib/sentenceMessages.ts`：`parseGenerateResult` 空字段判失败，`parseCheckResult` 对 `score` 做 0-100 夹取取整、截断超长 `feedback`/`corrected`、过滤非字符串 `issues`（防御模型异常输出），但**不改** `correct` 的判定语义。
 - 题目生成的抽词优先级：练习次数 ≥3 的词优先、少练的作补位（`PRIORITIALIZED_MIN_ATTEMPTS`），避免老词永远不出、新词过拟合。
 
 ## 批量重新生成释义

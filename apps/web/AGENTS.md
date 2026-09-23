@@ -7,7 +7,7 @@
 ## 硬规则
 
 - API Key 只允许在服务端使用，禁止加 `NEXT_PUBLIC_` 前缀或下发到前端。
-- 新增 `/api/*` 必须使用 `serverAuth` 校验 ID token、`await checkRateLimit`，并限制输入长度。
+- 新增 `/api/*` 统一走 `lib/apiRoute.ts` 的 `withApiPost`（内部依次完成 `serverAuth`、`await checkRateLimit`、JSON 解析与 DeepSeek 错误映射），限额加进 `API_RATE_LIMITS`，在 `parse` 里限制输入长度；不要手写守卫三段与错误尾巴。
 - 带登录态调用 `/api/*` 统一使用 `lib/apiClient.ts` 的 `postJson<T>(url, payload, fallbackError)`，不要手写 token 与 fetch。
 - Firestore 客户端只在 `WordsProvider` 中订阅；页面和组件不得自行新增订阅。
 - 练习计时不能伪造：造句不传 `inputTimeSeconds`，仅单词拼写练习传入；`correctPracticeDates` 存 `YYYY-MM-DD` 本地日期字符串，不存 ISO 时间戳。
@@ -78,6 +78,7 @@
 ## 造句与 DeepSeek
 
 - 浏览器只请求本站 `/api/*`，由服务端代理 DeepSeek；`serverAuth` token 缓存、`await checkRateLimit` 与 `lib/deepseek.ts` 的重试/错误映射语义受测试保护，修改时同步测试。
+- 路由骨架统一 `withApiPost`；translate 的 prompt 与解析在 `lib/wordLookup.ts`，造句生成/批改的 prompt 与解析在 `lib/sentenceMessages.ts`（批改响应会夹取 `score`、截断超长字段、过滤 `issues`），路由只做取参与返回。
 - 限流与缓存的 Redis 客户端统一使用 `lib/redis.ts` 的 `getRedis()`；未配置 Upstash 时仅在本地开发回退进程内实现。
 - 义项清洗统一使用 `lib/senses.ts` 的 `sanitizeWordSenses`，由翻译与重新生成释义接口共用。
 - 批改前使用 `lib/sentenceCompare.ts` 的 `normalizeForComparison` 判等，完全一致时直接满分；`resolveUsedWords` 与 `sanitizeUsedWords` 也在该文件维护，不在路由内重复实现。
