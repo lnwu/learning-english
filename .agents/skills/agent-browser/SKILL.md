@@ -38,23 +38,6 @@ agent-browser skills get agentcore         # AWS Bedrock AgentCore cloud browser
 
 Run `agent-browser skills list` to see everything available on the installed version.
 
-## 本项目：连接用户已打开的 Chrome
-
-用户的 Windows Chrome 已在 `chrome://inspect` 开启远程调试，默认 WebSocket 端点为 `ws://127.0.0.1:9222/devtools/browser`。该模式不提供 `/json/*` HTTP 发现接口；`/json/version` 返回 404 或 `--auto-connect` 找不到实例都不代表端口未开放。
-
-首次连接时传入一次 CDP 端点：
-
-```bash
-agent-browser --session user-chrome --cdp "ws://127.0.0.1:9222/devtools/browser" open <url>
-agent-browser --session user-chrome snapshot -i
-```
-
-- Chrome 会弹出远程调试批准框；未批准时握手会持续等待且不一定报错，命令卡住时先提醒用户点击批准。
-- WSL 可直接访问 Windows 的 `127.0.0.1:9222`，无需端口转发。
-- 若 9222 已被占用并发生 fallback，从 Chrome profile 的 `DevToolsActivePort` 第一行读取实际端口。
-- 该连接使用用户真实登录态，只执行用户明确要求的操作，不做未经确认的写操作。
-- 用完运行 `agent-browser --session user-chrome close` 断开；该命令不会关闭用户浏览器。
-
 ## Why agent-browser
 
 - Fast native Rust CLI, not a Node.js wrapper

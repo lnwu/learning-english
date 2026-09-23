@@ -26,7 +26,7 @@
 - 用户明确要求的实现任务完成后，运行相关本地检查，只提交本任务改动，推送分支并创建或更新 PR；分析、评审和仅制定方案的任务不自动提交或推送。
 - `apps/web` 变更在仓库根目录运行 `bun run check`，影响构建时再运行 `bun run build`。交付前确认 PR 的 Web `checks`、`build` 与 Vercel 检查均通过，并从 `gh pr checks` 或 Vercel 评论中提供实际 Preview 链接，不推测 URL。
 - `infra` 变更按 `infra/AGENTS.md` 检查 Terraform plan 评论；文档或 `AGENTS.md` 单独变更无需等待 Vercel Preview。
-- 默认不启动 dev server、不做浏览器截图或人工点击验收；只有用户明确要求浏览器操作时才使用 `agent-browser`，项目特有连接方式见 `.agents/skills/agent-browser/SKILL.md`。连接真实登录态时，不执行未经确认的写操作。
+- 默认不启动 dev server、不做浏览器截图或人工点击验收；只有用户明确要求浏览器操作时才使用 `agent-browser`。不要修改外部管理的 `.agents/skills/agent-browser`，项目特有连接方式见 `.agents/skills/user-chrome/SKILL.md`。连接真实登录态时，不执行未经确认的写操作。
 
 ## 关键环境不变量
 
