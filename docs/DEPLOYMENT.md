@@ -6,6 +6,13 @@
 - **基础设施** `infra/`：push main 自动 `terraform apply`（无审批，PR 阶段由 `infra-plan.yml` 跑 plan 评论）。详见 `infra/AGENTS.md`。
 - **preview 数据**：`sync-preview-words.yml` 每 6 小时把 `PROD_USER_UID` 的 `words`/`practiceTime` 镜像覆盖到 `users/preview`（diff 增量写、preview 多出的删除），因此 preview 数据可丢、规则可以偏宽松。
 
+## PR 功能验收
+
+- `apps/web` 功能改动完成本地检查后，先提交并推送独立分支、创建 PR，再等待 Web `checks`、`build` 和 Vercel Preview 部署完成。
+- 从 `gh pr checks` 或 Vercel 评论读取实际 Preview URL；部署就绪后，按 `.agents/skills/user-chrome/SKILL.md` 使用 `agent-browser` 的 `user-chrome` session 连接用户已打开的 Chrome，验证 Preview 中的实际功能行为。
+- 自动化检查和浏览器验证都通过后，使用 `gh pr merge` 合并 PR；任一环节失败都先修复并重新走完流程，不合并未验证的 PR。
+- Chrome 远程调试需要用户批准；用户未批准时暂停验收，不将连接失败或未完成验证视为通过。
+
 ## Vercel 环境变量（apps/web 项目）
 
 | 变量 | 用途 |
