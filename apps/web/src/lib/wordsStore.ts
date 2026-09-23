@@ -402,7 +402,7 @@ export const isSyncableDataEqual = (
   arraysEqual(a.correctPracticeDates ?? [], b.correctPracticeDates ?? []) &&
   arraysEqual(a.attemptHistory ?? [], b.attemptHistory ?? []);
 
-export const isFirestoreAdvanced = (
+const isFirestoreAdvanced = (
   firestore: SyncableWordData,
   queued: SyncableWordData
 ): boolean => {
