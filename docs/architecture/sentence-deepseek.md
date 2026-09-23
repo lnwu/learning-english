@@ -35,7 +35,7 @@
 - 造句**不传 `inputTimeSeconds`**：没有真实输入计时，伪造会抬高 speedScore；`calculateMasteryScore` 对无计时词让速度/稳定性因子不参与加权（见 `docs/WORD_FAMILIARITY_ALGORITHM.md`）。
 - 提交前先 `normalizeForComparison` 规范化判等：与参考译文完全一致直接满分，**省一次模型调用**；`resolveUsedWords`/`sanitizeUsedWords` 同文件可测，不在路由内联重复实现。
 - 生成与批改的 prompt、消息构造与响应解析在 `lib/sentenceMessages.ts`：`parseGenerateResult` 空字段判失败，`parseCheckResult` 对 `score` 做 0-100 夹取取整、截断超长 `feedback`/`corrected`、过滤非字符串 `issues`（防御模型异常输出），但**不改** `correct` 的判定语义。
-- 题目生成的抽词优先级：练习次数 ≥3 的词优先、少练的作补位（`PRIORITIALIZED_MIN_ATTEMPTS`），避免老词永远不出、新词过拟合。
+- 题目生成的抽词优先级：练习次数 ≥3 的词优先、少练的作补位（`lib/sentenceWords.ts` 的 `PRIORITIZED_MIN_ATTEMPTS`，纯函数可测），避免老词永远不出、新词过拟合；抽取数量在 `MIN_SENTENCE_WORDS`-`MAX_SENTENCE_WORDS` 间随机，单词不足时 hook 置 `insufficientWords` 状态（不再用字符串哨兵）。
 
 ## 批量重新生成释义
 

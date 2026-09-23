@@ -7,8 +7,8 @@ import {
   buildCheckMessages,
   parseCheckResult,
   MAX_SENTENCE_LENGTH,
-  MAX_SENTENCE_WORDS,
 } from "@/lib/sentenceMessages";
+import { MAX_SENTENCE_WORDS } from "@/lib/sentenceWords";
 
 export async function POST(request: Request) {
   return withApiPost(

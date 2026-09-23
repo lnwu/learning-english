@@ -80,6 +80,7 @@
 
 - 浏览器只请求本站 `/api/*`，由服务端代理 DeepSeek；`serverAuth` token 缓存、`await checkRateLimit` 与 `lib/deepseek.ts` 的重试/错误映射语义受测试保护，修改时同步测试。
 - 路由骨架统一 `withApiPost`；translate 的 prompt 与解析在 `lib/wordLookup.ts`，造句生成/批改的 prompt 与解析在 `lib/sentenceMessages.ts`（批改响应会夹取 `score`、截断超长字段、过滤 `issues`），路由只做取参与返回。
+- 造句抽词策略（练习次数达标的词优先、少练的补位、数量在 2-3 之间随机）在 `lib/sentenceWords.ts`（纯函数 + 测试）；单词数下限统一用 `MIN_SENTENCE_WORDS`，不足时 hook 置 `insufficientWords` 布尔状态（不要再用字符串哨兵），错误文案走 `tNow`。
 - 限流与缓存的 Redis 客户端统一使用 `lib/redis.ts` 的 `getRedis()`；未配置 Upstash 时仅在本地开发回退进程内实现。
 - 义项清洗统一使用 `lib/senses.ts` 的 `sanitizeWordSenses`，由翻译与重新生成释义接口共用。
 - 批改前使用 `lib/sentenceCompare.ts` 的 `normalizeForComparison` 判等，完全一致时直接满分；`resolveUsedWords` 与 `sanitizeUsedWords` 也在该文件维护，不在路由内重复实现。

@@ -3,6 +3,12 @@
 import { useCallback, useRef, useState } from "react";
 import { useFirestoreWords, useSyncStatus } from "@/hooks/useFirestoreWords";
 import { postJson } from "@/lib/apiClient";
+import { tNow } from "@/lib/i18n";
+import {
+  MIN_SENTENCE_WORDS,
+  pickSentenceWords,
+  pickWordCount,
+} from "@/lib/sentenceWords";
 
 export interface SentenceQuestion {
   chinese: string;
@@ -19,19 +25,6 @@ export interface SentenceFeedback {
   usedWords?: string[];
 }
 
-const MIN_WORDS = 2;
-const MAX_WORDS = 3;
-const PRIORITIZED_MIN_ATTEMPTS = 3;
-
-function shuffle<T>(items: T[]): T[] {
-  const result = [...items];
-  for (let i = result.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [result[i], result[j]] = [result[j], result[i]];
-  }
-  return result;
-}
-
 export const useSentencePractice = () => {
   const firestore = useFirestoreWords();
   const { words, recordCorrectAttempt, recordIncorrectAttempt } = firestore;
@@ -42,61 +35,51 @@ export const useSentencePractice = () => {
   const [generating, setGenerating] = useState(false);
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [insufficientWords, setInsufficientWords] = useState(false);
   const scoredQuestionRef = useRef<SentenceQuestion | null>(null);
 
-  const pickPrioritizedWords = useCallback(
-    (count: number) => {
-      const entries = words.wordEntries();
-      if (entries.length === 0) return [];
-
-      const practiced = entries.filter(([, data]) => data.totalAttempts >= PRIORITIZED_MIN_ATTEMPTS);
-      const lessPracticed = entries.filter(([, data]) => data.totalAttempts < PRIORITIZED_MIN_ATTEMPTS);
-
-      const shuffledPracticed = shuffle(practiced);
-      const prioritizedWords = shuffledPracticed.slice(0, count).map(([word]) => word);
-
-      if (prioritizedWords.length >= count) {
-        return prioritizedWords;
-      }
-
-      const remaining = count - prioritizedWords.length;
-      const shuffledLessPracticed = shuffle(lessPracticed);
-      const fallbackWords = shuffledLessPracticed.slice(0, remaining).map(([word]) => word);
-
-      return [...prioritizedWords, ...fallbackWords];
-    },
-    [words]
-  );
-
   const pickWords = useCallback(() => {
-    const count = Math.floor(Math.random() * (MAX_WORDS - MIN_WORDS + 1)) + MIN_WORDS;
-    const prioritized = pickPrioritizedWords(count);
-    if (prioritized.length >= MIN_WORDS) {
-      return prioritized;
+    const count = pickWordCount(Math.random);
+    const picked = pickSentenceWords(words.wordEntries(), {
+      count,
+      rng: Math.random,
+    });
+    if (picked.length >= MIN_SENTENCE_WORDS) {
+      return picked;
     }
     return words.getRandomWords(count).map(([word]) => word);
-  }, [pickPrioritizedWords, words]);
+  }, [words]);
 
   const generate = useCallback(async () => {
     setError(null);
+    setInsufficientWords(false);
     setFeedback(null);
     setQuestion(null);
     scoredQuestionRef.current = null;
 
     const targetWords = pickWords();
-    if (targetWords.length < MIN_WORDS) {
-      setError("insufficientWords");
+    if (targetWords.length < MIN_SENTENCE_WORDS) {
+      setInsufficientWords(true);
       return;
     }
 
     setGenerating(true);
     try {
-      const result = await postJson<SentenceQuestion>("/api/sentence/generate", {
-        words: targetWords.map((word) => ({ word, translation: words.getTranslation(word) ?? "" })),
-      });
+      const result = await postJson<SentenceQuestion>(
+        "/api/sentence/generate",
+        {
+          words: targetWords.map((word) => ({
+            word,
+            translation: words.getTranslation(word) ?? "",
+          })),
+        },
+        tNow("sentence.generateFailed")
+      );
       setQuestion(result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "生成失败，请稍后重试");
+      setError(
+        err instanceof Error ? err.message : tNow("sentence.generateFailed")
+      );
     } finally {
       setGenerating(false);
     }
@@ -109,12 +92,16 @@ export const useSentencePractice = () => {
       setError(null);
       setChecking(true);
       try {
-        const result = await postJson<SentenceFeedback>("/api/sentence/check", {
-          chinese: question.chinese,
-          words: question.words,
-          reference: question.english,
-          userAnswer,
-        });
+        const result = await postJson<SentenceFeedback>(
+          "/api/sentence/check",
+          {
+            chinese: question.chinese,
+            words: question.words,
+            reference: question.english,
+            userAnswer,
+          },
+          tNow("sentence.checkFailed")
+        );
         setFeedback(result);
 
         const attemptedWords = result.usedWords ?? question.words;
@@ -132,7 +119,7 @@ export const useSentencePractice = () => {
         }
         return result;
       } catch (err) {
-        setError(err instanceof Error ? err.message : "批改失败，请稍后重试");
+        setError(err instanceof Error ? err.message : tNow("sentence.checkFailed"));
         return null;
       } finally {
         setChecking(false);
@@ -150,6 +137,7 @@ export const useSentencePractice = () => {
     generating,
     checking,
     error,
+    insufficientWords,
     generate,
     check,
     syncing,

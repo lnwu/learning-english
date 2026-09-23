@@ -5,10 +5,10 @@ import { MAX_LEMMA_LENGTH } from "@/lib/lemma";
 import {
   buildGenerateMessages,
   parseGenerateResult,
-  MAX_SENTENCE_WORDS,
   MAX_TRANSLATION_LENGTH,
   type SentenceWord,
 } from "@/lib/sentenceMessages";
+import { MAX_SENTENCE_WORDS } from "@/lib/sentenceWords";
 
 const MIN_WORDS = 1;
 
