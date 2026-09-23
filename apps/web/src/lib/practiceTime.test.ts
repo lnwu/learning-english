@@ -3,6 +3,7 @@ import {
   ActiveTimeTracker,
   buildPracticeTimeWeeks,
   formatPracticeDuration,
+  formatPracticeMonthLabel,
   getPracticeTimeLevel,
   getPracticeTimeMonthLabels,
 } from "./practiceTime";
@@ -147,5 +148,16 @@ describe("formatPracticeDuration", () => {
 
   it("负数按 0 处理", () => {
     expect(formatPracticeDuration(-10, "zh")).toBe("0秒");
+  });
+});
+
+describe("formatPracticeMonthLabel", () => {
+  it("中文显示月份加月", () => {
+    expect(formatPracticeMonthLabel(9, "zh")).toBe("9月");
+  });
+
+  it("英文显示月份缩写", () => {
+    expect(formatPracticeMonthLabel(9, "en")).toBe("Sep");
+    expect(formatPracticeMonthLabel(1, "en")).toBe("Jan");
   });
 });

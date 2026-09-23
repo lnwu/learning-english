@@ -15,6 +15,7 @@ import {
   type NormalizeResult,
 } from "@/lib/normalizeWords";
 import { resolveRenamePlan } from "@/lib/wordNormalization";
+import { countFailedWords, runBatchedAiTask } from "@/lib/batchAiTask";
 
 export const ProfileAiSection = observer(() => {
   const { words, updateTranslations, normalizeWordForms } = useFirestoreWords();
@@ -42,48 +43,46 @@ export const ProfileAiSection = observer(() => {
 
     setRegenerating(true);
     setRegenerateProgress(0);
-    const total = allWords.length;
-    let success = 0;
-    let skipped = 0;
-    let batchFailed = 0;
-    const batches: string[][] = [];
 
     try {
-      for (let i = 0; i < total; i += MAX_REGENERATE_BATCH_SIZE) {
-        batches.push(allWords.slice(i, i + MAX_REGENERATE_BATCH_SIZE));
-      }
-
-      for (const batch of batches) {
-        let batchSuccess = 0;
-        try {
-          const data = await postJson<{ results?: RegenerateResult[] }>(
+      const outcomes = await runBatchedAiTask({
+        words: allWords,
+        batchSize: MAX_REGENERATE_BATCH_SIZE,
+        runBatch: (batch) =>
+          postJson<{ results?: RegenerateResult[] }>(
             "/api/regenerate-definitions",
             { words: batch },
             t("profile.regenerateFailed")
-          );
+          ),
+        onProgress: setRegenerateProgress,
+      });
 
-          const results = data.results ?? [];
-          const updates: Array<{ word: string; translation: string }> = [];
-          for (const item of results) {
-            if (item.senses && item.senses.length > 0) {
-              updates.push({ word: item.word, translation: formatSenses(item.senses) });
-              batchSuccess += 1;
-            }
-          }
-          if (updates.length > 0) {
-            await updateTranslations(updates);
-          }
-          success += batchSuccess;
-          skipped += batch.length - batchSuccess;
-        } catch (err) {
-          console.error("Regenerate batch failed:", err);
-          batchFailed += batch.length;
-          skipped += batch.length;
+      let success = 0;
+      let skipped = 0;
+      for (const outcome of outcomes) {
+        if ("error" in outcome) {
+          console.error("Regenerate batch failed:", outcome.error);
+          skipped += outcome.words.length;
+          continue;
         }
-        setRegenerateProgress((prev) => prev + batch.length);
+
+        const updates: Array<{ word: string; translation: string }> = [];
+        for (const item of outcome.result.results ?? []) {
+          if (item.senses && item.senses.length > 0) {
+            updates.push({
+              word: item.word,
+              translation: formatSenses(item.senses),
+            });
+            success += 1;
+          }
+        }
+        if (updates.length > 0) {
+          await updateTranslations(updates);
+        }
+        skipped += outcome.words.length - updates.length;
       }
 
-      if (batchFailed === total) {
+      if (countFailedWords(outcomes) === allWords.length) {
         toast({
           title: t("profile.regenerateFailed"),
           variant: "destructive",
@@ -125,35 +124,34 @@ export const ProfileAiSection = observer(() => {
 
     setNormalizing(true);
     setNormalizeProgress(0);
-    const total = allWords.length;
-    const renames: Array<{ from: string; to: string }> = [];
-    let batchFailed = 0;
 
     try {
-      const batches: string[][] = [];
-      for (let i = 0; i < total; i += MAX_NORMALIZE_BATCH_SIZE) {
-        batches.push(allWords.slice(i, i + MAX_NORMALIZE_BATCH_SIZE));
-      }
-
-      for (const batch of batches) {
-        try {
-          const data = await postJson<{ results?: NormalizeResult[] }>(
+      const outcomes = await runBatchedAiTask({
+        words: allWords,
+        batchSize: MAX_NORMALIZE_BATCH_SIZE,
+        runBatch: (batch) =>
+          postJson<{ results?: NormalizeResult[] }>(
             "/api/normalize-words",
             { words: batch },
             t("profile.normalizeFailed")
-          );
-          const lemmaByWord = new Map(
-            (data.results ?? []).map((item) => [item.word, item.lemma])
-          );
-          renames.push(...resolveRenamePlan(batch, lemmaByWord));
-        } catch (err) {
-          console.error("Normalize batch failed:", err);
-          batchFailed += batch.length;
+          ),
+        onProgress: setNormalizeProgress,
+      });
+
+      const renames: Array<{ from: string; to: string }> = [];
+      for (const outcome of outcomes) {
+        if ("error" in outcome) {
+          console.error("Normalize batch failed:", outcome.error);
+          continue;
         }
-        setNormalizeProgress((prev) => prev + batch.length);
+        const lemmaByWord = new Map(
+          (outcome.result.results ?? []).map((item) => [item.word, item.lemma])
+        );
+        renames.push(...resolveRenamePlan(outcome.words, lemmaByWord));
       }
 
-      if (batchFailed === total) {
+      const failedWords = countFailedWords(outcomes);
+      if (failedWords === allWords.length) {
         toast({
           title: t("profile.normalizeFailed"),
           variant: "destructive",
@@ -161,16 +159,28 @@ export const ProfileAiSection = observer(() => {
         return;
       }
 
-      if (renames.length === 0) {
-        toast({ title: t("profile.normalizeNone"), variant: "success" });
-        return;
-      }
+      const { renamed, merged } =
+        renames.length > 0
+          ? await normalizeWordForms(renames)
+          : { renamed: 0, merged: 0 };
 
-      const { renamed, merged } = await normalizeWordForms(renames);
-      toast({
-        title: t("profile.normalizeSuccess", { renamed, merged }),
-        variant: "success",
-      });
+      if (failedWords > 0) {
+        toast({
+          title: t("profile.normalizePartial", {
+            renamed,
+            merged,
+            failed: failedWords,
+          }),
+          variant: "destructive",
+        });
+      } else if (renamed === 0 && merged === 0) {
+        toast({ title: t("profile.normalizeNone"), variant: "success" });
+      } else {
+        toast({
+          title: t("profile.normalizeSuccess", { renamed, merged }),
+          variant: "success",
+        });
+      }
     } catch (err) {
       console.error("Normalize all failed:", err);
       toast({

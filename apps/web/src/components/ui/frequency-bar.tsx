@@ -69,4 +69,4 @@ const MasteryBar = React.forwardRef<HTMLDivElement, MasteryBarProps>(
 
 MasteryBar.displayName = "MasteryBar";
 
-export { MasteryBar, getMasteryLevel, getMasteryLevelIndex };
+export { MasteryBar };
