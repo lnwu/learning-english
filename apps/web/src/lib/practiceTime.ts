@@ -95,6 +95,14 @@ export const getPracticeTimeMonthLabels = (
   return labels;
 };
 
+export const formatPracticeMonthLabel = (
+  month: number,
+  locale: Locale
+): string =>
+  locale === "zh"
+    ? `${month}月`
+    : new Date(2000, month - 1, 1).toLocaleString("en", { month: "short" });
+
 export const formatPracticeDuration = (
   totalSeconds: number,
   locale: Locale

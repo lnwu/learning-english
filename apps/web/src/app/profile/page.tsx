@@ -21,7 +21,6 @@ import {
   StatTile,
   ToggleGroup,
   ToggleGroupItem,
-  getMasteryLevel,
 } from "@/components/ui";
 import { useFirestoreWords, useLocale, toast, useAuth, useWordsRepo } from "@/hooks";
 import { observer } from "mobx-react-lite";
@@ -32,6 +31,7 @@ import PracticeHeatmap from "./PracticeHeatmap";
 import { ProfileAiSection } from "./ProfileAiSection";
 import { WordPerformanceSection } from "./WordPerformanceSection";
 import type { MasteryLevel } from "@/lib/masteryCalculator";
+import { averageMasteryScore, masteryDistribution } from "@/lib/masteryStats";
 
 const MASTERY_SEGMENTS: Array<{
   key: MasteryLevel;
@@ -78,27 +78,15 @@ const Profile = observer(() => {
 
   const wordsWithStats = words.practiceStats;
 
-  const avgMasteryScore = useMemo(() => {
-    if (wordsWithStats.length === 0) return 0;
-    return Math.round(
-      wordsWithStats.reduce((sum, w) => sum + w.masteryScore, 0) /
-        wordsWithStats.length
-    );
-  }, [wordsWithStats]);
+  const avgMasteryScore = useMemo(
+    () => averageMasteryScore(wordsWithStats),
+    [wordsWithStats]
+  );
 
-  const masteryDistribution = useMemo(() => {
-    const counts: Record<MasteryLevel, number> = {
-      new: 0,
-      learning: 0,
-      familiar: 0,
-      proficient: 0,
-      mastered: 0,
-    };
-    wordsWithStats.forEach((item) => {
-      counts[getMasteryLevel(item.masteryScore)] += 1;
-    });
-    return counts;
-  }, [wordsWithStats]);
+  const masteryCounts = useMemo(
+    () => masteryDistribution(wordsWithStats),
+    [wordsWithStats]
+  );
 
   const handleResetRecords = async () => {
     setResetting(true);
@@ -282,7 +270,7 @@ const Profile = observer(() => {
             ) : (
               <div className="flex flex-col gap-3">
                 {MASTERY_SEGMENTS.map(({ key, labelKey }) => {
-                  const count = masteryDistribution[key];
+                  const count = masteryCounts[key];
                   const pct = totalWords > 0 ? Math.round((count / totalWords) * 100) : 0;
                   return (
                     <div key={key} className="flex items-center gap-3">

@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import {
   buildPracticeTimeWeeks,
   formatPracticeDuration,
+  formatPracticeMonthLabel,
   getPracticeTimeMonthLabels,
   type PracticeTimeLevel,
   PRACTICE_TIME_HEATMAP_WEEKS,
@@ -50,10 +51,6 @@ const PracticeHeatmap = memo(({ practiceTime }: { practiceTime: Map<string, numb
     [practiceTime, weekCount]
   );
   const monthLabels = useMemo(() => getPracticeTimeMonthLabels(weeks), [weeks]);
-  const formatMonthLabel = (month: number) =>
-    locale === "zh"
-      ? `${month}月`
-      : new Date(2000, month - 1, 1).toLocaleString("en", { month: "short" });
 
   return (
     <div ref={containerRef} className="w-full">
@@ -70,7 +67,7 @@ const PracticeHeatmap = memo(({ practiceTime }: { practiceTime: Map<string, numb
             className="whitespace-nowrap"
             style={{ gridColumnStart: weekIndex + 1 }}
           >
-            {formatMonthLabel(month)}
+            {formatPracticeMonthLabel(month, locale)}
           </span>
         ))}
       </div>

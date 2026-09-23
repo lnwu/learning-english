@@ -71,6 +71,7 @@
 - `profile/page.tsx` 只保留账号、语言、热力图、统计、熟练度、单词列表及删除/重置确认；批量 AI 操作放在 `profile/ProfileAiSection.tsx`。
 - 归一化链路为 `/api/normalize-words`（每批不超过 50）→ `resolveRenamePlan` → `normalizeWordForms`；消息构造与解析位于 `lib/normalizeWords.ts`，lemma 清洗复用 `lib/lemma.ts`。
 - 重新生成释义调用 `/api/regenerate-definitions`（每批不超过 50）；`senses: null` 的词保留原释义，只通过 `updateTranslations` 修改 `translation`，不触碰练习数据；前端串行分批并显示进度。
+- 两条批量流程共用 `lib/batchAiTask.ts` 的 `runBatchedAiTask`（串行分批、进度回调、单批失败不中断），失败单词数用 `countFailedWords` 统计；部分批次失败必须提示（`profile.regeneratePartial` / `profile.normalizePartial`），不要静默当成全部成功。熟练度均值与分布用 `lib/masteryStats.ts`，热力图月份文案用 `lib/practiceTime.ts` 的 `formatPracticeMonthLabel`。
 
 ## 多语言
 
