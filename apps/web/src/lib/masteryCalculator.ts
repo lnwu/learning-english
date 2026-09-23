@@ -49,7 +49,7 @@ export type MasteryLevel =
   | "proficient"
   | "mastered";
 
-export const MASTERY_LEVELS: Record<
+const MASTERY_LEVELS: Record<
   MasteryLevel,
   { min: number; max: number }
 > = {

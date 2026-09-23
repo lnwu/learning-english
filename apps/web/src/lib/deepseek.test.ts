@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "bun:test";
+import { describe, it, expect, beforeEach, afterEach, jest } from "bun:test";
 import { chatCompletionJson, DeepSeekError } from "./deepseek";
 
 const originalFetch = globalThis.fetch;
@@ -72,6 +72,47 @@ describe("chatCompletionJson", () => {
     ]);
     expect(result.ok).toBe(2);
     expect(calls).toBe(2);
+  });
+
+  it("服务端 429 重试一次后成功", async () => {
+    let calls = 0;
+    globalThis.fetch = (async () => {
+      calls += 1;
+      if (calls === 1) return new Response("{}", { status: 429 });
+      return completionResponse('{"ok":3}');
+    }) as unknown as typeof fetch;
+
+    const result = await chatCompletionJson<{ ok: number }>([
+      { role: "user", content: "hi" },
+    ]);
+    expect(result.ok).toBe(3);
+    expect(calls).toBe(2);
+  });
+
+  it("请求超时（504）不重试", async () => {
+    jest.useFakeTimers();
+    let calls = 0;
+    globalThis.fetch = ((_url: string, init: RequestInit) => {
+      calls += 1;
+      return new Promise((_resolve, reject) => {
+        init.signal?.addEventListener("abort", () =>
+          reject(new Error("aborted"))
+        );
+      });
+    }) as unknown as typeof fetch;
+
+    try {
+      const pending = chatCompletionJson([{ role: "user", content: "hi" }]).catch(
+        (caught) => caught
+      );
+      jest.advanceTimersByTime(31_000);
+      const error = await pending;
+      expect(error).toBeInstanceOf(DeepSeekError);
+      expect((error as DeepSeekError).status).toBe(504);
+      expect(calls).toBe(1);
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it("400 不重试直接失败", async () => {
