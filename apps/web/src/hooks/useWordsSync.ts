@@ -47,7 +47,7 @@ export const useWordsSync = (words: Words, user: User | null) => {
     if (!user) {
       SyncQueueManager.setUser(null);
       words.removeAllWords();
-      words.userInputs.clear();
+      words.clearUserInputs();
       wordsLoadedRef.current = false;
       setPendingCount(0);
       setLoading(false);
@@ -77,7 +77,7 @@ export const useWordsSync = (words: Words, user: User | null) => {
             }))
           );
 
-          const staleIds = collectStaleQueueItemIds(merged.byId, queue);
+          const staleIds = collectStaleQueueItemIds(merged, queue);
           if (staleIds.length > 0) {
             SyncQueueManager.removeFromQueue(staleIds);
             refreshPendingCount();
@@ -159,7 +159,7 @@ export const useWordsSync = (words: Words, user: User | null) => {
         entries: Array.from(updates.entries()),
         chunkSize: FIRESTORE_BATCH_LIMIT,
         isWordsLoaded: () => wordsLoadedRef.current,
-        wordExists: (word) => words.wordData.has(word),
+        wordExists: (word) => words.hasWord(word),
         writeChunk: async (chunk) => {
           const batch = writeBatch(db);
           chunk.forEach(([wordId, { data, lastPracticedAt }]) => {

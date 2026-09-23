@@ -1,5 +1,9 @@
 import type { SyncQueueItem } from "@/lib/syncQueue";
-import { isQueueItemStale, type WordData } from "@/lib/wordsStore";
+import {
+  isQueueItemStale,
+  type MergedSnapshotResult,
+  type WordData,
+} from "@/lib/wordsStore";
 import { commitInChunks } from "@/lib/chunkedCommit";
 
 export interface WordSyncUpdate {
@@ -34,7 +38,7 @@ export const buildWordUpdates = (
 };
 
 export const buildAttemptQueueData = (
-  data: WordData
+  data: Readonly<WordData>
 ): SyncQueueItem["data"] => ({
   correctCount: data.correctCount,
   totalAttempts: data.totalAttempts,
@@ -60,12 +64,12 @@ export const buildAttemptUpdateFields = (
 });
 
 export const collectStaleQueueItemIds = (
-  firestoreWords: Map<string, WordData>,
+  snapshot: MergedSnapshotResult,
   queue: SyncQueueItem[]
 ): string[] => {
   const staleIds: string[] = [];
   queue.forEach((item) => {
-    const firestoreWord = firestoreWords.get(item.wordId);
+    const firestoreWord = snapshot.byId.get(item.wordId);
     if (firestoreWord && isQueueItemStale(firestoreWord, item.data)) {
       staleIds.push(item.id);
     }

@@ -27,7 +27,7 @@ interface WordRowProps {
 }
 
 const WordRow = observer(({ word, translation, words, onInputChange, onHintReveal, inputRefs, t }: WordRowProps) => {
-  const inputValue = words.userInputs.get(word) || "";
+  const inputValue = words.getUserInput(word);
   const { senses } = useMemo(() => parseTranslation(translation), [translation]);
   const hasSense = senses.some((sense) => sense.chinese);
 
@@ -113,7 +113,7 @@ const WordRow = observer(({ word, translation, words, onInputChange, onHintRevea
 });
 
 const SubmitButton = observer(({ randomWords, words, label }: { randomWords: [string, string][]; words: Words; label: string }) => {
-  const allCorrect = randomWords.length > 0 && randomWords.every(([word]) => words.userInputs.get(word) === word);
+  const allCorrect = randomWords.length > 0 && randomWords.every(([word]) => words.getUserInput(word) === word);
   return (
     <Button type="submit" disabled={!allCorrect}>
       {label}
@@ -139,11 +139,11 @@ const WordsPractice = observer(() => {
 
   // Initialize random words when words are loaded
   useEffect(() => {
-    if (!loading && words.wordData.size > 0 && randomWords.length === 0) {
+    if (!loading && words.wordCount > 0 && randomWords.length === 0) {
       setRandomWords(words.getRandomWords());
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, words.wordData.size, randomWords.length]);
+  }, [loading, words.wordCount, randomWords.length]);
 
   useEffect(() => {
     if (shouldFocusFirst && randomWords.length > 0) {
@@ -159,7 +159,7 @@ const WordsPractice = observer(() => {
   }, [shouldFocusFirst, randomWords]);
 
   const refreshWords = () => {
-    words.userInputs.clear();
+    words.clearUserInputs();
     hintRecordedRef.current.clear();
     inputStatesRef.current.clear();
     setRandomWords(words.getRandomWords());
@@ -192,7 +192,7 @@ const WordsPractice = observer(() => {
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const allCorrect = randomWords.length > 0 && randomWords.every(([word]) => words.userInputs.get(word) === word);
+    const allCorrect = randomWords.length > 0 && randomWords.every(([word]) => words.getUserInput(word) === word);
     if (!allCorrect) {
       return;
     }

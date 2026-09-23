@@ -44,8 +44,9 @@
 架构：`hooks/useFirestoreWords.tsx` 是 context 组合层（模块级单例 `words`、`WordsProvider`、`useFirestoreWords`、`useSyncStatus`）；`hooks/useWordsSync.ts` 负责订阅、同步触发与记分入队，`hooks/useWordActions.ts` 负责增删改、归一化、重置；纯逻辑在 `lib/{wordsStore,wordSync,wordNormalization,chunkedCommit}.ts`，全部有 `*.test.ts`（`lib/firestoreBatch.ts` 是 Firestore 包装，依赖 `db` 不参与 bun test）。动机与细节见 `docs/architecture/word-sync.md`。要守的行为：
 
 - `useFirestoreWords()` 只读稳定 context；高频变化的 `syncing`/`pendingCount` 走独立的 `useSyncStatus()`——不要把这两个加回主 context（会让所有消费者随每次记分重渲染）。
-- 新增派生数据用 `Words` 的 computed getter，不要每次渲染重算；熟练度结果由 `#masteryCache` 缓存且已随现有写入口失效，新增写入口时必须同样失效缓存。
-- 快照合并 `mergeSnapshotIntoStore` 是增量合并，**不要改成全量替换 `wordData`**（所有 observer 会无谓重渲染），也不要改支配判定语义（会丢练习数据）。
+- `Words` 的 `wordData`/`userInputs` 是私有字段，外部一律走 `wordCount`/`knownWords()`/`hasWord()`/`wordEntries()`/`getWordData()`（返回只读 `WordData`）与 `getUserInput()`/`setUserInput()`/`clearUserInputs()`；字段必须是 TS `private` 而不是 `#private`（`#` 字段 MobX 观测不到，observer 会静默不重渲染）。
+- 新增派生数据用 `Words` 的 computed getter，不要每次渲染重算；熟练度结果由 `#masteryCache` 缓存且已随现有写入口失效，新增写入口时必须同样失效缓存。练习数据重置走 `resetPracticeRecords()`（store 内完成重置与缓存失效并返回待落库清单），不要在调用方原地改 `WordData` 或手动调 `invalidateCaches()`。
+- 快照合并 `mergeSnapshotIntoStore` 是增量合并，**不要改成全量替换 store 内容**（所有 observer 会无谓重渲染），也不要改支配判定语义（会丢练习数据）；stale 判定统一用 `collectStaleQueueItemIds(merged, queue)`，函数内部取 `byId`，不要把两个视图传混。
 - `attemptHistory` 存最近 30 条对错序列；老数据缺字段由 `parseWordDoc` 兜底空数组，正确率回退全量统计。`lastPracticedAt` 落库取同步队列条目的 `timestamp`（真实练习时刻），不要用同步时的 `new Date()`。
 - 分片提交一律走 `lib/chunkedCommit.ts` 的 `commitInChunks`（纯分片执行器：逐片提交、逐片回报，回调缺省时错误向外抛）；Firestore 包装是 `lib/firestoreBatch.ts` 的 `commitBatchOperations`（500/批，`useWordActions` 用）；同步写入与队列处置走 `lib/wordSync.ts` 的 `runWordSync`（成功即出队、`not-found` 分流、重试超限丢弃，跨片 `discarded` 汇总后由 `useWordsSync` 弹一次 `sync.dataLost`），不要内联回 hook；同步载荷构造、失败分类、过期队列判定同样在 `lib/wordSync.ts`，归一化落库计划在 `lib/wordNormalization.ts`（均有测试）。
 - 队列条目重试到上限被丢弃必须 toast `sync.dataLost`；localStorage 写失败回退内存必须 toast `sync.storageFailed`——都不要改成静默丢弃。

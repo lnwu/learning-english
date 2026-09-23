@@ -1,5 +1,3 @@
-import type { Words } from "@/lib/wordsStore";
-
 export const MAX_ADD_WORD_LENGTH = 50;
 
 const WORD_RUN_PATTERN = /[a-zA-Z]+/;
@@ -16,10 +14,10 @@ export const extractWordFromSelection = (text: string): string | null => {
 export type WordAddableStatus = "ok" | "exists" | "invalid";
 
 export const checkWordAddable = (
-  words: Words,
+  isKnown: (word: string) => boolean,
   word: string
 ): WordAddableStatus => {
-  if (words.wordData.has(word)) return "exists";
+  if (isKnown(word)) return "exists";
   if (!/^[a-zA-Z]+$/.test(word) || word.length > MAX_ADD_WORD_LENGTH) {
     return "invalid";
   }

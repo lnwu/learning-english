@@ -28,13 +28,13 @@ export const ProfileAiSection = observer(() => {
   const [normalizeProgress, setNormalizeProgress] = useState(0);
   const normalizingRef = useRef(false);
 
-  const totalWords = words.wordData.size;
+  const totalWords = words.wordCount;
 
   const handleRegenerateAll = async () => {
     if (regeneratingRef.current) return;
     regeneratingRef.current = true;
 
-    const allWords = Array.from(words.wordData.keys());
+    const allWords = words.knownWords();
     if (allWords.length === 0) {
       regeneratingRef.current = false;
       return;
@@ -117,7 +117,7 @@ export const ProfileAiSection = observer(() => {
     if (normalizingRef.current) return;
     normalizingRef.current = true;
 
-    const allWords = Array.from(words.wordData.keys());
+    const allWords = words.knownWords();
     if (allWords.length === 0) {
       normalizingRef.current = false;
       return;

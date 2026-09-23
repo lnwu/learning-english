@@ -86,7 +86,7 @@ const Profile = observer(() => {
     setIsClient(true);
   }, []);
 
-  const totalWords = words.wordData.size;
+  const totalWords = words.wordCount;
   const overallAverageTime = words.overallAverageInputTime;
 
   const wordsWithStats = words.practiceStats;

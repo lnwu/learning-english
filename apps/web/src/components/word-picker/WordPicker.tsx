@@ -35,7 +35,10 @@ const WordPicker = () => {
       const extracted = extractWordFromSelection(selection?.toString() ?? "");
       if (!extracted) return;
 
-      const status = checkWordAddable(words, extracted);
+      const status = checkWordAddable(
+        (candidate) => words.hasWord(candidate),
+        extracted
+      );
       if (status === "exists") {
         toast({
           title: t("addWord.wordExists", { word: extracted }),

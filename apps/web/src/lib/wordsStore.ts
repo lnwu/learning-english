@@ -78,8 +78,8 @@ export class Words {
   static MAX_CORRECT_PRACTICE_DATES = 30;
   static MAX_ATTEMPT_HISTORY = 30;
 
-  wordData: Map<string, WordData> = new Map();
-  userInputs: Map<string, string> = new Map();
+  private wordData: Map<string, WordData> = new Map();
+  private userInputs: Map<string, string> = new Map();
   #priorityCache = new Map<string, number>();
   #masteryCache = new Map<string, MasteryResult>();
 
@@ -87,7 +87,7 @@ export class Words {
     makeAutoObservable(this);
   }
 
-  invalidateCaches() {
+  private invalidateCaches() {
     this.#priorityCache.clear();
     this.#masteryCache.clear();
   }
@@ -104,19 +104,33 @@ export class Words {
     this.#invalidateWordCaches(word);
   }
 
-  addWord(word: string, translation: string, id: string) {
-    this.wordData.set(word, {
-      word,
-      translation,
-      correctCount: 0,
-      totalAttempts: 0,
-      inputTimes: [],
-      lastPracticedAt: null,
-      correctPracticeDates: [],
-      attemptHistory: [],
-      createdAt: new Date(),
-      id,
+  get wordCount(): number {
+    return this.wordData.size;
+  }
+
+  knownWords(): string[] {
+    return Array.from(this.wordData.keys());
+  }
+
+  hasWord(word: string): boolean {
+    return this.wordData.has(word);
+  }
+
+  wordEntries(): Array<[string, Readonly<WordData>]> {
+    return Array.from(this.wordData.entries());
+  }
+
+  resetPracticeRecords(): Readonly<WordData>[] {
+    this.wordData.forEach((data) => {
+      data.correctCount = 0;
+      data.totalAttempts = 0;
+      data.inputTimes = [];
+      data.lastPracticedAt = null;
+      data.correctPracticeDates = [];
+      data.attemptHistory = [];
     });
+    this.invalidateCaches();
+    return Array.from(this.wordData.values());
   }
 
   deleteWord(word: string) {
@@ -242,7 +256,7 @@ export class Words {
     );
   }
 
-  getWordData(word: string): WordData | undefined {
+  getWordData(word: string): Readonly<WordData> | undefined {
     return this.wordData.get(word);
   }
 
@@ -256,6 +270,14 @@ export class Words {
 
   setUserInput(word: string, value: string) {
     this.userInputs.set(word, value);
+  }
+
+  getUserInput(word: string): string {
+    return this.userInputs.get(word) ?? "";
+  }
+
+  clearUserInputs() {
+    this.userInputs.clear();
   }
 
   getRandomWords(max: number = Words.MAX_RANDOM_WORDS): [string, string][] {
@@ -293,7 +315,10 @@ export class Words {
   }
 }
 
-export const mergeWordData = (target: WordData, source: WordData): WordData => {
+export const mergeWordData = (
+  target: Readonly<WordData>,
+  source: Readonly<WordData>
+): WordData => {
   const lastPracticedAt =
     target.lastPracticedAt && source.lastPracticedAt
       ? new Date(
@@ -347,7 +372,7 @@ export const parseWordDoc = (id: string, data: DocumentData): WordData => {
   };
 };
 
-export const isWordDataEqual = (a: WordData, b: WordData) => {
+export const isWordDataEqual = (a: Readonly<WordData>, b: Readonly<WordData>) => {
   if (
     a.id !== b.id ||
     a.translation !== b.translation ||
@@ -467,14 +492,14 @@ export const mergeSnapshotIntoStore = (
     byWord.set(merged.word, merged);
   }
 
-  for (const word of Array.from(store.wordData.keys())) {
+  for (const word of store.knownWords()) {
     if (!byWord.has(word)) {
       store.deleteWord(word);
     }
   }
 
   for (const [word, data] of byWord) {
-    const existing = store.wordData.get(word);
+    const existing = store.getWordData(word);
     if (!existing || !isWordDataEqual(existing, data)) {
       store.setWordData(word, data);
     }
