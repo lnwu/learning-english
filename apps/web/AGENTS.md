@@ -7,6 +7,7 @@
 ## 硬规则
 
 - API Key 只允许在服务端使用，禁止加 `NEXT_PUBLIC_` 前缀或下发到前端。
+- `NEXT_PUBLIC_*` 必须用字面量 `process.env.NEXT_PUBLIC_X` 读取，不要用 `process.env[name]` 动态访问：Next 只在构建期内联字面量，动态访问在浏览器端恒为 undefined。
 - 新增 `/api/*` 统一走 `lib/apiRoute.ts` 的 `withApiPost`（内部依次完成 `serverAuth`、`await checkRateLimit`、JSON 解析与 DeepSeek 错误映射），限额加进 `API_RATE_LIMITS`，在 `parse` 里限制输入长度；不要手写守卫三段与错误尾巴。
 - 带登录态调用 `/api/*` 统一使用 `lib/apiClient.ts` 的 `postJson<T>(url, payload, fallbackError)`，不要手写 token 与 fetch。
 - Firestore 客户端访问统一经 `lib/wordsRepo.ts`（`WordsProvider` 按 effective uid 构造并注入），页面与组件不直接 import `firebase/firestore`；订阅仍只在 `WordsProvider` 中发生一次。
