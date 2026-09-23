@@ -12,6 +12,7 @@
 - 从 `gh pr checks` 或 Vercel 评论读取实际 Preview URL；部署就绪后，按 `.agents/skills/user-chrome/SKILL.md` 使用 `agent-browser` 的 `user-chrome` session 连接用户已打开的 Chrome，验证 Preview 中的实际功能行为。
 - 自动化检查和浏览器验证都通过后，使用 `gh pr merge` 合并 PR；任一环节失败都先修复并重新走完流程，不合并未验证的 PR。
 - Chrome 远程调试需要用户批准；用户未批准时暂停验收，不将连接失败或未完成验证视为通过。
+- 纯文档变更（仅修改 Markdown 文档、`AGENTS.md` 或文档型 skill，且不涉及代码、配置、依赖或部署行为）不需要测试、构建、Preview 或浏览器验收；完成后直接提交并推送到 `main`，不创建 PR。
 
 ## Vercel 环境变量（apps/web 项目）
 

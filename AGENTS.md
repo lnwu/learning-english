@@ -13,7 +13,7 @@
 
 - 回复用户和编写文档时使用中文。
 - 生成代码时不要新增注释。
-- 修改前检查工作区状态，不覆盖或提交用户已有的无关改动；实现任务使用独立分支，不直接向 `main` 推送。
+- 修改前检查工作区状态，不覆盖或提交用户已有的无关改动；功能实现和基础设施任务使用独立分支，纯文档任务按交付规则直接推送到 `main`。
 
 ## 工具链
 
@@ -27,7 +27,8 @@
 - `apps/web` 功能 PR 必须等待 Web `checks`、`build` 与 Vercel Preview 部署完成；从 `gh pr checks` 或 Vercel 评论读取实际 Preview URL，不推测 URL。
 - Preview 就绪后，必须按 `.agents/skills/user-chrome/SKILL.md` 使用 `agent-browser` 的 `user-chrome` session 连接用户已经打开的 Chrome，在 Preview 中验证本次功能改动。验证应检查实际行为和关键页面状态，不只确认页面能打开。
 - 只有自动化检查和 Preview 浏览器验证均通过后，才使用 `gh pr merge` 合并 PR；验证失败时不得合并，先修复、重新推送并重新完成部署与验证。用户未批准 Chrome 远程调试时暂停流程，不得把未验证视为通过。
-- `infra` 变更按 `infra/AGENTS.md` 检查 Terraform plan 评论；纯文档或 `AGENTS.md` 变更不要求浏览器验收。
+- `infra` 变更按 `infra/AGENTS.md` 检查 Terraform plan 评论。
+- 纯文档变更（仅修改 Markdown 文档、`AGENTS.md` 或文档型 skill，且不涉及代码、配置、依赖或部署行为）不需要本地测试、构建、Preview 或浏览器验收；完成后直接提交并推送到 `main`，不创建 PR。
 - 除上述功能验收外，默认不启动 dev server、不做浏览器截图或人工点击验收。不要修改外部管理的 `.agents/skills/agent-browser`，项目特有连接方式见 `.agents/skills/user-chrome/SKILL.md`；连接真实登录态时，不执行未经确认的写操作。
 
 ## 关键环境不变量
