@@ -23,16 +23,11 @@ import {
   ToggleGroupItem,
   getMasteryLevel,
 } from "@/components/ui";
-import { useFirestoreWords, useLocale, toast, useAuth } from "@/hooks";
+import { useFirestoreWords, useLocale, toast, useAuth, useWordsRepo } from "@/hooks";
 import { observer } from "mobx-react-lite";
 import Link from "next/link";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { type Locale, type TranslationKey } from "@/lib/i18n";
-import { db, getEffectiveUserId } from "@/lib/firebase";
-import {
-  collection,
-  getDocs,
-} from "firebase/firestore";
 import PracticeHeatmap from "./PracticeHeatmap";
 import { ProfileAiSection } from "./ProfileAiSection";
 import { WordPerformanceSection } from "./WordPerformanceSection";
@@ -53,6 +48,7 @@ const Profile = observer(() => {
   const { user } = useAuth();
   const { words, deleteWord, resetPracticeRecords, loading, error } =
     useFirestoreWords();
+  const repo = useWordsRepo();
   const [isClient, setIsClient] = useState(false);
   const { locale, setLocale, t } = useLocale();
   const [resetting, setResetting] = useState(false);
@@ -64,23 +60,14 @@ const Profile = observer(() => {
   );
 
   useEffect(() => {
-    if (!user) return;
-    const userId = getEffectiveUserId(user);
-    getDocs(collection(db, "users", userId, "practiceTime"))
-      .then((snapshot) => {
-        setPracticeTime(
-          new Map(
-            snapshot.docs.map((doc) => [
-              doc.id,
-              Number(doc.data().seconds) || 0,
-            ])
-          )
-        );
-      })
+    if (!repo) return;
+    repo
+      .loadPracticeTime()
+      .then(setPracticeTime)
       .catch((err) => {
         console.error("Failed to load practice time:", err);
       });
-  }, [user]);
+  }, [repo]);
 
   useEffect(() => {
     setIsClient(true);

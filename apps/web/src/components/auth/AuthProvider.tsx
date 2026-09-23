@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, type ReactNode, FC } from "react";
-import { auth, onAuthStateChanged, isPreviewEnv, signInAnonymously, type User } from "@/lib/firebase";
+import { getAuthInstance, onAuthStateChanged, isPreviewEnv, signInAnonymously, type User } from "@/lib/firebase";
 import { AuthContext } from "@/hooks/useAuth";
 
 export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
@@ -9,7 +9,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(getAuthInstance(), (firebaseUser) => {
       if (!firebaseUser && isPreviewEnv) {
         signInAnonymously().catch((err) => {
           console.error("Anonymous sign-in failed:", err);

@@ -1,4 +1,4 @@
-import { auth } from "@/lib/firebase";
+import { getAuthInstance } from "@/lib/firebase";
 import { getCurrentLocale, t } from "@/lib/i18n";
 
 export async function postJson<T>(
@@ -6,7 +6,7 @@ export async function postJson<T>(
   payload: unknown,
   fallbackError = "请求失败，请稍后重试"
 ): Promise<T> {
-  const idToken = await auth.currentUser?.getIdToken();
+  const idToken = await getAuthInstance().currentUser?.getIdToken();
   if (!idToken) {
     throw new Error(t("error.notAuthenticated", getCurrentLocale()));
   }

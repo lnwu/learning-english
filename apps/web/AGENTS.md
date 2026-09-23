@@ -7,9 +7,10 @@
 ## 硬规则
 
 - API Key 只允许在服务端使用，禁止加 `NEXT_PUBLIC_` 前缀或下发到前端。
+- `NEXT_PUBLIC_*` 必须用字面量 `process.env.NEXT_PUBLIC_X` 读取，不要用 `process.env[name]` 动态访问：Next 只在构建期内联字面量，动态访问在浏览器端恒为 undefined。
 - 新增 `/api/*` 统一走 `lib/apiRoute.ts` 的 `withApiPost`（内部依次完成 `serverAuth`、`await checkRateLimit`、JSON 解析与 DeepSeek 错误映射），限额加进 `API_RATE_LIMITS`，在 `parse` 里限制输入长度；不要手写守卫三段与错误尾巴。
 - 带登录态调用 `/api/*` 统一使用 `lib/apiClient.ts` 的 `postJson<T>(url, payload, fallbackError)`，不要手写 token 与 fetch。
-- Firestore 客户端只在 `WordsProvider` 中订阅；页面和组件不得自行新增订阅。
+- Firestore 客户端访问统一经 `lib/wordsRepo.ts`（`WordsProvider` 按 effective uid 构造并注入），页面与组件不直接 import `firebase/firestore`；订阅仍只在 `WordsProvider` 中发生一次。
 - 练习计时不能伪造：造句不传 `inputTimeSeconds`，仅单词拼写练习传入；`correctPracticeDates` 存 `YYYY-MM-DD` 本地日期字符串，不存 ISO 时间戳。
 - 造句“每题一考”只按首次提交计分；重新批改只更新反馈，不改变计分。
 - i18n 插值使用 `t(key, params)` 的 `{name}` 占位符，不要手写 `.replace`；英文表保持 `Record<TranslationKey, string>`，key 一致性由 `lib/i18n.test.ts` 守护。
@@ -43,7 +44,7 @@
 
 - `hooks/useFirestoreWords.tsx` 是 context 组合层，提供模块级单例 `words`、`WordsProvider`、`useFirestoreWords` 与 `useSyncStatus`。
 - `hooks/useWordsSync.ts` 负责订阅、同步触发与记分入队；`hooks/useWordActions.ts` 负责增删改、归一化与重置。
-- 纯逻辑位于 `lib/wordsStore.ts`、`lib/wordSync.ts`、`lib/wordNormalization.ts`、`lib/chunkedCommit.ts` 并配有测试；`lib/firestoreBatch.ts` 是依赖 `db` 的 Firestore 包装。动机与细节见 `docs/architecture/word-sync.md`。
+- 纯逻辑位于 `lib/wordsStore.ts`、`lib/wordSync.ts`、`lib/wordNormalization.ts`、`lib/chunkedCommit.ts` 并配有测试；`lib/wordsRepo.ts` 是唯一接触 Firestore SDK 的模块（订阅、批量写、practiceTime），按 effective uid 构造，`lib/firebase.ts` 惰性创建 app/db/auth（`getDb()`/`getAuthInstance()`）。动机与细节见 `docs/architecture/word-sync.md`。
 
 ### 必须保持的行为
 
@@ -51,12 +52,12 @@
 - 派生数据使用 `Words` computed getter；新增写入口必须同步失效 `#masteryCache`。练习数据重置走 `resetPracticeRecords()`，由 store 完成重置、缓存失效并返回待落库清单，不要在调用方原地修改 `WordData` 或手动调用 `invalidateCaches()`。
 - `mergeSnapshotIntoStore` 必须保持增量合并及现有支配判定，不得改成全量替换 store 内容；stale 判定统一使用 `collectStaleQueueItemIds(merged, queue)`，不要混用快照与 `byId` 视图。`attemptHistory` 保留最近 30 条，老数据由 `parseWordDoc` 兜底，正确率回退全量统计。
 - `lastPracticedAt` 使用同步队列条目的真实 `timestamp`，不得改用同步时的 `new Date()`。
-- 分片提交使用 `commitInChunks`，Firestore 包装使用 `commitBatchOperations`；同步载荷、失败分类、过期队列和队列处置集中在 `lib/wordSync.ts` 的 `runWordSync`，不要内联回 hook。队列超过重试上限必须跨片汇总后只提示一次 `sync.dataLost`，localStorage 写失败回退内存必须提示 `sync.storageFailed`。
+- 分片提交使用 `commitInChunks`（纯执行器），Firestore 写入统一走 `lib/wordsRepo.ts` 的 `commitWordOperations`（按 500 分片、一次调用一个批次序列，保住归一化的原子性）；同步载荷、失败分类、过期队列和队列处置集中在 `lib/wordSync.ts` 的 `runWordSync`，不要内联回 hook。队列超过重试上限必须跨片汇总后只提示一次 `sync.dataLost`，localStorage 写失败回退内存必须提示 `sync.storageFailed`。
 - `normalizeWordForms` 先 `syncToFirestore()` 并按计划落库，Firestore 成功后才更新 store；调整合并或上限语义时同步 `Words.MAX_*`。`updateTranslations` 先即时更新 store，再 batch 写 `translation`，由 `onSnapshot` 幂等合并兜底。
 - 练习页输入判定使用 `lib/practiceInput.ts` 与单个 `inputStatesRef`；`WordRow` 保持独立 observer，父组件渲染路径不读 `words.userInputs`。
 - `PracticeHeatmap` 保持 `memo`、只接收 `practiceTime`，网格构建使用 `useMemo`；纯网格与分档逻辑位于 `lib/practiceTime.ts`。
 - 练习时间只在 visible + focus 时累计，每 60 秒用 `increment` 写入 `practiceTime/{YYYY-MM-DD}` 的 `seconds`，失败时把秒数放回池中重试。
-- `lib/firebase.ts` 使用 `initializeFirestore`、`persistentLocalCache` 与 `persistentMultipleTabManager`；SSR 只创建实例，不在服务端组件直接读写 `db`。
+- `lib/firebase.ts` 惰性创建实例（首次 `getDb()`/`getAuthInstance()` 时才校验 env 并初始化），Firestore 使用 `initializeFirestore`、`persistentLocalCache` 与 `persistentMultipleTabManager`；不要在服务端组件直接读写 `db`。
 
 ## 双击选词添加
 

@@ -84,7 +84,7 @@ describe("buildNormalizeDocPlan", () => {
     expect(plan.renamed).toBe(1);
     expect(plan.merged).toBe(0);
     expect(plan.operations).toEqual([
-      { type: "renameWord", wordId: "id-1", word: "attacker" },
+      { type: "rename", wordId: "id-1", word: "attacker" },
     ]);
     expect(plan.storeUpdates).toEqual([
       { from: "attackers", to: "attacker", data: { ...source, word: "attacker" } },
@@ -113,7 +113,7 @@ describe("buildNormalizeDocPlan", () => {
     expect(plan.merged).toBe(1);
     expect(plan.operations).toEqual([
       {
-        type: "updateStats",
+        type: "update",
         wordId: "id-2",
         fields: {
           correctCount: 3,
@@ -125,7 +125,7 @@ describe("buildNormalizeDocPlan", () => {
           createdAt: new Date("2025-12-01T00:00:00"),
         },
       },
-      { type: "deleteWord", wordId: "id-1" },
+      { type: "delete", wordId: "id-1" },
     ]);
     expect(plan.storeUpdates[0].data.id).toBe("id-2");
     expect(plan.storeUpdates[0].data.word).toBe("attacker");
@@ -167,8 +167,8 @@ describe("buildNormalizeDocPlan", () => {
     expect(plan.renamed).toBe(2);
     expect(plan.merged).toBe(0);
     expect(plan.operations).toEqual([
-      { type: "renameWord", wordId: "id-1", word: "attacking" },
-      { type: "renameWord", wordId: "id-1", word: "attacker" },
+      { type: "rename", wordId: "id-1", word: "attacking" },
+      { type: "rename", wordId: "id-1", word: "attacker" },
     ]);
     expect(plan.storeUpdates.at(-1)?.data.word).toBe("attacker");
   });
