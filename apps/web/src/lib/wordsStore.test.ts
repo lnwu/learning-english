@@ -30,7 +30,7 @@ describe("Words store", () => {
 
   beforeEach(() => {
     store = new Words();
-    store.addWord("apple", "苹果", "id-apple");
+    store.setWordData("apple", makeWordData());
   });
 
   it("recordCorrectAttempt 累计计数并记录输入耗时与练习时间", () => {
@@ -102,7 +102,7 @@ describe("Words store", () => {
   it("对不存在的单词记录尝试时静默忽略", () => {
     store.recordCorrectAttempt("ghost");
     store.recordIncorrectAttempt("ghost");
-    expect(store.wordData.size).toBe(1);
+    expect(store.wordCount).toBe(1);
   });
 
   it("recordCorrectAttempt 后熟练度缓存失效", () => {
@@ -114,7 +114,10 @@ describe("Words store", () => {
 
   it("getRandomWords 不重复且不超过上限", () => {
     for (let i = 0; i < 10; i++) {
-      store.addWord(`word${i}`, `译${i}`, `id-${i}`);
+      store.setWordData(
+        `word${i}`,
+        makeWordData({ word: `word${i}`, translation: `译${i}`, id: `id-${i}` })
+      );
     }
     const selected = store.getRandomWords(5);
     expect(selected).toHaveLength(5);
@@ -132,7 +135,10 @@ describe("Words store", () => {
   });
 
   it("practiceStats 按熟练度升序排列", () => {
-    store.addWord("banana", "香蕉", "id-banana");
+    store.setWordData(
+      "banana",
+      makeWordData({ word: "banana", translation: "香蕉", id: "id-banana" })
+    );
     store.recordCorrectAttempt("banana", 1);
     const stats = store.practiceStats;
     expect(stats[0].word).toBe("apple");
@@ -148,7 +154,14 @@ describe("Words store", () => {
   });
 
   it("averageTimeByLengthCategory 按单词长度分组", () => {
-    store.addWord("pronunciation", "发音", "id-pronunciation");
+    store.setWordData(
+      "pronunciation",
+      makeWordData({
+        word: "pronunciation",
+        translation: "发音",
+        id: "id-pronunciation",
+      })
+    );
     store.recordCorrectAttempt("apple", 2);
     store.recordCorrectAttempt("pronunciation", 6);
     const [short, mid, long] = store.averageTimeByLengthCategory;
@@ -435,7 +448,7 @@ describe("mergeSnapshotIntoStore with pending queue", () => {
         practicedAt: 1,
       },
     ]);
-    expect(store.wordData.size).toBe(1);
+    expect(store.wordCount).toBe(1);
     expect(store.getWordData("apple")!.totalAttempts).toBe(0);
   });
 });
@@ -461,14 +474,14 @@ describe("mergeSnapshotIntoStore", () => {
 
   it("新增快照中的单词", () => {
     mergeSnapshotIntoStore(store, makeSnapshot([["apple", {}]]));
-    expect(store.wordData.has("apple")).toBe(true);
+    expect(store.hasWord("apple")).toBe(true);
     expect(store.getTranslation("apple")).toBe("apple译");
   });
 
   it("删除快照中不存在的单词", () => {
-    store.addWord("apple", "苹果", "id-apple");
+    store.setWordData("apple", makeWordData({ translation: "苹果" }));
     mergeSnapshotIntoStore(store, { docs: [] });
-    expect(store.wordData.size).toBe(0);
+    expect(store.wordCount).toBe(0);
   });
 
   it("数据未变化时保留原对象引用", () => {
@@ -584,16 +597,42 @@ describe("mergeWordData", () => {
 describe("moveWord", () => {
   it("重命名后旧 key 删除、新 key 保留练习数据并清理输入缓存", () => {
     const store = new Words();
-    store.addWord("attackers", "攻击者", "id-1");
+    store.setWordData(
+      "attackers",
+      makeWordData({ word: "attackers", translation: "攻击者", id: "id-1" })
+    );
     store.recordCorrectAttempt("attackers", 1);
     store.setUserInput("attackers", "att");
 
     const data = store.getWordData("attackers")!;
     store.moveWord("attackers", "attacker", { ...data, word: "attacker" });
 
-    expect(store.wordData.has("attackers")).toBe(false);
-    expect(store.userInputs.has("attackers")).toBe(false);
+    expect(store.hasWord("attackers")).toBe(false);
+    expect(store.getUserInput("attackers")).toBe("");
     expect(store.getWordData("attacker")?.correctCount).toBe(1);
     expect(store.getWordId("attacker")).toBe("id-1");
+  });
+});
+
+describe("resetPracticeRecords", () => {
+  it("清空练习字段、失效缓存并返回全部文档", () => {
+    const store = new Words();
+    store.setWordData("apple", makeWordData());
+    store.recordCorrectAttempt("apple", 2);
+    store.setUserInput("apple", "app");
+    const before = store.getMasteryScore("apple");
+
+    const resetDocs = store.resetPracticeRecords();
+
+    const data = store.getWordData("apple")!;
+    expect(data.correctCount).toBe(0);
+    expect(data.totalAttempts).toBe(0);
+    expect(data.inputTimes).toEqual([]);
+    expect(data.lastPracticedAt).toBeNull();
+    expect(data.correctPracticeDates).toEqual([]);
+    expect(data.attemptHistory).toEqual([]);
+    expect(store.getMasteryScore("apple")).not.toBe(before);
+    expect(resetDocs.map((doc) => doc.id)).toEqual(["id-apple"]);
+    expect(store.getUserInput("apple")).toBe("app");
   });
 });

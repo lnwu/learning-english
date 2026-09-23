@@ -1,5 +1,4 @@
 import { describe, it, expect } from "bun:test";
-import { Words } from "./wordsStore";
 import {
   extractWordFromSelection,
   checkWordAddable,
@@ -31,22 +30,21 @@ describe("extractWordFromSelection", () => {
 });
 
 describe("checkWordAddable", () => {
+  const known = new Set(["hello"]);
+  const isKnown = (word: string) => known.has(word);
+
   it("新单词返回 ok", () => {
-    const words = new Words();
-    expect(checkWordAddable(words, "hello")).toBe("ok");
+    expect(checkWordAddable(isKnown, "world")).toBe("ok");
   });
 
   it("已存在返回 exists", () => {
-    const words = new Words();
-    words.addWord("hello", "你好", "id-1");
-    expect(checkWordAddable(words, "hello")).toBe("exists");
+    expect(checkWordAddable(isKnown, "hello")).toBe("exists");
   });
 
   it("包含非法字符或超长返回 invalid", () => {
-    const words = new Words();
-    expect(checkWordAddable(words, "hello world")).toBe("invalid");
-    expect(checkWordAddable(words, "hello!")).toBe("invalid");
-    expect(checkWordAddable(words, "hello123")).toBe("invalid");
-    expect(checkWordAddable(words, "a".repeat(MAX_ADD_WORD_LENGTH + 1))).toBe("invalid");
+    expect(checkWordAddable(isKnown, "hello world")).toBe("invalid");
+    expect(checkWordAddable(isKnown, "hello!")).toBe("invalid");
+    expect(checkWordAddable(isKnown, "hello123")).toBe("invalid");
+    expect(checkWordAddable(isKnown, "a".repeat(MAX_ADD_WORD_LENGTH + 1))).toBe("invalid");
   });
 });

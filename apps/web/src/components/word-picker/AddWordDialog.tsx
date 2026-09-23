@@ -68,7 +68,7 @@ const AddWordDialog = ({ word, onClose, onFinished }: AddWordDialogProps) => {
         }
 
         const normalized = data.lemma && data.lemma !== word ? data.lemma : word;
-        if (normalized !== word && words.wordData.has(normalized)) {
+        if (normalized !== word && words.hasWord(normalized)) {
           if (cancelled) return;
           setSenses(fetched);
           setLemma(normalized);
@@ -104,7 +104,7 @@ const AddWordDialog = ({ word, onClose, onFinished }: AddWordDialogProps) => {
 
     const finalWord = useOriginal ? word : lemma ?? word;
 
-    if (words.wordData.has(finalWord)) {
+    if (words.hasWord(finalWord)) {
       toast({
         title: tRef.current("addWord.wordExists", { word: finalWord }),
         variant: "destructive",

@@ -91,7 +91,7 @@ export const useWordActions = (
       const userId = getEffectiveUserId(user);
       const entries = updates
         .map(({ word, translation }) => {
-          const data = words.wordData.get(word);
+          const data = words.getWordData(word);
           const wordId = data?.id;
           if (!data || !wordId) return null;
           return { word, translation, data, wordId };
@@ -129,7 +129,7 @@ export const useWordActions = (
       }
 
       const plan = renames.filter(
-        ({ from, to }) => from !== to && words.wordData.has(from)
+        ({ from, to }) => from !== to && words.hasWord(from)
       );
       if (plan.length === 0) return { renamed: 0, merged: 0 };
 
@@ -139,7 +139,7 @@ export const useWordActions = (
         await syncToFirestore();
 
         const docPlan = buildNormalizeDocPlan(plan, (word) =>
-          words.wordData.get(word)
+          words.getWordData(word)
         );
 
         const operations = docPlan.operations.map((operation) => {
@@ -185,18 +185,10 @@ export const useWordActions = (
     try {
       const userId = getEffectiveUserId(user);
 
-      words.wordData.forEach((data) => {
-        data.correctCount = 0;
-        data.totalAttempts = 0;
-        data.inputTimes = [];
-        data.lastPracticedAt = null;
-        data.correctPracticeDates = [];
-        data.attemptHistory = [];
-      });
-      words.invalidateCaches();
+      const resetDocs = words.resetPracticeRecords();
 
       await commitBatchOperations(
-        Array.from(words.wordData.values()).map((data) => (batch) => {
+        resetDocs.map((data) => (batch) => {
           const wordDocRef = doc(db, "users", userId, "words", data.id);
           batch.update(wordDocRef, {
             correctCount: 0,

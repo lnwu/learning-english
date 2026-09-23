@@ -121,14 +121,16 @@ describe("buildAttemptUpdateFields", () => {
 describe("collectStaleQueueItemIds", () => {
   it("远端计数支配本地时判定为 stale", () => {
     const byId = new Map([["id-apple", makeWordData()]]);
-    const staleIds = collectStaleQueueItemIds(byId, [makeItem()]);
+    const staleIds = collectStaleQueueItemIds({ byId, byWord: byId }, [
+      makeItem(),
+    ]);
 
     expect(staleIds).toEqual(["q1"]);
   });
 
   it("远端与队列完全一致时判定为 stale", () => {
     const byId = new Map([["id-apple", makeWordData()]]);
-    const staleIds = collectStaleQueueItemIds(byId, [
+    const staleIds = collectStaleQueueItemIds({ byId, byWord: byId }, [
       makeItem({
         data: {
           correctCount: 2,
@@ -150,7 +152,7 @@ describe("collectStaleQueueItemIds", () => {
         makeWordData({ correctCount: 1, totalAttempts: 1, inputTimes: [1] }),
       ],
     ]);
-    const staleIds = collectStaleQueueItemIds(byId, [
+    const staleIds = collectStaleQueueItemIds({ byId, byWord: byId }, [
       makeItem({
         data: { correctCount: 5, totalAttempts: 9, inputTimes: [1] },
       }),

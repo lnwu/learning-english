@@ -46,7 +46,7 @@ export const useSentencePractice = () => {
 
   const pickPrioritizedWords = useCallback(
     (count: number) => {
-      const entries = Array.from(words.wordData.entries());
+      const entries = words.wordEntries();
       if (entries.length === 0) return [];
 
       const practiced = entries.filter(([, data]) => data.totalAttempts >= PRIORITIZED_MIN_ATTEMPTS);

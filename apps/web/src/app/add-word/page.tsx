@@ -22,7 +22,10 @@ const Home = () => {
   const handleAddWord = () => {
     if (!word) return;
 
-    const status = checkWordAddable(words, word);
+    const status = checkWordAddable(
+      (candidate) => words.hasWord(candidate),
+      word
+    );
     if (status === "exists") {
       toast({ title: t('addWord.wordExists', { word }), variant: "destructive" });
       clear();

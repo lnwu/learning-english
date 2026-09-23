@@ -31,7 +31,7 @@ const Sentence = observer(() => {
   const [lastCheckedAnswer, setLastCheckedAnswer] = useState("");
   const [isClient, setIsClient] = useState(false);
   const [hasTriedInitialGenerate, setHasTriedInitialGenerate] = useState(false);
-  const noWords = words.wordData.size < 2;
+  const noWords = words.wordCount < 2;
 
   useEffect(() => {
     setIsClient(true);
