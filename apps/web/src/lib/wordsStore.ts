@@ -3,9 +3,9 @@ import type { DocumentData } from "firebase/firestore";
 import {
   calculateMasteryScore,
   calculatePriority,
-  getMasteryLevelIndex,
   type MasteryResult,
 } from "@/lib/masteryCalculator";
+import { getMasteryLevelIndex } from "@/lib/masteryLevels";
 import {
   formatLocalPracticeDate,
 } from "@/lib/practiceDate";

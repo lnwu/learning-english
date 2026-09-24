@@ -1,6 +1,6 @@
 # 单词熟练度算法
 
-本文档说明当前单词熟练度分数、等级和抽词优先级的计算方式。实现位置：`apps/web/src/lib/masteryCalculator.ts`。
+本文档说明当前单词熟练度分数、等级和抽词优先级的计算方式。实现位置：分数与优先级在 `apps/web/src/lib/masteryCalculator.ts`，等级表（`MASTERY_LEVELS`：门槛、顺序与文案 key）在 `apps/web/src/lib/masteryLevels.ts`。
 
 ## 目标
 

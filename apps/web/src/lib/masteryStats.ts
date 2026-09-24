@@ -1,4 +1,4 @@
-import { getMasteryLevel, type MasteryLevel } from "@/lib/masteryCalculator";
+import { getMasteryLevel, type MasteryLevel } from "@/lib/masteryLevels";
 
 export const averageMasteryScore = (
   stats: ReadonlyArray<{ masteryScore: number }>

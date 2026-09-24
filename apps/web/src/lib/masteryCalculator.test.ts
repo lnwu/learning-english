@@ -3,8 +3,6 @@ import {
   calculateMasteryScore,
   calculatePriority,
   getExpectedInputTime,
-  getMasteryLevel,
-  getMasteryLevelIndex,
 } from "./masteryCalculator";
 
 describe("getExpectedInputTime", () => {
@@ -269,27 +267,5 @@ describe("calculatePriority", () => {
     const never = calculatePriority(0, null, 0);
     const practiced = calculatePriority(0, at(1), 3);
     expect(never).toBeGreaterThan(practiced);
-  });
-});
-
-describe("getMasteryLevel", () => {
-  it("正确映射等级", () => {
-    expect(getMasteryLevel(0)).toBe("new");
-    expect(getMasteryLevel(19)).toBe("new");
-    expect(getMasteryLevel(20)).toBe("learning");
-    expect(getMasteryLevel(40)).toBe("familiar");
-    expect(getMasteryLevel(60)).toBe("proficient");
-    expect(getMasteryLevel(80)).toBe("mastered");
-    expect(getMasteryLevel(100)).toBe("mastered");
-  });
-});
-
-describe("getMasteryLevelIndex", () => {
-  it("正确映射等级索引", () => {
-    expect(getMasteryLevelIndex(0)).toBe(0);
-    expect(getMasteryLevelIndex(20)).toBe(1);
-    expect(getMasteryLevelIndex(40)).toBe(2);
-    expect(getMasteryLevelIndex(60)).toBe(3);
-    expect(getMasteryLevelIndex(80)).toBe(4);
   });
 });
