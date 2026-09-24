@@ -1,6 +1,6 @@
 import { describe, it, expect } from "bun:test";
 import {
-  ActiveTimeTracker,
+  PracticeTimeRecorder,
   buildPracticeTimeWeeks,
   formatPracticeDuration,
   formatPracticeMonthLabel,
@@ -8,60 +8,117 @@ import {
   getPracticeTimeMonthLabels,
 } from "./practiceTime";
 
-describe("ActiveTimeTracker", () => {
-  const createTracker = () => {
-    let current = 1_000_000;
-    const tracker = new ActiveTimeTracker(() => current);
+describe("PracticeTimeRecorder", () => {
+  const createRecorder = () => {
+    let current = new Date(2026, 7, 19, 10, 0, 0).getTime();
+    const writes: Array<{ dateId: string; seconds: number }> = [];
+    let failing = false;
+    const recorder = new PracticeTimeRecorder({
+      now: () => current,
+      writeSeconds: async (dateId, seconds) => {
+        if (failing) throw new Error("write failed");
+        writes.push({ dateId, seconds });
+      },
+    });
+
     return {
-      tracker,
+      recorder,
+      writes,
       advance: (ms: number) => {
         current += ms;
+      },
+      advanceDays: (days: number) => {
+        current += days * 24 * 60 * 60 * 1000;
+      },
+      setFailing: (value: boolean) => {
+        failing = value;
       },
     };
   };
 
-  it("激活期间累计时间，take 后清零", () => {
-    const { tracker, advance } = createTracker();
-    tracker.setActive(true);
-    advance(5_000);
-    expect(tracker.takePendingMs()).toBe(5_000);
-    expect(tracker.takePendingMs()).toBe(0);
+  it("激活期间累计整秒并在 flush 时写出，保留不足一秒的结余", async () => {
+    const { recorder, writes, advance } = createRecorder();
+    recorder.setActive(true);
+    advance(5_400);
+
+    await recorder.flush();
+
+    expect(writes).toEqual([{ dateId: "2026-08-19", seconds: 5 }]);
   });
 
-  it("非激活状态不计时", () => {
-    const { tracker, advance } = createTracker();
+  it("非激活状态的时间不计入", async () => {
+    const { recorder, writes, advance } = createRecorder();
     advance(10_000);
-    expect(tracker.takePendingMs()).toBe(0);
+
+    await recorder.flush();
+
+    expect(writes).toEqual([]);
   });
 
-  it("激活/暂停切换时累计分段时间", () => {
-    const { tracker, advance } = createTracker();
-    tracker.setActive(true);
+  it("激活/暂停切换时只累计激活分段时间", async () => {
+    const { recorder, writes, advance } = createRecorder();
+    recorder.setActive(true);
     advance(3_000);
-    tracker.setActive(false);
+    recorder.setActive(false);
     advance(10_000);
-    tracker.setActive(true);
+    recorder.setActive(true);
     advance(2_000);
-    expect(tracker.takePendingMs()).toBe(5_000);
+
+    await recorder.flush();
+
+    expect(writes).toEqual([{ dateId: "2026-08-19", seconds: 5 }]);
   });
 
-  it("重复的 setActive 调用不产生副作用", () => {
-    const { tracker, advance } = createTracker();
-    tracker.setActive(true);
-    tracker.setActive(true);
+  it("重复的 setActive 调用不产生副作用", async () => {
+    const { recorder, writes, advance } = createRecorder();
+    recorder.setActive(true);
+    recorder.setActive(true);
     advance(4_000);
-    tracker.setActive(false);
-    tracker.setActive(false);
-    expect(tracker.takePendingMs()).toBe(4_000);
+    recorder.setActive(false);
+    recorder.setActive(false);
+
+    await recorder.flush();
+
+    expect(writes).toEqual([{ dateId: "2026-08-19", seconds: 4 }]);
   });
 
-  it("激活中 take 后继续从当前时刻计时", () => {
-    const { tracker, advance } = createTracker();
-    tracker.setActive(true);
+  it("不足一秒时不写出，结余累积到下次 flush", async () => {
+    const { recorder, writes, advance } = createRecorder();
+    recorder.setActive(true);
+    advance(400);
+
+    await recorder.flush();
+    expect(writes).toEqual([]);
+
+    advance(700);
+    await recorder.flush();
+    expect(writes).toEqual([{ dateId: "2026-08-19", seconds: 1 }]);
+  });
+
+  it("写出失败时把整秒放回池中，下次 flush 重试", async () => {
+    const { recorder, writes, advance, setFailing } = createRecorder();
+    recorder.setActive(true);
+    advance(5_000);
+    setFailing(true);
+
+    await recorder.flush();
+    expect(writes).toEqual([]);
+
+    setFailing(false);
+    await recorder.flush();
+    expect(writes).toEqual([{ dateId: "2026-08-19", seconds: 5 }]);
+  });
+
+  it("flush 使用注入时钟当天的日期", async () => {
+    const { recorder, writes, advance, advanceDays } = createRecorder();
+    recorder.setActive(true);
     advance(3_000);
-    expect(tracker.takePendingMs()).toBe(3_000);
-    advance(2_000);
-    expect(tracker.takePendingMs()).toBe(2_000);
+    recorder.setActive(false);
+    advanceDays(1);
+
+    await recorder.flush();
+
+    expect(writes).toEqual([{ dateId: "2026-08-20", seconds: 3 }]);
   });
 });
 
