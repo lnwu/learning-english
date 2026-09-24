@@ -7,7 +7,7 @@ import {
   type WordSyncQueuePort,
   type WordSyncUpdate,
 } from "./wordSync";
-import type { SyncQueueItem } from "./syncQueue";
+import type { SyncQueueItem } from "./queueStorage";
 import type { WordData } from "./wordsStore";
 
 const makeItem = (overrides: Partial<SyncQueueItem> = {}): SyncQueueItem => ({

@@ -14,7 +14,7 @@ import { commitInChunks } from "@/lib/chunkedCommit";
 import { getDb } from "@/lib/firebase";
 import { newWordDocFields } from "@/lib/wordDoc";
 
-export const WORD_BATCH_LIMIT = 500;
+const WORD_BATCH_LIMIT = 500;
 
 export interface WordDocSnapshot {
   id: string;
@@ -28,6 +28,7 @@ export type WordOperation =
 
 export interface WordsRepo {
   readonly userId: string;
+  readonly batchLimit: number;
   subscribeWords(handlers: {
     onDocs: (docs: WordDocSnapshot[]) => void;
     onError: (error: unknown) => void;
@@ -46,6 +47,7 @@ export const createWordsRepo = (userId: string): WordsRepo => {
 
   return {
     userId,
+    batchLimit: WORD_BATCH_LIMIT,
 
     subscribeWords({ onDocs, onError }) {
       return onSnapshot(
