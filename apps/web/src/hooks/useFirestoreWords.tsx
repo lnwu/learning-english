@@ -4,17 +4,26 @@ import {
   useMemo,
   useContext,
   createContext,
+  useEffect,
+  useRef,
+  useSyncExternalStore,
   type FC,
   type ReactNode,
 } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { useWordsSync } from "@/hooks/useWordsSync";
-import { useWordActions } from "@/hooks/useWordActions";
 import { getEffectiveUserId } from "@/lib/firebase";
 import { createWordsRepo, type WordsRepo } from "@/lib/wordsRepo";
 import { Words } from "@/lib/wordsStore";
+import { WordsLedger } from "@/lib/wordsLedger";
+import {
+  createLocalStorageQueueStorage,
+  createNoopQueueStorage,
+} from "@/lib/queueStorage";
+import { tNow } from "@/lib/i18n";
+import { toast } from "@/hooks/useToast";
 
 const words = new Words();
+const SYNC_INTERVAL_MS = 30 * 1000;
 
 interface WordsContextValue {
   words: Words;
@@ -49,58 +58,91 @@ export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
     () => (user ? createWordsRepo(getEffectiveUserId(user)) : null),
     [user]
   );
-  const {
-    loading,
-    error,
-    syncing,
-    pendingCount,
-    syncToFirestore,
-    recordCorrectAttempt,
-    recordIncorrectAttempt,
-    refreshPendingCount,
-  } = useWordsSync(words, repo);
-  const {
-    addWord,
-    deleteWord,
-    updateTranslations,
-    normalizeWordForms,
-    resetPracticeRecords,
-  } = useWordActions(words, repo, {
-    syncToFirestore,
-    refreshPendingCount,
-  });
+  const ledger = useMemo(
+    () =>
+      new WordsLedger({
+        words,
+        repo,
+        queue: repo
+          ? createLocalStorageQueueStorage(repo.userId)
+          : createNoopQueueStorage(),
+      }),
+    [repo]
+  );
+
+  const status = useSyncExternalStore(
+    ledger.subscribe,
+    ledger.getStatus,
+    ledger.getServerStatus
+  );
+
+  useEffect(() => ledger.start(), [ledger]);
+
+  useEffect(() => {
+    if (!repo) return;
+
+    void ledger.sync();
+    const timer = setInterval(() => {
+      void ledger.sync();
+    }, SYNC_INTERVAL_MS);
+    return () => clearInterval(timer);
+  }, [repo, ledger]);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void ledger.sync();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () =>
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [ledger]);
+
+  useEffect(() => {
+    const handleOnline = () => {
+      void ledger.sync();
+    };
+
+    window.addEventListener("online", handleOnline);
+    return () => window.removeEventListener("online", handleOnline);
+  }, [ledger]);
+
+  const storageWarnedRef = useRef(false);
+  useEffect(() => {
+    if (!status.storageFailed || storageWarnedRef.current) return;
+    storageWarnedRef.current = true;
+    toast({ title: tNow("sync.storageFailed"), variant: "destructive" });
+  }, [status.storageFailed]);
+
+  const dataLostRef = useRef(0);
+  useEffect(() => {
+    if (status.dataLostCount <= dataLostRef.current) return;
+    dataLostRef.current = status.dataLostCount;
+    toast({ title: tNow("sync.dataLost"), variant: "destructive" });
+  }, [status.dataLostCount]);
 
   const value = useMemo<WordsContextValue>(
     () => ({
       words,
-      addWord,
-      deleteWord,
-      recordCorrectAttempt,
-      recordIncorrectAttempt,
-      syncToFirestore,
-      resetPracticeRecords,
-      updateTranslations,
-      normalizeWordForms,
-      loading,
-      error,
+      addWord: ledger.addWord,
+      deleteWord: ledger.deleteWord,
+      recordCorrectAttempt: ledger.recordCorrectAttempt,
+      recordIncorrectAttempt: ledger.recordIncorrectAttempt,
+      syncToFirestore: ledger.sync,
+      resetPracticeRecords: ledger.resetPracticeRecords,
+      updateTranslations: ledger.updateTranslations,
+      normalizeWordForms: ledger.normalizeWordForms,
+      loading: status.loading,
+      error: status.error,
     }),
-    [
-      addWord,
-      deleteWord,
-      recordCorrectAttempt,
-      recordIncorrectAttempt,
-      syncToFirestore,
-      resetPracticeRecords,
-      updateTranslations,
-      normalizeWordForms,
-      loading,
-      error,
-    ]
+    [ledger, status.loading, status.error]
   );
 
   const syncStatus = useMemo<SyncStatusValue>(
-    () => ({ syncing, pendingCount }),
-    [syncing, pendingCount]
+    () => ({ syncing: status.syncing, pendingCount: status.pendingCount }),
+    [status.syncing, status.pendingCount]
   );
 
   return (

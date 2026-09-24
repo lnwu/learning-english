@@ -42,9 +42,10 @@
 
 ### 模块边界
 
-- `hooks/useFirestoreWords.tsx` 是 context 组合层，提供模块级单例 `words`、`WordsProvider`、`useFirestoreWords` 与 `useSyncStatus`。
-- `hooks/useWordsSync.ts` 负责订阅、同步触发与记分入队；`hooks/useWordActions.ts` 负责增删改、归一化与重置。
-- 纯逻辑位于 `lib/wordsStore.ts`、`lib/wordSync.ts`、`lib/wordNormalization.ts`、`lib/chunkedCommit.ts` 并配有测试；`lib/wordsRepo.ts` 是唯一接触 Firestore SDK 的模块（订阅、批量写、practiceTime），按 effective uid 构造，`lib/firebase.ts` 惰性创建 app/db/auth（`getDb()`/`getAuthInstance()`）。动机与细节见 `docs/architecture/word-sync.md`。
+- `lib/wordsLedger.ts` 的 `WordsLedger` 是练习旅程的唯一写入口：记分入队、快照合并、过期清理、分片提交、增删改/归一化/重置与同步状态都在这里；构造时注入模块级 `words` 单例、按 effective uid 构造的 `WordsRepo` 与 `QueueStorage`，不依赖 React 即可测试。
+- `hooks/useFirestoreWords.tsx` 是 context 组合层：构造 ledger、用 `useSyncExternalStore` 订阅其状态、接线 30s 定时 / `visibilitychange` / `online` 触发与 toast，提供 `WordsProvider`、`useFirestoreWords`、`useSyncStatus`、`useWordsRepo`。
+- `lib/queueStorage.ts` 是同步队列的存储端口（`load`/`get`/`save`/`removeByIds`/`clear`）：`createLocalStorageQueueStorage` 按 `sync_queue:{uid}:{wordId}` 每词一条并惰性迁移旧格式，`createMemoryQueueStorage` 供测试，`createNoopQueueStorage` 供未登录。去重、重试上限与过期判定属于 ledger 的策略，不要下沉进存储适配器。
+- 纯逻辑位于 `lib/wordsStore.ts`、`lib/wordSync.ts`、`lib/wordNormalization.ts`、`lib/chunkedCommit.ts` 并配有测试；`lib/wordsRepo.ts` 是唯一接触 Firestore SDK 的模块（订阅、批量写、practiceTime），按 effective uid 构造并通过 `batchLimit` 暴露单次批量上限，`lib/firebase.ts` 惰性创建 app/db/auth（`getDb()`/`getAuthInstance()`）。动机与细节见 `docs/architecture/word-sync.md`。
 - 单词文档的字段投影与解析集中在 `lib/wordDoc.ts`（`newWordDocFields`/`practiceFields`/`attemptUpdateFields`/`resetPracticeFields`/`parseWordDoc`）：新增同步字段时只改 `WordData`、`SyncableWordData` 与这个文件，不要在调用方内联字段清单。
 
 ### 必须保持的行为
@@ -53,7 +54,7 @@
 - 派生数据使用 `Words` computed getter；新增写入口必须同步失效 `#masteryCache`。练习数据重置走 `resetPracticeRecords()`，由 store 完成重置、缓存失效并返回待落库清单，不要在调用方原地修改 `WordData` 或手动调用 `invalidateCaches()`。
 - `mergeSnapshotIntoStore` 必须保持增量合并及现有支配判定，不得改成全量替换 store 内容；stale 判定统一使用 `collectStaleQueueItemIds(merged, queue)`，不要混用快照与 `byId` 视图。`attemptHistory` 保留最近 30 条，老数据由 `parseWordDoc` 兜底，正确率回退全量统计。
 - `lastPracticedAt` 使用同步队列条目的真实 `timestamp`，不得改用同步时的 `new Date()`。
-- 分片提交使用 `commitInChunks`（纯执行器），Firestore 写入统一走 `lib/wordsRepo.ts` 的 `commitWordOperations`（按 500 分片、一次调用一个批次序列，保住归一化的原子性）；同步载荷、失败分类、过期队列和队列处置集中在 `lib/wordSync.ts` 的 `runWordSync`，不要内联回 hook。队列超过重试上限必须跨片汇总后只提示一次 `sync.dataLost`，localStorage 写失败回退内存必须提示 `sync.storageFailed`。
+- 分片提交使用 `commitInChunks`（纯执行器，`chunkSize` 取自 `WordsRepo.batchLimit`），Firestore 写入统一走 `lib/wordsRepo.ts` 的 `commitWordOperations`（按 `batchLimit` 分片、一次调用一个批次序列，保住归一化的原子性）；同步载荷、失败分类、过期队列和队列处置集中在 `lib/wordSync.ts` 的 `runWordSync`，由 `WordsLedger.sync()` 调用，不要内联回 hook。队列超过重试上限必须跨片汇总后只提示一次 `sync.dataLost`（ledger 递增 `dataLostCount`，provider 提示），localStorage 写失败回退内存必须提示 `sync.storageFailed`（存储适配器暴露 `usingMemoryFallback`，ledger 置 `storageFailed`）。
 - `normalizeWordForms` 先 `syncToFirestore()` 并按计划落库，Firestore 成功后才更新 store；调整合并或上限语义时同步 `Words.MAX_*`。`updateTranslations` 先即时更新 store，再 batch 写 `translation`，由 `onSnapshot` 幂等合并兜底。
 - 练习页输入判定使用 `lib/practiceInput.ts` 与单个 `inputStatesRef`；`WordRow` 保持独立 observer，父组件渲染路径不读 `words.userInputs`。
 - `PracticeHeatmap` 保持 `memo`、只接收 `practiceTime`，网格构建使用 `useMemo`；纯网格与分档逻辑位于 `lib/practiceTime.ts`。

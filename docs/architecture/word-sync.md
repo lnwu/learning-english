@@ -1,18 +1,18 @@
 # 词库同步与状态管理设计
 
-本文记录 words 数据流的**设计动机与背景**；必须遵守的行为规则在 `apps/web/AGENTS.md`。实现分布：`src/hooks/useWordsSync.ts`（订阅/同步/记分入队）、`src/hooks/useWordActions.ts`（增删改/归一化/重置）、`src/hooks/useFirestoreWords.tsx`（context 组合层，按 effective uid 构造 repo）、`src/lib/{wordsStore,wordSync,syncQueue,wordNormalization,chunkedCommit}.ts`（纯逻辑，均有测试）、`src/lib/wordsRepo.ts`（唯一接触 Firestore SDK 的模块）、`src/lib/firebase.ts`（惰性 app/db/auth）。
+本文记录 words 数据流的**设计动机与背景**；必须遵守的行为规则在 `apps/web/AGENTS.md`。实现分布：`src/lib/wordsLedger.ts`（`WordsLedger`：记分入队、快照合并、过期清理、分片提交、增删改/归一化/重置与状态，不依赖 React）、`src/hooks/useFirestoreWords.tsx`（context 组合层：构造 ledger、订阅状态、接线定时/可见性/online 触发与提示）、`src/lib/{wordsStore,wordSync,wordNormalization,chunkedCommit}.ts`（纯逻辑，均有测试）、`src/lib/queueStorage.ts`（同步队列存储端口与适配器）、`src/lib/wordsRepo.ts`（唯一接触 Firestore SDK 的模块）、`src/lib/firebase.ts`（惰性 app/db/auth）。
 
 ## 数据模型
 
 - `users/{uid}/words/{docId}`：字段 `word`/`translation`/`correctCount`/`totalAttempts`/`inputTimes`/`lastPracticedAt`/`correctPracticeDates`/`attemptHistory`/`createdAt`。文档 id 是 addDoc 自动 id，不是单词本身（归一化重命名时要保留 id 就是为此）。
 - `users/{uid}/practiceTime/{YYYY-MM-DD}`：`{ seconds }`，每天一个文档。
 - preview 环境读写 `users/preview/*`，设计见根 AGENTS.md；规则的字段校验清单见 `infra/AGENTS.md`。
-- 客户端所有 Firestore 读写都经 `lib/wordsRepo.ts`：repo 在构造时捕获 effective uid（preview 环境映射为 `preview`），调用方无法传错 uid；订阅、批量写与 practiceTime 递增都收在这一处，hooks 与页面不再 import `firebase/firestore`。
+- 客户端所有 Firestore 读写都经 `lib/wordsRepo.ts`：repo 在构造时捕获 effective uid（preview 环境映射为 `preview`），调用方无法传错 uid；订阅、批量写与 practiceTime 递增都收在这一处，ledger 与页面不再 import `firebase/firestore`。
 - 文档字段的投影与解析集中在 `lib/wordDoc.ts`：新词文档（`newWordDocFields`）、队列/同步载荷（`practiceFields`）、落库更新（`attemptUpdateFields`）、重置（`resetPracticeFields`）与解析兜底（`parseWordDoc`）都从这里取；新增同步字段时改 `WordData`、`SyncableWordData` 与这个文件即可，不要在调用方内联字段清单。
 
 ## 订阅与快照合并
 
-- `WordsProvider` 登录后只做一次 `onSnapshot`（全集合）：多处订阅会对同一集合重复收快照、重复触发合并。
+- `WordsLedger.start()` 登录后只做一次 `onSnapshot`（全集合）：多处订阅会对同一集合重复收快照、重复触发合并。
 - `mergeSnapshotIntoStore` **增量**合并：只更新有变化的词、只对变化词失效 `#masteryCache`。全量替换会让所有 observer 组件无谓重渲染（WordRow 一行一组件，词库几百条时明显）。
 - 快照合并会叠加本地同步队列的 pending 数据，动机是**防止未同步的练习被旧快照回退**：远端在 `totalAttempts`/`correctCount` 两个维度都不低于本地且至少一个更高（支配本地）时才用远端，否则用本地覆盖。返回值里的 `byId` 是不叠加队列的远端原始数据，供队列 stale 判定使用——两个视图不要合并：stale 判定统一走 `collectStaleQueueItemIds(merged, queue)`，由函数内部取 `byId`，调用方无法传错视图。
 - `Words` 的 `wordData`/`userInputs` 是私有字段（TS `private`，不能是 `#`，否则 MobX 观测不到），对外只暴露只读查询（`wordCount`/`knownWords()`/`hasWord()`/`wordEntries()`/`getWordData()`）与具名命令（`setWordData`/`moveWord`/`setUserInput`/`clearUserInputs`）；练习数据重置在 `resetPracticeRecords()` 内完成并返回待落库清单，缓存失效不再由调用方负责。
@@ -20,16 +20,16 @@
 
 ## 同步队列
 
-- localStorage 按 `sync_queue:{uid}:{wordId}` 每词独立存一条（旧的整体数组格式在 `setUser` 时自动迁移）。动机：多标签页同时练习时，整体数组方案会 read-modify-write 互相覆盖丢条目。
-- `addToQueue` 对同一 wordId 覆盖为最新；但已有条目的 `retryCount` 更高时忽略低计数写入，防止旧标签页把进度回退。
+- localStorage 按 `sync_queue:{uid}:{wordId}` 每词独立存一条（旧的整体数组格式由 `createLocalStorageQueueStorage` 在首次访问时惰性迁移）。动机：多标签页同时练习时，整体数组方案会 read-modify-write 互相覆盖丢条目。
+- 同一 wordId 入队时覆盖为最新；但已有条目的 `totalAttempts` 更高时忽略低计数写入，防止旧标签页把练习进度回退。
 - `lastPracticedAt` 取队列条目的 `timestamp`（真实练习时刻）：同步最快也要等 30s 触发，用同步时刻会系统性偏移最近练习时间。
 - 失败策略：
   - `batch.update` 返回 `not-found` 且词库已加载确认该词不存在 → 直接丢弃队列条目（重试也没用）；
-  - 其他失败 → `incrementRetries`，达到上限丢弃并 toast `sync.dataLost`。**不允许静默丢弃**——用户需要知道数据没同步上。
-  - localStorage 写失败 → 队列回退内存副本并 toast `sync.storageFailed`，此时刷新页面会丢队列，所以必须提示。
-- 触发时机：30s 定时、`visibilitychange`、`online`、手动按钮；`syncingRef` 防并发（这些触发源会重叠）。
-- 批量写入走 `lib/chunkedCommit.ts` 的 `commitInChunks`（纯分片执行器：`commitChunk` 注入，成功/失败逐片回报；不注入失败回调时错误向外抛），Firestore 侧统一由 `lib/wordsRepo.ts` 的 `commitWordOperations` 承担（500/批，一次调用一个批次序列）。同步链路的队列处置在 `lib/wordSync.ts` 的 `runWordSync`：成功即出队、失败分类后分流（词已删则出队、否则加一次重试）、重试超限丢弃，单片失败不阻断后续分片；跨片被丢弃的条目汇总后只提示一次 `sync.dataLost`，hook 只注入 `writeChunk` 与队列端口。
-- 登出重置 store 与队列指针（`removeAllWords` + `setUser(null)`）：localStorage 中按 uid 隔离的队列条目**保留**，同一账号下次登录会继续同步，避免丢未同步的练习；按 uid 隔离 key 防止把旧账号的 wordId 写进新账号路径。
+  - 其他失败 → 对条目加一次重试，达到上限（3）丢弃并提示 `sync.dataLost`（ledger 递增 `dataLostCount`，由 provider 提示一次）。**不允许静默丢弃**——用户需要知道数据没同步上。
+  - localStorage 写失败 → 存储适配器回退内存副本并暴露 `usingMemoryFallback`，ledger 置 `storageFailed` 由 provider 提示 `sync.storageFailed`；此时刷新页面会丢队列，所以必须提示。
+- 触发时机：30s 定时、`visibilitychange`、`online`、手动按钮；`WordsLedger` 内部防并发（这些触发源会重叠），provider 只负责接线与提示。
+- 批量写入走 `lib/chunkedCommit.ts` 的 `commitInChunks`（纯分片执行器：`commitChunk` 注入，成功/失败逐片回报；不注入失败回调时错误向外抛），Firestore 侧统一由 `lib/wordsRepo.ts` 的 `commitWordOperations` 承担（`batchLimit`/批，一次调用一个批次序列）。同步链路的队列处置在 `lib/wordSync.ts` 的 `runWordSync`：成功即出队、失败分类后分流（词已删则出队、否则加一次重试）、重试超限丢弃，单片失败不阻断后续分片；跨片被丢弃的条目汇总后只提示一次 `sync.dataLost`，ledger 只向 `runWordSync` 注入 `writeChunk` 与队列端口。
+- 登出时 `WordsLedger.start()` 在 repo 为空的情况下 `removeAllWords` 并清空输入缓存；localStorage 中按 uid 隔离的队列条目**保留**，同一账号下次登录会继续同步，避免丢未同步的练习；按 uid 隔离 key 防止把旧账号的 wordId 写进新账号路径。
 
 ## 批量写与归一化
 

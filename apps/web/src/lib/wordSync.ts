@@ -1,4 +1,4 @@
-import type { SyncQueueItem } from "@/lib/syncQueue";
+import type { SyncQueueItem } from "@/lib/queueStorage";
 import {
   isQueueItemStale,
   type MergedSnapshotResult,
