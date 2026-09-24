@@ -7,7 +7,7 @@ import { useCallback, useEffect, useMemo, useState, useRef, type FormEvent, type
 import { observer } from "mobx-react-lite";
 import Link from "next/link";
 import { useFirestoreWords, useSyncStatus, useLocale, usePracticeTimeTracker } from "@/hooks";
-import { parseTranslation } from "@/lib/parseTranslation";
+import { decodeSenses } from "@/lib/wordSenses";
 import {
   createPracticeInputState,
   evaluatePracticeInput,
@@ -28,7 +28,7 @@ interface WordRowProps {
 
 const WordRow = observer(({ word, translation, words, onInputChange, onHintReveal, inputRefs, t }: WordRowProps) => {
   const inputValue = words.getUserInput(word);
-  const { senses } = useMemo(() => parseTranslation(translation), [translation]);
+  const senses = useMemo(() => decodeSenses(translation), [translation]);
   const hasSense = senses.some((sense) => sense.chinese);
 
   return (

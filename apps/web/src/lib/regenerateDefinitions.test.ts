@@ -3,7 +3,7 @@ import {
   buildRegenerateMessages,
   parseRegenerateResults,
 } from "./regenerateDefinitions";
-import { MAX_SENSES } from "./senses";
+import { MAX_SENSES } from "./wordSenses";
 
 describe("buildRegenerateMessages", () => {
   it("构造 system 与 user 消息，包含全部单词", () => {

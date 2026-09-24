@@ -5,7 +5,6 @@ import { observer } from "mobx-react-lite";
 import { Button, ConfirmDialog } from "@/components/ui";
 import { useFirestoreWords, useLocale, toast } from "@/hooks";
 import { postJson } from "@/lib/apiClient";
-import { formatSenses } from "@/lib/parseTranslation";
 import {
   MAX_REGENERATE_BATCH_SIZE,
   type RegenerateResult,
@@ -16,6 +15,7 @@ import {
 } from "@/lib/normalizeWords";
 import { resolveRenamePlan } from "@/lib/wordNormalization";
 import { countFailedWords, runBatchedAiTask } from "@/lib/batchAiTask";
+import type { WordSense } from "@/lib/wordSenses";
 
 export const ProfileAiSection = observer(() => {
   const { words, updateTranslations, normalizeWordForms } = useFirestoreWords();
@@ -66,12 +66,12 @@ export const ProfileAiSection = observer(() => {
           continue;
         }
 
-        const updates: Array<{ word: string; translation: string }> = [];
+        const updates: Array<{ word: string; senses: WordSense[] }> = [];
         for (const item of outcome.result.results ?? []) {
           if (item.senses && item.senses.length > 0) {
             updates.push({
               word: item.word,
-              translation: formatSenses(item.senses),
+              senses: item.senses,
             });
             success += 1;
           }

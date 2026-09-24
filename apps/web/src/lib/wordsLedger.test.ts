@@ -8,13 +8,14 @@ import {
   type SyncQueueItem,
 } from "./queueStorage";
 import { formatLocalPracticeDate } from "./practiceDate";
+import type { WordSense } from "./wordSenses";
 import type { WordDocSnapshot, WordOperation, WordsRepo } from "./wordsRepo";
 
 class FakeRepo implements WordsRepo {
   readonly userId = "user-1";
   readonly batchLimit = 500;
   readonly operations: WordOperation[][] = [];
-  readonly added: Array<{ word: string; translation: string }> = [];
+  readonly added: Array<{ word: string; senses: WordSense[] }> = [];
   readonly deleted: string[] = [];
   failure: { code: string } | null = null;
   private handlers: {
@@ -32,8 +33,8 @@ class FakeRepo implements WordsRepo {
     };
   }
 
-  async addWord(word: string, translation: string) {
-    this.added.push({ word, translation });
+  async addWord(word: string, senses: WordSense[]) {
+    this.added.push({ word, senses });
   }
 
   async deleteWord(wordId: string) {
@@ -370,11 +371,20 @@ describe("WordsLedger 词库命令", () => {
     const { repo, words, ledger } = setup();
     repo.emit([makeDoc("apple")]);
 
-    await ledger.updateTranslations([{ word: "apple", translation: "苹果" }]);
+    await ledger.updateTranslations([
+      {
+        word: "apple",
+        senses: [{ pos: "n.", chinese: "苹果", english: "a round fruit" }],
+      },
+    ]);
 
-    expect(words.getTranslation("apple")).toBe("苹果");
+    expect(words.getTranslation("apple")).toBe("n. 苹果 — a round fruit");
     expect(repo.operations[0]).toEqual([
-      { type: "update", wordId: "id-apple", fields: { translation: "苹果" } },
+      {
+        type: "update",
+        wordId: "id-apple",
+        fields: { translation: "n. 苹果 — a round fruit" },
+      },
     ]);
   });
 
@@ -425,7 +435,11 @@ describe("WordsLedger 词库命令", () => {
       queue: createNoopQueueStorage(),
     });
 
-    await expect(ledger.addWord("apple", "苹果")).rejects.toThrow();
+    await expect(
+      ledger.addWord("apple", [
+        { pos: "n.", chinese: "苹果", english: "a round fruit" },
+      ])
+    ).rejects.toThrow();
     await expect(ledger.deleteWord("apple")).rejects.toThrow();
     await expect(ledger.resetPracticeRecords()).rejects.toThrow();
   });

@@ -1,7 +1,6 @@
 import { chatCompletionJson, DeepSeekError, type ChatMessage } from "@/lib/deepseek";
 import { sanitizeLemma } from "@/lib/lemma";
-import { sanitizeWordSenses } from "@/lib/senses";
-import type { WordSense } from "@/lib/parseTranslation";
+import { sanitizeWordSenses, type WordSense } from "@/lib/wordSenses";
 import type { TranslationCacheEntry } from "@/lib/translationCache";
 
 interface WordLookupResult {

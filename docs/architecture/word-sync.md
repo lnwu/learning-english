@@ -8,7 +8,7 @@
 - `users/{uid}/practiceTime/{YYYY-MM-DD}`：`{ seconds }`，每天一个文档。
 - preview 环境读写 `users/preview/*`，设计见根 AGENTS.md；规则的字段校验清单见 `infra/AGENTS.md`。
 - 客户端所有 Firestore 读写都经 `lib/wordsRepo.ts`：repo 在构造时捕获 effective uid（preview 环境映射为 `preview`），调用方无法传错 uid；订阅、批量写与 practiceTime 递增都收在这一处，ledger 与页面不再 import `firebase/firestore`。
-- 文档字段的投影与解析集中在 `lib/wordDoc.ts`：新词文档（`newWordDocFields`）、队列/同步载荷（`practiceFields`）、落库更新（`attemptUpdateFields`）、重置（`resetPracticeFields`）与解析兜底（`parseWordDoc`）都从这里取；新增同步字段时改 `WordData`、`SyncableWordData` 与这个文件即可，不要在调用方内联字段清单。
+- 文档字段的投影与解析集中在 `lib/wordDoc.ts`：新词文档（`newWordDocFields`）、释义落库（`translationFields`）、队列/同步载荷（`practiceFields`）、落库更新（`attemptUpdateFields`）、重置（`resetPracticeFields`）与解析兜底（`parseWordDoc`）都从这里取；新增同步字段时改 `WordData`、`SyncableWordData` 与这个文件即可，不要在调用方内联字段清单。
 
 ## 订阅与快照合并
 
