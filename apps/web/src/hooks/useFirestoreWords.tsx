@@ -21,20 +21,21 @@ import {
 } from "@/lib/queueStorage";
 import { tNow } from "@/lib/i18n";
 import { toast } from "@/hooks/useToast";
+import type { WordSense } from "@/lib/wordSenses";
 
 const words = new Words();
 const SYNC_INTERVAL_MS = 30 * 1000;
 
 interface WordsContextValue {
   words: Words;
-  addWord: (word: string, translation: string) => Promise<void>;
+  addWord: (word: string, senses: WordSense[]) => Promise<void>;
   deleteWord: (word: string) => Promise<void>;
   recordCorrectAttempt: (word: string, inputTimeSeconds?: number) => void;
   recordIncorrectAttempt: (word: string) => void;
   syncToFirestore: () => Promise<void>;
   resetPracticeRecords: () => Promise<void>;
   updateTranslations: (
-    updates: Array<{ word: string; translation: string }>
+    updates: Array<{ word: string; senses: WordSense[] }>
   ) => Promise<void>;
   normalizeWordForms: (
     renames: Array<{ from: string; to: string }>

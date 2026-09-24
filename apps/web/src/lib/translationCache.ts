@@ -1,5 +1,5 @@
 import { getRedis } from "@/lib/redis";
-import type { WordSense } from "@/lib/parseTranslation";
+import type { WordSense } from "@/lib/wordSenses";
 
 export interface TranslationCacheEntry {
   lemma: string;

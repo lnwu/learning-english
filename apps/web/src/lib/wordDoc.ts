@@ -1,10 +1,15 @@
 import type { DocumentData } from "firebase/firestore";
 import { getLocalPracticeDate } from "@/lib/practiceDate";
+import { encodeSenses, type WordSense } from "@/lib/wordSenses";
 import type { SyncableWordData, WordData } from "@/lib/wordsStore";
 
-export const newWordDocFields = (word: string, translation: string) => ({
+export const translationFields = (senses: WordSense[]) => ({
+  translation: encodeSenses(senses),
+});
+
+export const newWordDocFields = (word: string, senses: WordSense[]) => ({
   word,
-  translation,
+  ...translationFields(senses),
   correctCount: 0,
   totalAttempts: 0,
   inputTimes: [],

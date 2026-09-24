@@ -1,6 +1,5 @@
 import type { ChatMessage } from "@/lib/deepseek";
-import { sanitizeWordSenses } from "@/lib/senses";
-import type { WordSense } from "@/lib/parseTranslation";
+import { sanitizeWordSenses, type WordSense } from "@/lib/wordSenses";
 
 export const MAX_REGENERATE_BATCH_SIZE = 50;
 

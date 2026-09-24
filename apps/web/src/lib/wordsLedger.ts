@@ -9,8 +9,10 @@ import {
   attemptUpdateFields,
   practiceFields,
   resetPracticeFields,
+  translationFields,
 } from "@/lib/wordDoc";
 import type { WordsRepo } from "@/lib/wordsRepo";
+import type { WordSense } from "@/lib/wordSenses";
 import type {
   NewQueueItem,
   QueueStorage,
@@ -266,14 +268,14 @@ export class WordsLedger {
     }
   };
 
-  addWord = async (word: string, translation: string): Promise<void> => {
+  addWord = async (word: string, senses: WordSense[]): Promise<void> => {
     const repo = this.#repo;
     if (!repo) {
       throw new Error(tNow("error.notAuthenticated"));
     }
 
     try {
-      await repo.addWord(word, translation);
+      await repo.addWord(word, senses);
     } catch (error) {
       console.error("Failed to add word:", error);
       throw new Error(`${tNow("addWord.addFailed")}${error}`);
@@ -309,7 +311,7 @@ export class WordsLedger {
   };
 
   updateTranslations = async (
-    updates: Array<{ word: string; translation: string }>
+    updates: Array<{ word: string; senses: WordSense[] }>
   ): Promise<void> => {
     const repo = this.#repo;
     if (!repo) {
@@ -319,26 +321,26 @@ export class WordsLedger {
     if (updates.length === 0) return;
 
     const entries = updates
-      .map(({ word, translation }) => {
+      .map(({ word, senses }) => {
         const data = this.#words.getWordData(word);
         const wordId = data?.id;
         if (!data || !wordId) return null;
-        return { word, translation, data, wordId };
+        return { word, senses, data, wordId, fields: translationFields(senses) };
       })
       .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
 
     if (entries.length === 0) return;
 
     try {
-      entries.forEach(({ word, translation, data }) => {
-        this.#words.setWordData(word, { ...data, translation });
+      entries.forEach(({ word, data, fields }) => {
+        this.#words.setWordData(word, { ...data, translation: fields.translation });
       });
 
       await repo.commitWordOperations(
-        entries.map(({ wordId, translation }) => ({
+        entries.map(({ wordId, fields }) => ({
           type: "update" as const,
           wordId,
-          fields: { translation },
+          fields,
         }))
       );
     } catch (error) {

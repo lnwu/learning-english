@@ -5,6 +5,7 @@ import {
   parseWordDoc,
   practiceFields,
   resetPracticeFields,
+  translationFields,
 } from "./wordDoc";
 import type { WordData } from "./wordsStore";
 
@@ -22,12 +23,25 @@ const makeWordData = (overrides: Partial<WordData> = {}): WordData => ({
   ...overrides,
 });
 
+describe("translationFields", () => {
+  it("把结构化义项编码为持久化字符串", () => {
+    expect(
+      translationFields([
+        { pos: "n.", chinese: "苹果", english: "a round fruit" },
+      ])
+    ).toEqual({ translation: "n. 苹果 — a round fruit" });
+    expect(translationFields([])).toEqual({ translation: "" });
+  });
+});
+
 describe("newWordDocFields", () => {
   it("新词文档带零值练习字段与创建时间", () => {
-    const fields = newWordDocFields("apple", "苹果");
+    const fields = newWordDocFields("apple", [
+      { pos: "n.", chinese: "苹果", english: "a round fruit" },
+    ]);
 
     expect(fields.word).toBe("apple");
-    expect(fields.translation).toBe("苹果");
+    expect(fields.translation).toBe("n. 苹果 — a round fruit");
     expect(fields.correctCount).toBe(0);
     expect(fields.totalAttempts).toBe(0);
     expect(fields.inputTimes).toEqual([]);

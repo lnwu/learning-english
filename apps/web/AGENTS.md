@@ -46,7 +46,7 @@
 - `hooks/useFirestoreWords.tsx` 是 context 组合层：构造 ledger、用 `useSyncExternalStore` 订阅其状态、接线 30s 定时 / `visibilitychange` / `online` 触发与 toast，提供 `WordsProvider`、`useFirestoreWords`、`useSyncStatus`、`useWordsRepo`。
 - `lib/queueStorage.ts` 是同步队列的存储端口（`load`/`get`/`save`/`removeByIds`/`clear`）：`createLocalStorageQueueStorage` 按 `sync_queue:{uid}:{wordId}` 每词一条并惰性迁移旧格式，`createMemoryQueueStorage` 供测试，`createNoopQueueStorage` 供未登录。去重、重试上限与过期判定属于 ledger 的策略，不要下沉进存储适配器。
 - 纯逻辑位于 `lib/wordsStore.ts`、`lib/wordSync.ts`、`lib/wordNormalization.ts`、`lib/chunkedCommit.ts` 并配有测试；`lib/wordsRepo.ts` 是唯一接触 Firestore SDK 的模块（订阅、批量写、practiceTime），按 effective uid 构造并通过 `batchLimit` 暴露单次批量上限，`lib/firebase.ts` 惰性创建 app/db/auth（`getDb()`/`getAuthInstance()`）。动机与细节见 `docs/architecture/word-sync.md`。
-- 单词文档的字段投影与解析集中在 `lib/wordDoc.ts`（`newWordDocFields`/`practiceFields`/`attemptUpdateFields`/`resetPracticeFields`/`parseWordDoc`）：新增同步字段时只改 `WordData`、`SyncableWordData` 与这个文件，不要在调用方内联字段清单。
+- 单词文档的字段投影与解析集中在 `lib/wordDoc.ts`（`translationFields`/`newWordDocFields`/`practiceFields`/`attemptUpdateFields`/`resetPracticeFields`/`parseWordDoc`）：新增同步字段时只改 `WordData`、`SyncableWordData` 与这个文件，不要在调用方内联字段清单。`translation` 的字符串形态由 `lib/wordSenses.ts` 的 `encodeSenses`/`decodeSenses` 负责，写路径经 `translationFields` 编码，调用方只传结构化 `WordSense[]`。
 
 ### 必须保持的行为
 
@@ -85,7 +85,7 @@
 - 路由骨架统一 `withApiPost`；translate 的 prompt 与解析在 `lib/wordLookup.ts`，造句生成/批改的 prompt 与解析在 `lib/sentenceMessages.ts`（批改响应会夹取 `score`、截断超长字段、过滤 `issues`），路由只做取参与返回。
 - 造句抽词策略（练习次数达标的词优先、少练的补位、数量在 2-3 之间随机）在 `lib/sentenceWords.ts`（纯函数 + 测试）；单词数下限统一用 `MIN_SENTENCE_WORDS`，不足时 hook 置 `insufficientWords` 布尔状态（不要再用字符串哨兵），错误文案走 `tNow`。
 - 限流与缓存的 Redis 客户端统一使用 `lib/redis.ts` 的 `getRedis()`；未配置 Upstash 时仅在本地开发回退进程内实现。
-- 义项清洗统一使用 `lib/senses.ts` 的 `sanitizeWordSenses`，由翻译与重新生成释义接口共用。
+- 义项清洗统一使用 `lib/wordSenses.ts` 的 `sanitizeWordSenses`，由翻译与重新生成释义接口共用；`WordSense` 类型、编码（`encodeSenses`）与解析（`decodeSenses`，含旧格式兼容）也都在这个文件。
 - 批改前使用 `lib/sentenceCompare.ts` 的 `normalizeForComparison` 判等，完全一致时直接满分；`resolveUsedWords` 与 `sanitizeUsedWords` 也在该文件维护，不在路由内重复实现。
 - 造句复用词库与 `recordCorrect` / `recordIncorrectAttempt` 计分；答案输入使用 `Textarea`，Enter 提交、Shift+Enter 换行，`onKeyDown` 必须检查 `isComposing`。
 - 纯函数测试使用 `bun:test`。熟练度、翻译解析、句意判定、日期、同步合并等核心算法修改时同步补测试；统一验证入口为仓库根目录 `bun run test`。

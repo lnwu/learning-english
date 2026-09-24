@@ -11,7 +11,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { useFirestoreWords, useLocale, toast } from "@/hooks";
 import { postJson } from "@/lib/apiClient";
-import { formatSenses, type WordSense } from "@/lib/parseTranslation";
+import { encodeSenses, type WordSense } from "@/lib/wordSenses";
 
 interface AddWordDialogProps {
   word: string | null;
@@ -115,7 +115,7 @@ const AddWordDialog = ({ word, onClose, onFinished }: AddWordDialogProps) => {
 
     setConfirming(true);
     try {
-      await addWord(finalWord, formatSenses(senses));
+      await addWord(finalWord, senses);
       toast({ title: tRef.current("addWord.addSuccess"), variant: "success" });
       onFinishedRef.current?.();
     } catch (error) {
@@ -173,7 +173,7 @@ const AddWordDialog = ({ word, onClose, onFinished }: AddWordDialogProps) => {
                 {t("addWord.confirmSenses")}
               </div>
               <div className="text-sm text-muted-foreground whitespace-pre-line">
-                {formatSenses(senses)}
+                {encodeSenses(senses)}
               </div>
             </div>
             {isNormalized && word && lemma && (
