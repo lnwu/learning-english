@@ -2,8 +2,7 @@
 
 import { useEffect } from "react";
 import { useWordsRepo } from "@/hooks/useFirestoreWords";
-import { formatLocalPracticeDate } from "@/lib/practiceDate";
-import { ActiveTimeTracker } from "@/lib/practiceTime";
+import { PracticeTimeRecorder } from "@/lib/practiceTime";
 
 const FLUSH_INTERVAL_MS = 60_000;
 
@@ -13,27 +12,18 @@ export const usePracticeTimeTracker = () => {
   useEffect(() => {
     if (!repo) return;
 
-    const tracker = new ActiveTimeTracker();
-    let pendingSeconds = 0;
+    const recorder = new PracticeTimeRecorder({
+      writeSeconds: (dateId, seconds) => repo.addPracticeTime(dateId, seconds),
+    });
 
     const updateActive = () => {
-      tracker.setActive(
+      recorder.setActive(
         document.visibilityState === "visible" && document.hasFocus()
       );
     };
 
-    const flush = async () => {
-      pendingSeconds += tracker.takePendingMs() / 1000;
-      const wholeSeconds = Math.floor(pendingSeconds);
-      if (wholeSeconds <= 0) return;
-      pendingSeconds -= wholeSeconds;
-      const dateId = formatLocalPracticeDate(new Date());
-      try {
-        await repo.addPracticeTime(dateId, wholeSeconds);
-      } catch (err) {
-        console.error("Failed to record practice time:", err);
-        pendingSeconds += wholeSeconds;
-      }
+    const flush = () => {
+      void recorder.flush();
     };
 
     const handleVisibilityChange = () => {

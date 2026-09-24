@@ -1,32 +1,60 @@
 import type { Locale } from "./i18n";
 import { formatLocalPracticeDate } from "./practiceDate";
 
-export class ActiveTimeTracker {
-  private active = false;
-  private activeSince: number | null = null;
-  private pendingMs = 0;
+export interface PracticeTimeRecorderDeps {
+  writeSeconds: (dateId: string, seconds: number) => Promise<void>;
+  now?: () => number;
+}
 
-  constructor(private readonly now: () => number = () => Date.now()) {}
+export class PracticeTimeRecorder {
+  #active = false;
+  #activeSince: number | null = null;
+  #pendingMs = 0;
+  #carrySeconds = 0;
+  #now: () => number;
+  #writeSeconds: (dateId: string, seconds: number) => Promise<void>;
+
+  constructor(deps: PracticeTimeRecorderDeps) {
+    this.#now = deps.now ?? (() => Date.now());
+    this.#writeSeconds = deps.writeSeconds;
+  }
 
   setActive(active: boolean) {
-    if (active === this.active) return;
-    this.active = active;
+    if (active === this.#active) return;
+    this.#active = active;
     if (active) {
-      this.activeSince = this.now();
-    } else if (this.activeSince !== null) {
-      this.pendingMs += this.now() - this.activeSince;
-      this.activeSince = null;
+      this.#activeSince = this.#now();
+    } else if (this.#activeSince !== null) {
+      this.#pendingMs += this.#now() - this.#activeSince;
+      this.#activeSince = null;
     }
   }
 
-  takePendingMs(): number {
-    let total = this.pendingMs;
-    if (this.active && this.activeSince !== null) {
-      total += this.now() - this.activeSince;
-      this.activeSince = this.now();
+  #takePendingMs(): number {
+    let total = this.#pendingMs;
+    if (this.#active && this.#activeSince !== null) {
+      total += this.#now() - this.#activeSince;
+      this.#activeSince = this.#now();
     }
-    this.pendingMs = 0;
+    this.#pendingMs = 0;
     return total;
+  }
+
+  async flush(): Promise<void> {
+    const deltaSeconds = this.#takePendingMs() / 1000;
+    if (deltaSeconds > 0) this.#carrySeconds += deltaSeconds;
+
+    const wholeSeconds = Math.floor(this.#carrySeconds);
+    if (wholeSeconds <= 0) return;
+    this.#carrySeconds -= wholeSeconds;
+
+    const dateId = formatLocalPracticeDate(new Date(this.#now()));
+    try {
+      await this.#writeSeconds(dateId, wholeSeconds);
+    } catch (error) {
+      console.error("Failed to record practice time:", error);
+      this.#carrySeconds += wholeSeconds;
+    }
   }
 }
 
