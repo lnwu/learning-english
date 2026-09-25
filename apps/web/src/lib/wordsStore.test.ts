@@ -152,6 +152,39 @@ describe("Words store", () => {
     expect(store.overallAverageInputTime).toBe(3);
   });
 
+  it("速度分使用同长度档的个人打字基线", () => {
+    const timed = (
+      word: string,
+      correct: number,
+      total: number,
+      times: number[],
+      history: boolean[]
+    ) =>
+      makeWordData({
+        word,
+        id: `id-${word}`,
+        correctCount: correct,
+        totalAttempts: total,
+        inputTimes: times,
+        attemptHistory: history,
+        correctPracticeDates: ["2026-08-12", "2026-08-13", "2026-08-14"],
+      });
+
+    store.removeAllWords();
+    for (const word of ["grape", "lemon", "peach", "berry"]) {
+      store.setWordData(
+        word,
+        timed(word, 5, 5, [4, 4, 4, 4, 4], Array(5).fill(true))
+      );
+    }
+    store.setWordData(
+      "apple",
+      timed("apple", 7, 8, [4, 4, 4, 4, 4], [...Array(7).fill(true), false])
+    );
+
+    expect(store.getMasteryScore("apple")).toBeGreaterThanOrEqual(80);
+  });
+
   it("averageTimeByLengthCategory 按单词长度分组", () => {
     store.setWordData(
       "pronunciation",
