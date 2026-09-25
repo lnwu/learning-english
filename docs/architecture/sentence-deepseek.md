@@ -1,12 +1,12 @@
 # 造句练习与 DeepSeek 集成设计
 
-本文记录造句/翻译链路的**设计动机**；必须遵守的规则在 `apps/web/AGENTS.md`。实现：`src/app/api/*`（Route Handler）、`src/lib/{apiRoute,deepseek,serverAuth,rateLimit,translationCache,sentenceCompare,wordSenses,lemma,wordLookup,sentenceMessages}.ts`、`src/hooks/useSentencePractice.ts`。
+本文记录造句/翻译链路的**设计动机**；必须遵守的规则在 `apps/web/AGENTS.md`。实现：`src/app/api/*`（Route Handler）、`src/lib/{apiRoute,apiInput,deepseek,serverAuth,rateLimit,translationCache,sentenceCompare,wordSenses,lemma,wordLookup,sentenceMessages}.ts`、`src/hooks/useSentencePractice.ts`。
 
 ## 架构
 
 - 浏览器只请求本站 `/api/*`，服务端代理调用 DeepSeek。原因：API Key 只能留在服务端；同时便于在服务端加鉴权、限流、缓存三道闸。
 - `postJson<T>`（`lib/apiClient.ts`）统一负责取 ID token 与错误解析，避免每个调用点手写 token + fetch。
-- 路由骨架统一走 `withApiPost`（`lib/apiRoute.ts`）：`serverAuth` → `checkRateLimit` → JSON 解析 → `handle` → DeepSeek 错误映射与兜底文案；各路由只提供 `parse`（输入校验）与 `handle`（调模型、返回响应），限额集中在 `API_RATE_LIMITS`（默认窗口 60s）。
+- 路由骨架统一走 `withApiPost`（`lib/apiRoute.ts`）：`serverAuth` → `checkRateLimit` → JSON 解析 → `handle` → DeepSeek 错误映射与兜底文案；输入形状与上限由 `lib/apiInput.ts` 的 `parseBody` + 字段解析器声明式描述（超长/缺失/非法统一生成 400 文案），各路由只提供声明式 `parse`（输入校验）与 `handle`（调模型、返回响应），限额集中在 `API_RATE_LIMITS`（默认窗口 60s）。
 
 ## 鉴权与限流
 

@@ -1,31 +1,20 @@
 import { NextResponse } from "next/server";
 import { API_RATE_LIMITS, withApiPost } from "@/lib/apiRoute";
-import { isValidWordToken } from "@/lib/lemma";
+import { parseBody, wordToken } from "@/lib/apiInput";
 import {
   getCachedTranslation,
   setCachedTranslation,
 } from "@/lib/translationCache";
 import { lookupWord } from "@/lib/wordLookup";
 
+const parse = parseBody<{ word: string }>({ word: wordToken() });
+
 export async function POST(request: Request) {
   return withApiPost(
     request,
     { ...API_RATE_LIMITS.translate, fallbackError: "翻译失败，请稍后重试" },
-    (raw) => {
-      const body = (raw ?? {}) as { word?: unknown };
-      const word =
-        typeof body.word === "string" ? body.word.trim().toLowerCase() : "";
-
-      if (!isValidWordToken(word)) {
-        return {
-          ok: false,
-          response: NextResponse.json({ error: "无效单词" }, { status: 400 }),
-        };
-      }
-
-      return { ok: true, body: word };
-    },
-    async (word) => {
+    parse,
+    async ({ word }) => {
       const cached = await getCachedTranslation(word);
       if (cached) {
         return NextResponse.json(cached);
