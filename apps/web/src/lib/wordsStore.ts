@@ -209,7 +209,8 @@ export class Words {
       priority = calculatePriority(
         masteryScore,
         data.lastPracticedAt,
-        data.totalAttempts
+        data.totalAttempts,
+        data.attemptHistory
       );
       this.#priorityCache.set(word, priority);
     }

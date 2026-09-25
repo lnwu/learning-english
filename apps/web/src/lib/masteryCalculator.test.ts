@@ -268,4 +268,22 @@ describe("calculatePriority", () => {
     const practiced = calculatePriority(0, at(1), 3);
     expect(never).toBeGreaterThan(practiced);
   });
+
+  it("最近一次尝试错误时失败倍率为 3 倍", () => {
+    const failed = calculatePriority(50, at(0.5), 5, [true, true, false]);
+    expect(failed).toBeCloseTo(50 * 0.3 * 1.5 * 3.0, 10);
+  });
+
+  it("最近一次尝试正确或历史为空时失败倍率为 1", () => {
+    const correct = calculatePriority(50, at(0.5), 5, [false, false, true]);
+    const empty = calculatePriority(50, at(0.5), 5);
+    expect(correct).toBeCloseTo(50 * 0.3 * 1.5 * 1.0, 10);
+    expect(empty).toBe(correct);
+  });
+
+  it("答错后的优先级不低于答错前", () => {
+    const before = calculatePriority(60, at(1), 3, [true, true]);
+    const after = calculatePriority(55, at(0.1), 4, [true, true, false]);
+    expect(after).toBeGreaterThan(before);
+  });
 });
