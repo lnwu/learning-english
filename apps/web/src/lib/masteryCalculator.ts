@@ -42,6 +42,7 @@ const ACCURACY_WEIGHT = 0.5;
 const SPEED_WEIGHT = 0.15;
 const CONSISTENCY_WEIGHT = 0.2;
 const REVIEW_WEIGHT = 0.15;
+const RECENT_FAILURE_MULTIPLIER = 3.0;
 
 export function getExpectedInputTime(wordLength: number): number {
   if (wordLength <= 3) {
@@ -179,7 +180,8 @@ export function calculateMasteryScore(metrics: WordMetrics): MasteryResult {
 export function calculatePriority(
   masteryScore: number,
   lastPracticedAt: Date | null,
-  totalAttempts: number
+  totalAttempts: number,
+  attemptHistory: readonly boolean[] = []
 ): number {
   const daysSince = lastPracticedAt
     ? (Date.now() - lastPracticedAt.getTime()) / (1000 * 60 * 60 * 24)
@@ -202,5 +204,9 @@ export function calculatePriority(
 
   const basePriority = Math.max(10, 100 - masteryScore);
 
-  return basePriority * recencyMultiplier * practiceMultiplier;
+  const lastAttemptFailed =
+    attemptHistory.length > 0 && !attemptHistory[attemptHistory.length - 1];
+  const failureMultiplier = lastAttemptFailed ? RECENT_FAILURE_MULTIPLIER : 1.0;
+
+  return basePriority * recencyMultiplier * practiceMultiplier * failureMultiplier;
 }
