@@ -80,6 +80,45 @@ describe("calculateMasteryScore", () => {
     expect(result.level).not.toBe("proficient");
   });
 
+  it("早期错误被近期窗口洗掉后不再压低等级", () => {
+    const result = calculateMasteryScore({
+      ...baseWord,
+      correctCount: 40,
+      totalAttempts: 80,
+      inputTimes: [1, 1, 1, 1, 1],
+      attemptHistory: Array(30).fill(true),
+      correctPracticeDates: ["2026-08-12", "2026-08-13", "2026-08-14"],
+    });
+    expect(result.score).toBeGreaterThanOrEqual(80);
+    expect(result.level).toBe("mastered");
+  });
+
+  it("近期窗口正确率崩塌时等级门槛向下生效", () => {
+    const result = calculateMasteryScore({
+      ...baseWord,
+      correctCount: 90,
+      totalAttempts: 100,
+      inputTimes: [2, 2, 2, 2, 2],
+      attemptHistory: [...Array(15).fill(true), ...Array(15).fill(false)],
+      correctPracticeDates: ["2026-08-12", "2026-08-13", "2026-08-14"],
+    });
+    expect(result.score).toBeLessThanOrEqual(59);
+    expect(result.level).toBe("familiar");
+  });
+
+  it("历史不足 3 条时等级门槛回退全量正确率", () => {
+    const result = calculateMasteryScore({
+      ...baseWord,
+      correctCount: 4,
+      totalAttempts: 10,
+      inputTimes: [2, 2, 2, 2],
+      attemptHistory: [true, true],
+      correctPracticeDates: ["2026-08-12", "2026-08-13", "2026-08-14"],
+    });
+    expect(result.score).toBeLessThanOrEqual(39);
+    expect(result.level).toBe("learning");
+  });
+
   it("8 次全对且复习 3 天达到已掌握", () => {
     const result = calculateMasteryScore({
       ...baseWord,
