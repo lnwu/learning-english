@@ -30,8 +30,9 @@ const pickWeightedRandom = <T extends { weight: number }>(
   const available = [...candidates];
   const selected: T[] = [];
   let totalWeight = available.reduce((sum, item) => sum + item.weight, 0);
+  const limit = Math.min(max, available.length);
 
-  for (let i = 0; i < Math.min(max, available.length); i++) {
+  for (let i = 0; i < limit; i++) {
     let random = rng() * totalWeight;
     let selectedIndex = available.length - 1;
 

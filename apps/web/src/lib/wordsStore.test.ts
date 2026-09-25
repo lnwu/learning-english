@@ -113,15 +113,71 @@ describe("Words store", () => {
   });
 
   it("getRandomWords 不重复且不超过上限", () => {
-    for (let i = 0; i < 10; i++) {
+    store.removeAllWords();
+    for (let i = 0; i < 7; i++) {
       store.setWordData(
         `word${i}`,
-        makeWordData({ word: `word${i}`, translation: `译${i}`, id: `id-${i}` })
+        makeWordData({
+          word: `word${i}`,
+          translation: `译${i}`,
+          id: `id-${i}`,
+          totalAttempts: 1,
+        })
       );
     }
     const selected = store.getRandomWords(5);
     expect(selected).toHaveLength(5);
     expect(new Set(selected.map(([word]) => word)).size).toBe(5);
+  });
+
+  it("getRandomWords 每轮新词数量受配额限制", () => {
+    store.removeAllWords();
+    for (let i = 0; i < 10; i++) {
+      store.setWordData(
+        `new${i}`,
+        makeWordData({ word: `new${i}`, id: `id-new${i}` })
+      );
+    }
+    for (let i = 0; i < 10; i++) {
+      store.setWordData(
+        `old${i}`,
+        makeWordData({
+          word: `old${i}`,
+          id: `id-old${i}`,
+          totalAttempts: 5,
+        })
+      );
+    }
+
+    const selected = store.getRandomWords(5);
+    expect(selected).toHaveLength(5);
+    expect(
+      selected.filter(([word]) => word.startsWith("new")).length
+    ).toBe(Words.MAX_NEW_WORDS_PER_ROUND);
+  });
+
+  it("getRandomWords 只有新词时仍能抽满一轮", () => {
+    store.removeAllWords();
+    for (let i = 0; i < 6; i++) {
+      store.setWordData(
+        `new${i}`,
+        makeWordData({ word: `new${i}`, id: `id-new${i}` })
+      );
+    }
+    expect(store.getRandomWords(5)).toHaveLength(5);
+  });
+
+  it("getRandomWords 复习词不足时用新词补位", () => {
+    store.removeAllWords();
+    store.setWordData("old1", makeWordData({ word: "old1", totalAttempts: 3 }));
+    store.setWordData("new1", makeWordData({ word: "new1", id: "id-new1" }));
+    store.setWordData("new2", makeWordData({ word: "new2", id: "id-new2" }));
+
+    const selected = store.getRandomWords(5);
+    expect(selected).toHaveLength(3);
+    expect(
+      selected.filter(([word]) => word.startsWith("old")).length
+    ).toBe(1);
   });
 
   it("getRandomWords 词数不足时返回全部", () => {

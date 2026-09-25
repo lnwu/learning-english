@@ -29,8 +29,9 @@ const pickWeightedRandom = <T extends { priority: number }>(
   const available = [...candidates];
   const selected: T[] = [];
   let totalPriority = available.reduce((sum, item) => sum + item.priority, 0);
+  const limit = Math.min(max, available.length);
 
-  for (let i = 0; i < Math.min(max, available.length); i++) {
+  for (let i = 0; i < limit; i++) {
     let random = Math.random() * totalPriority;
     let selectedIndex = 0;
 
@@ -75,6 +76,7 @@ export interface PracticeStat {
 
 export class Words {
   static MAX_RANDOM_WORDS = 5;
+  static MAX_NEW_WORDS_PER_ROUND = 2;
   static MAX_INPUT_TIMES = 20;
   static MAX_CORRECT_PRACTICE_DATES = 30;
   static MAX_ATTEMPT_HISTORY = 30;
@@ -305,10 +307,25 @@ export class Words {
         word,
         translation: data.translation,
         priority: this.#getPriority(word, data),
+        isNew: data.totalAttempts === 0,
       })
     );
 
-    return pickWeightedRandom(candidates, max).map(
+    const newCandidates = candidates.filter((item) => item.isNew);
+    const reviewCandidates = candidates.filter((item) => !item.isNew);
+    const newReserve = Math.min(
+      newCandidates.length,
+      Math.floor(max / 2),
+      Words.MAX_NEW_WORDS_PER_ROUND
+    );
+
+    const reviewSelected = pickWeightedRandom(reviewCandidates, max - newReserve);
+    const newSelected = pickWeightedRandom(
+      newCandidates,
+      max - reviewSelected.length
+    );
+
+    return [...newSelected, ...reviewSelected].map(
       ({ word, translation }): [string, string] => [word, translation]
     );
   }

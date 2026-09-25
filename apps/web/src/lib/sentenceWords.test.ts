@@ -88,6 +88,19 @@ describe("pickSentenceWords", () => {
     expect(picked).toHaveLength(2);
   });
 
+  it("达标词数量与请求数量相等时全部返回", () => {
+    const picked = pickSentenceWords(
+      entries([
+        ["a", 3],
+        ["b", 4],
+        ["c", 5],
+      ]),
+      { count: 3, rng: () => 0.5 }
+    );
+
+    expect(picked.sort()).toEqual(["a", "b", "c"]);
+  });
+
   it("空词库或非法数量返回空数组", () => {
     expect(pickSentenceWords([], { count: 3, rng: () => 0.5 })).toEqual([]);
     expect(pickSentenceWords(entries([["a", 1]]), { count: 0, rng: () => 0.5 })).toEqual([]);
