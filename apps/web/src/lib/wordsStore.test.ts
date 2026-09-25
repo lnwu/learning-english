@@ -241,7 +241,6 @@ describe("Words store", () => {
     store.getRandomWords(1);
 
     const appleStale = weight("apple");
-    const grapeBefore = weight("grape");
     store.setWordData("grape", data("grape", 4, [8, 8, 8, 8, 8]));
 
     const appleFresh = weight("apple");
@@ -257,21 +256,25 @@ describe("Words store", () => {
     expect(picked[0][0]).toBe("grape");
   });
 
-  it("averageTimeByLengthCategory 按单词长度分组", () => {
-    store.setWordData(
-      "pronunciation",
+  it("inputTimeBaselineByLengthCategory 每档样本 ≥5 时返回中位数", () => {
+    const timed = (word: string, times: number[]) =>
       makeWordData({
-        word: "pronunciation",
-        translation: "发音",
-        id: "id-pronunciation",
-      })
-    );
-    store.recordCorrectAttempt("apple", 2);
-    store.recordCorrectAttempt("pronunciation", 6);
-    const [short, mid, long] = store.averageTimeByLengthCategory;
-    expect(short).toBe(2);
+        word,
+        id: `id-${word}`,
+        correctCount: times.length,
+        totalAttempts: times.length,
+        inputTimes: times,
+        attemptHistory: times.map(() => true),
+      });
+
+    store.removeAllWords();
+    store.setWordData("apple", timed("apple", [2, 2, 3, 10, 4]));
+    store.setWordData("pronunciation", timed("pronunciation", [6, 6, 6, 6]));
+
+    const [short, mid, long] = store.inputTimeBaselineByLengthCategory;
+    expect(short).toBe(3);
     expect(mid).toBeNull();
-    expect(long).toBe(6);
+    expect(long).toBeNull();
   });
 });
 

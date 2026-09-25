@@ -271,19 +271,8 @@ export class Words {
     return 2;
   }
 
-  get averageTimeByLengthCategory(): (number | null)[] {
-    const categoryTimes: number[][] = Array.from(
-      { length: WORD_LENGTH_CATEGORY_COUNT },
-      () => []
-    );
-
-    this.wordData.forEach((data, word) => {
-      categoryTimes[this.getWordLengthCategory(word)].push(...data.inputTimes);
-    });
-
-    return categoryTimes.map((times) =>
-      times.length === 0 ? null : average(times)
-    );
+  get inputTimeBaselineByLengthCategory(): (number | null)[] {
+    return [...this.#getBaselineByLengthCategory()];
   }
 
   getWordData(word: string): Readonly<WordData> | undefined {
