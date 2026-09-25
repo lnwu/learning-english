@@ -140,7 +140,7 @@ describe("calculateMasteryScore", () => {
       totalAttempts: 100,
       inputTimes: [2, 2, 2, 2, 2],
       attemptHistory: [true, true, true, true, false],
-      correctPracticeDates: ["2026-08-12", "2026-08-13", "2026-08-14"],
+      correctPracticeDates: ["2026-08-08", "2026-08-12", "2026-08-17"],
     });
     expect(result.score).toBeGreaterThanOrEqual(80);
     expect(result.level).toBe("mastered");
@@ -208,6 +208,44 @@ describe("calculateMasteryScore", () => {
       correctPracticeDates: ["2026-08-14", "2026-08-14", "2026-08-14"],
     });
     expect(result.reviewScore).toBeLessThanOrEqual(33);
+  });
+
+  it("间隔复习比连天突击获得更高跨天复习分", () => {
+    const cramped = calculateMasteryScore({
+      ...baseWord,
+      correctCount: 8,
+      totalAttempts: 8,
+      inputTimes: [2, 2, 2, 2, 2, 2, 2, 2],
+      correctPracticeDates: ["2026-08-12", "2026-08-13", "2026-08-14"],
+    });
+    const spaced = calculateMasteryScore({
+      ...baseWord,
+      correctCount: 8,
+      totalAttempts: 8,
+      inputTimes: [2, 2, 2, 2, 2, 2, 2, 2],
+      correctPracticeDates: ["2026-08-01", "2026-08-06", "2026-08-13"],
+    });
+    expect(cramped.reviewScore).toBe(67);
+    expect(spaced.reviewScore).toBe(100);
+  });
+
+  it("间隔过大时复习权重不再提高", () => {
+    const spaced = calculateMasteryScore({
+      ...baseWord,
+      correctCount: 8,
+      totalAttempts: 8,
+      inputTimes: [2, 2, 2, 2, 2, 2, 2, 2],
+      correctPracticeDates: ["2026-08-01", "2026-08-06", "2026-08-13"],
+    });
+    const tooSpaced = calculateMasteryScore({
+      ...baseWord,
+      correctCount: 8,
+      totalAttempts: 8,
+      inputTimes: [2, 2, 2, 2, 2, 2, 2, 2],
+      correctPracticeDates: ["2026-05-01", "2026-05-06", "2026-05-13"],
+    });
+    expect(tooSpaced.reviewScore).toBe(100);
+    expect(spaced.reviewScore).toBeGreaterThanOrEqual(tooSpaced.reviewScore);
   });
 
   it("分数始终限制在 0-100", () => {
