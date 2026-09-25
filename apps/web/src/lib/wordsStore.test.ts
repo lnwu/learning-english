@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, spyOn } from "bun:test";
+import { describe, it, expect, beforeEach, spyOn, setSystemTime } from "bun:test";
 import {
   Words,
   isWordDataEqual,
@@ -332,6 +332,33 @@ describe("Words store", () => {
     expect(short).toBe(3);
     expect(mid).toBeNull();
     expect(long).toBeNull();
+  });
+
+  it("同一会话内抽词优先级随时间推进刷新", () => {
+    const now = new Date("2026-08-20T12:00:00");
+    setSystemTime(now);
+    try {
+      store.removeAllWords();
+      store.setWordData(
+        "apple",
+        makeWordData({
+          word: "apple",
+          correctCount: 5,
+          totalAttempts: 5,
+          attemptHistory: [true, true, true, true, false],
+          correctPracticeDates: [],
+          lastPracticedAt: now,
+        })
+      );
+
+      const before = store.getWordPriority("apple");
+      setSystemTime(new Date("2026-08-24T12:00:00"));
+      const after = store.getWordPriority("apple");
+
+      expect(after).toBeGreaterThan(before);
+    } finally {
+      setSystemTime();
+    }
   });
 });
 
