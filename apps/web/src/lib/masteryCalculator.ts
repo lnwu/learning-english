@@ -9,6 +9,7 @@ export interface WordMetrics {
   lastPracticedAt: Date | null;
   correctPracticeDates?: string[];
   attemptHistory?: boolean[];
+  baselineInputTime?: number | null;
 }
 
 export interface MasteryResult {
@@ -38,6 +39,7 @@ const SPEED_SAMPLE_SIZE = 5;
 const CONSISTENCY_SAMPLE_SIZE = 10;
 const MIN_CONSISTENCY_SAMPLES = 3;
 const SPEED_ANOMALY_FACTOR = 5;
+const MIN_BASELINE_SAMPLES = 5;
 const REVIEW_DAY_SCORE_MULTIPLIER = 100 / MIN_REVIEW_DAYS_FOR_MASTERED;
 const ACCURACY_WEIGHT = 0.5;
 const SPEED_WEIGHT = 0.15;
@@ -57,13 +59,17 @@ export function getExpectedInputTime(wordLength: number): number {
   }
 }
 
-function getMedian(values: number[]): number {
+function getMedian(values: readonly number[]): number {
   const sorted = [...values].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
   if (sorted.length % 2 === 0) {
     return (sorted[mid - 1] + sorted[mid]) / 2;
   }
   return sorted[mid];
+}
+
+export function computeBaselineInputTime(times: readonly number[]): number | null {
+  return times.length >= MIN_BASELINE_SAMPLES ? getMedian(times) : null;
 }
 
 export function calculateMasteryScore(metrics: WordMetrics): MasteryResult {
@@ -74,6 +80,7 @@ export function calculateMasteryScore(metrics: WordMetrics): MasteryResult {
     inputTimes,
     correctPracticeDates = [],
     attemptHistory = [],
+    baselineInputTime = null,
   } = metrics;
 
   if (totalAttempts === 0) {
@@ -105,7 +112,10 @@ export function calculateMasteryScore(metrics: WordMetrics): MasteryResult {
       lifetimeAccuracy * (1 - RECENT_ACCURACY_WEIGHT);
   }
 
-  const expectedTime = getExpectedInputTime(word.length);
+  const expectedTime =
+    baselineInputTime && baselineInputTime > 0
+      ? baselineInputTime
+      : getExpectedInputTime(word.length);
   const speedSamples = inputTimes
     .slice(-SPEED_SAMPLE_SIZE)
     .filter((t) => t <= expectedTime * SPEED_ANOMALY_FACTOR);

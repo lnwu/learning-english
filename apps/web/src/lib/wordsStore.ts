@@ -3,6 +3,7 @@ import type { DocumentData } from "firebase/firestore";
 import {
   calculateMasteryScore,
   calculatePriority,
+  computeBaselineInputTime,
   type MasteryResult,
 } from "@/lib/masteryCalculator";
 import { getMasteryLevelIndex } from "@/lib/masteryLevels";
@@ -81,7 +82,11 @@ export class Words {
   private wordData: Map<string, WordData> = new Map();
   private userInputs: Map<string, string> = new Map();
   #priorityCache = new Map<string, number>();
-  #masteryCache = new Map<string, MasteryResult>();
+  #masteryCache = new Map<
+    string,
+    { result: MasteryResult; baseline: number | null }
+  >();
+  #baselineByLengthCategory: (number | null)[] | null = null;
 
   constructor() {
     makeAutoObservable(this);
@@ -90,6 +95,7 @@ export class Words {
   private invalidateCaches() {
     this.#priorityCache.clear();
     this.#masteryCache.clear();
+    this.#baselineByLengthCategory = null;
   }
 
   #invalidateWordCaches(...words: string[]) {
@@ -97,6 +103,7 @@ export class Words {
       this.#priorityCache.delete(word);
       this.#masteryCache.delete(word);
     }
+    this.#baselineByLengthCategory = null;
   }
 
   setWordData(word: string, data: WordData) {
@@ -193,12 +200,30 @@ export class Words {
     this.#recordAttempt(word, false);
   }
 
-  #getMastery(word: string, data: WordData): MasteryResult {
-    let result = this.#masteryCache.get(word);
-    if (!result) {
-      result = calculateMasteryScore(data);
-      this.#masteryCache.set(word, result);
+  #getBaselineByLengthCategory(): (number | null)[] {
+    if (!this.#baselineByLengthCategory) {
+      const categoryTimes: number[][] = Array.from(
+        { length: WORD_LENGTH_CATEGORY_COUNT },
+        () => []
+      );
+      this.wordData.forEach((data, word) => {
+        categoryTimes[this.getWordLengthCategory(word)].push(...data.inputTimes);
+      });
+      this.#baselineByLengthCategory = categoryTimes.map(computeBaselineInputTime);
     }
+    return this.#baselineByLengthCategory;
+  }
+
+  #getMastery(word: string, data: WordData): MasteryResult {
+    const baseline =
+      this.#getBaselineByLengthCategory()[this.getWordLengthCategory(word)] ??
+      null;
+    const cached = this.#masteryCache.get(word);
+    if (cached && cached.baseline === baseline) {
+      return cached.result;
+    }
+    const result = calculateMasteryScore({ ...data, baselineInputTime: baseline });
+    this.#masteryCache.set(word, { result, baseline });
     return result;
   }
 

@@ -2,6 +2,7 @@ import { describe, it, expect } from "bun:test";
 import {
   calculateMasteryScore,
   calculatePriority,
+  computeBaselineInputTime,
   getExpectedInputTime,
 } from "./masteryCalculator";
 
@@ -14,6 +15,18 @@ describe("getExpectedInputTime", () => {
   it("长词按长度线性估算", () => {
     expect(getExpectedInputTime(6)).toBeCloseTo(6 * 0.35 + 0.5);
     expect(getExpectedInputTime(9)).toBeCloseTo(9 * 0.4 + 0.5);
+  });
+});
+
+describe("computeBaselineInputTime", () => {
+  it("样本不足 5 条时返回 null", () => {
+    expect(computeBaselineInputTime([])).toBeNull();
+    expect(computeBaselineInputTime([1, 2, 3, 4])).toBeNull();
+  });
+
+  it("样本足够时返回中位数，对单次异常耗时稳健", () => {
+    expect(computeBaselineInputTime([1, 2, 3, 4, 5])).toBe(3);
+    expect(computeBaselineInputTime([1, 2, 3, 4, 100])).toBe(3);
   });
 });
 
@@ -117,6 +130,46 @@ describe("calculateMasteryScore", () => {
     });
     expect(result.score).toBeLessThanOrEqual(39);
     expect(result.level).toBe("learning");
+  });
+
+  it("有个人基线时速度分按基线归一化", () => {
+    const base = {
+      ...baseWord,
+      correctCount: 5,
+      totalAttempts: 5,
+      inputTimes: [4, 4, 4, 4, 4],
+      correctPracticeDates: ["2026-08-14"],
+    };
+    const withoutBaseline = calculateMasteryScore(base);
+    const withBaseline = calculateMasteryScore({ ...base, baselineInputTime: 8 });
+    expect(withoutBaseline.speedScore).toBe(25);
+    expect(withBaseline.speedScore).toBe(100);
+  });
+
+  it("基线为 0 或 null 时回退长度启发式", () => {
+    const base = {
+      ...baseWord,
+      correctCount: 5,
+      totalAttempts: 5,
+      inputTimes: [4, 4, 4, 4, 4],
+      correctPracticeDates: ["2026-08-14"],
+    };
+    expect(calculateMasteryScore({ ...base, baselineInputTime: 0 }).speedScore).toBe(25);
+    expect(calculateMasteryScore({ ...base, baselineInputTime: null }).speedScore).toBe(25);
+  });
+
+  it("异常耗时上限随个人基线放宽", () => {
+    const base = {
+      ...baseWord,
+      correctCount: 5,
+      totalAttempts: 5,
+      inputTimes: [4, 4, 4, 4, 20],
+      correctPracticeDates: ["2026-08-14"],
+    };
+    const withoutBaseline = calculateMasteryScore(base);
+    const withBaseline = calculateMasteryScore({ ...base, baselineInputTime: 8 });
+    expect(withoutBaseline.speedScore).toBe(25);
+    expect(withBaseline.speedScore).toBe(56);
   });
 
   it("8 次全对且复习 3 天达到已掌握", () => {
