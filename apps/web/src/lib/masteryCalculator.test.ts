@@ -5,6 +5,7 @@ import {
   computeBaselineInputTime,
   getExpectedInputTime,
 } from "./masteryCalculator";
+import { formatLocalPracticeDate } from "./practiceDate";
 
 describe("getExpectedInputTime", () => {
   it("短词使用固定值", () => {
@@ -377,5 +378,41 @@ describe("calculatePriority", () => {
     const before = calculatePriority(60, at(1), 3, [true, true]);
     const after = calculatePriority(55, at(0.1), 4, [true, true, false]);
     expect(after).toBeGreaterThan(before);
+  });
+
+  it("逾期后答错仍保持高优先级", () => {
+    const dateDaysAgo = (days: number) =>
+      formatLocalPracticeDate(new Date(Date.now() - days * DAY));
+
+    const overdueFailed = calculatePriority(
+      60,
+      at(0.1),
+      6,
+      [true, false],
+      [dateDaysAgo(10)]
+    );
+    const beforeFailure = calculatePriority(60, at(10), 6, [true, true]);
+
+    expect(overdueFailed).toBeCloseTo(40 * 8.0 * 1.0 * 3.0, 5);
+    expect(overdueFailed).toBeGreaterThan(beforeFailure);
+  });
+
+  it("最近一次答对时仍按 lastPracticedAt 计算", () => {
+    const dateDaysAgo = (days: number) =>
+      formatLocalPracticeDate(new Date(Date.now() - days * DAY));
+
+    const priority = calculatePriority(
+      50,
+      at(0.5),
+      5,
+      [false, false, true],
+      [dateDaysAgo(10)]
+    );
+    expect(priority).toBeCloseTo(50 * 0.3 * 1.5 * 1.0, 10);
+  });
+
+  it("答错但没有答对记录时回退 lastPracticedAt", () => {
+    const priority = calculatePriority(50, at(0.5), 5, [true, true, false], []);
+    expect(priority).toBeCloseTo(50 * 0.3 * 1.5 * 3.0, 10);
   });
 });

@@ -1,4 +1,4 @@
-import { getLocalPracticeDate } from "@/lib/practiceDate";
+import { getLocalDateStartMs, getLocalPracticeDate } from "@/lib/practiceDate";
 import { getMasteryLevel, type MasteryLevel } from "@/lib/masteryLevels";
 
 export interface WordMetrics {
@@ -46,6 +46,18 @@ const SPEED_WEIGHT = 0.15;
 const CONSISTENCY_WEIGHT = 0.2;
 const REVIEW_WEIGHT = 0.15;
 const RECENT_FAILURE_MULTIPLIER = 3.0;
+const DAY_MS = 1000 * 60 * 60 * 24;
+
+const getLatestPracticeDateMs = (dates: readonly string[]): number | null => {
+  let latest: number | null = null;
+  for (const date of dates) {
+    const ms = getLocalDateStartMs(date);
+    if (ms !== null && (latest === null || ms > latest)) {
+      latest = ms;
+    }
+  }
+  return latest;
+};
 
 export function getExpectedInputTime(wordLength: number): number {
   if (wordLength <= 3) {
@@ -197,11 +209,21 @@ export function calculatePriority(
   masteryScore: number,
   lastPracticedAt: Date | null,
   totalAttempts: number,
-  attemptHistory: readonly boolean[] = []
+  attemptHistory: readonly boolean[] = [],
+  correctPracticeDates: readonly string[] = []
 ): number {
-  const daysSince = lastPracticedAt
-    ? (Date.now() - lastPracticedAt.getTime()) / (1000 * 60 * 60 * 24)
-    : 30;
+  const lastAttemptFailed =
+    attemptHistory.length > 0 && !attemptHistory[attemptHistory.length - 1];
+
+  const lastCorrectMs = lastAttemptFailed
+    ? getLatestPracticeDateMs(correctPracticeDates)
+    : null;
+  const daysSince =
+    lastCorrectMs !== null
+      ? (Date.now() - lastCorrectMs) / DAY_MS
+      : lastPracticedAt
+        ? (Date.now() - lastPracticedAt.getTime()) / DAY_MS
+        : 30;
 
   let recencyMultiplier: number;
   if (daysSince < 1) recencyMultiplier = 0.3;
@@ -220,8 +242,6 @@ export function calculatePriority(
 
   const basePriority = Math.max(10, 100 - masteryScore);
 
-  const lastAttemptFailed =
-    attemptHistory.length > 0 && !attemptHistory[attemptHistory.length - 1];
   const failureMultiplier = lastAttemptFailed ? RECENT_FAILURE_MULTIPLIER : 1.0;
 
   return basePriority * recencyMultiplier * practiceMultiplier * failureMultiplier;

@@ -58,7 +58,8 @@ const wordPriority = (data: Readonly<WordData>): number =>
     calculateMasteryScore(data).score,
     data.lastPracticedAt,
     data.totalAttempts,
-    data.attemptHistory
+    data.attemptHistory,
+    data.correctPracticeDates
   );
 
 export const pickSentenceWords = (

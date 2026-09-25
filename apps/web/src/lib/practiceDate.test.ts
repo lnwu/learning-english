@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { formatLocalPracticeDate, getLocalPracticeDate } from "./practiceDate";
+import { formatLocalPracticeDate, getLocalDateStartMs, getLocalPracticeDate } from "./practiceDate";
 
 describe("formatLocalPracticeDate", () => {
   it("格式化为 YYYY-MM-DD", () => {
@@ -20,5 +20,17 @@ describe("getLocalPracticeDate", () => {
 
   it("非法字符串原样返回", () => {
     expect(getLocalPracticeDate("not-a-date")).toBe("not-a-date");
+  });
+});
+
+describe("getLocalDateStartMs", () => {
+  it("按本地时区解析为当日 00:00", () => {
+    expect(getLocalDateStartMs("2026-08-15")).toBe(
+      new Date(2026, 7, 15).getTime()
+    );
+  });
+
+  it("非法字符串返回 null", () => {
+    expect(getLocalDateStartMs("not-a-date")).toBeNull();
   });
 });

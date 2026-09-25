@@ -242,7 +242,8 @@ export class Words {
       masteryScore,
       data.lastPracticedAt,
       data.totalAttempts,
-      data.attemptHistory
+      data.attemptHistory,
+      data.correctPracticeDates
     );
     this.#priorityCache.set(word, { priority, masteryScore });
     return priority;

@@ -285,7 +285,8 @@ describe("Words store", () => {
         store.getMasteryScore(word),
         d.lastPracticedAt,
         d.totalAttempts,
-        d.attemptHistory
+        d.attemptHistory,
+        d.correctPracticeDates
       );
     };
 

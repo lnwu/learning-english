@@ -15,3 +15,17 @@ export const getLocalPracticeDate = (practiceDate: string) => {
     ? practiceDate
     : formatLocalPracticeDate(date);
 };
+
+export const getLocalDateStartMs = (practiceDate: string): number | null => {
+  const localDate = getLocalPracticeDate(practiceDate);
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(localDate);
+  if (!match) {
+    return null;
+  }
+  const date = new Date(
+    Number(match[1]),
+    Number(match[2]) - 1,
+    Number(match[3])
+  );
+  return Number.isNaN(date.getTime()) ? null : date.getTime();
+};
