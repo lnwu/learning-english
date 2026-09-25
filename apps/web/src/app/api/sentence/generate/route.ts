@@ -1,16 +1,38 @@
 import { NextResponse } from "next/server";
 import { API_RATE_LIMITS, withApiPost } from "@/lib/apiRoute";
+import {
+  badRequest,
+  parseBody,
+  sentenceWordList,
+  type SentenceWordInput,
+} from "@/lib/apiInput";
 import { chatCompletionJson } from "@/lib/deepseek";
 import { MAX_LEMMA_LENGTH } from "@/lib/lemma";
 import {
   buildGenerateMessages,
   parseGenerateResult,
   MAX_TRANSLATION_LENGTH,
-  type SentenceWord,
 } from "@/lib/sentenceMessages";
 import { MAX_SENTENCE_WORDS } from "@/lib/sentenceWords";
 
 const MIN_WORDS = 1;
+
+const parseWords = parseBody<{ words: SentenceWordInput[] }>({
+  words: sentenceWordList({
+    maxItems: MAX_SENTENCE_WORDS,
+    maxWordLength: MAX_LEMMA_LENGTH,
+    maxTranslationLength: MAX_TRANSLATION_LENGTH,
+  }),
+});
+
+const parse = (raw: unknown) => {
+  const parsed = parseWords(raw);
+  if (!parsed.ok) return parsed;
+  if (parsed.body.words.length < MIN_WORDS) {
+    return { ok: false as const, response: badRequest("缺少单词") };
+  }
+  return parsed;
+};
 
 export async function POST(request: Request) {
   return withApiPost(
@@ -19,50 +41,8 @@ export async function POST(request: Request) {
       ...API_RATE_LIMITS.sentenceGenerate,
       fallbackError: "生成失败，请稍后重试",
     },
-    (raw) => {
-      const body = (raw ?? {}) as {
-        words?: Array<{ word?: unknown; translation?: unknown }>;
-      };
-
-      const words: SentenceWord[] = Array.isArray(body.words)
-        ? body.words
-            .map((item) => ({
-              word: typeof item?.word === "string" ? item.word.trim() : "",
-              translation:
-                typeof item?.translation === "string"
-                  ? item.translation.trim()
-                  : "",
-            }))
-            .filter((item) => item.word)
-            .slice(0, MAX_SENTENCE_WORDS)
-        : [];
-
-      if (words.length < MIN_WORDS) {
-        return {
-          ok: false,
-          response: NextResponse.json({ error: "缺少单词" }, { status: 400 }),
-        };
-      }
-
-      if (
-        words.some(
-          (item) =>
-            item.word.length > MAX_LEMMA_LENGTH ||
-            item.translation.length > MAX_TRANSLATION_LENGTH
-        )
-      ) {
-        return {
-          ok: false,
-          response: NextResponse.json(
-            { error: "输入内容过长" },
-            { status: 400 }
-          ),
-        };
-      }
-
-      return { ok: true, body: words };
-    },
-    async (words) => {
+    parse,
+    async ({ words }) => {
       const result = parseGenerateResult(
         await chatCompletionJson<unknown>(buildGenerateMessages(words))
       );
