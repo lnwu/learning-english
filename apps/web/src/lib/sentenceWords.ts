@@ -1,3 +1,4 @@
+import { calculateMasteryScore, calculatePriority } from "@/lib/masteryCalculator";
 import type { WordData } from "@/lib/wordsStore";
 
 export const MIN_SENTENCE_WORDS = 2;
@@ -21,6 +22,44 @@ const shuffle = <T>(items: readonly T[], rng: () => number): T[] => {
   return result;
 };
 
+const pickWeightedRandom = <T extends { weight: number }>(
+  candidates: readonly T[],
+  max: number,
+  rng: () => number
+): T[] => {
+  const available = [...candidates];
+  const selected: T[] = [];
+  let totalWeight = available.reduce((sum, item) => sum + item.weight, 0);
+
+  for (let i = 0; i < Math.min(max, available.length); i++) {
+    let random = rng() * totalWeight;
+    let selectedIndex = available.length - 1;
+
+    for (let j = 0; j < available.length; j++) {
+      random -= available[j].weight;
+      if (random <= 0) {
+        selectedIndex = j;
+        break;
+      }
+    }
+
+    const selectedItem = available[selectedIndex];
+    selected.push(selectedItem);
+    available.splice(selectedIndex, 1);
+    totalWeight -= selectedItem.weight;
+  }
+
+  return selected;
+};
+
+const wordPriority = (data: Readonly<WordData>): number =>
+  calculatePriority(
+    calculateMasteryScore(data).score,
+    data.lastPracticedAt,
+    data.totalAttempts,
+    data.attemptHistory
+  );
+
 export const pickSentenceWords = (
   entries: Array<[string, Readonly<WordData>]>,
   {
@@ -38,9 +77,11 @@ export const pickSentenceWords = (
     ([, data]) => data.totalAttempts < minAttempts
   );
 
-  const prioritized = shuffle(practiced, rng)
-    .slice(0, count)
-    .map(([word]) => word);
+  const prioritized = pickWeightedRandom(
+    practiced.map(([word, data]) => ({ word, weight: wordPriority(data) })),
+    count,
+    rng
+  ).map(({ word }) => word);
   if (prioritized.length >= count) {
     return prioritized;
   }
