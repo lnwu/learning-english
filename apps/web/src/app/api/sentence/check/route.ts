@@ -3,9 +3,10 @@ import { API_RATE_LIMITS, withApiPost } from "@/lib/apiRoute";
 import { optionalText, parseBody, requiredText, wordList } from "@/lib/apiInput";
 import { chatCompletionJson } from "@/lib/deepseek";
 import { MAX_LEMMA_LENGTH } from "@/lib/lemma";
-import { normalizeForComparison, resolveUsedWords } from "@/lib/sentenceCompare";
 import {
   buildCheckMessages,
+  buildExactMatchResult,
+  isExactMatchAnswer,
   parseCheckResult,
   MAX_SENTENCE_LENGTH,
 } from "@/lib/sentenceMessages";
@@ -41,21 +42,8 @@ export async function POST(request: Request) {
     },
     parse,
     async ({ chinese, words, reference, userAnswer }) => {
-      const normalizedAnswer = normalizeForComparison(userAnswer);
-      const exactMatch =
-        reference.length > 0 &&
-        normalizedAnswer.length > 0 &&
-        normalizedAnswer === normalizeForComparison(reference);
-
-      if (exactMatch) {
-        return NextResponse.json({
-          correct: true,
-          score: 100,
-          feedback: "答案正确，评分已按大小写不敏感处理。",
-          corrected: reference,
-          issues: [],
-          usedWords: resolveUsedWords(reference, words),
-        });
+      if (isExactMatchAnswer(reference, userAnswer)) {
+        return NextResponse.json(buildExactMatchResult(reference, words));
       }
 
       const result = await chatCompletionJson<unknown>(

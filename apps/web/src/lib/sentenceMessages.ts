@@ -1,5 +1,9 @@
 import type { ChatMessage } from "@/lib/deepseek";
-import { sanitizeUsedWords } from "@/lib/sentenceCompare";
+import {
+  normalizeForComparison,
+  resolveUsedWords,
+  sanitizeUsedWords,
+} from "@/lib/sentenceCompare";
 
 export const MAX_SENTENCE_LENGTH = 500;
 export const MAX_TRANSLATION_LENGTH = 2000;
@@ -86,6 +90,30 @@ export const buildCheckMessages = (input: CheckInput): ChatMessage[] => [
     content: `中文句子：${input.chinese}\n目标单词：${input.words.join(", ")}\n参考译文：${input.reference}\n学生译文：${input.userAnswer}`,
   },
 ];
+
+export const isExactMatchAnswer = (
+  reference: string,
+  userAnswer: string
+): boolean => {
+  const normalizedAnswer = normalizeForComparison(userAnswer);
+  return (
+    reference.length > 0 &&
+    normalizedAnswer.length > 0 &&
+    normalizedAnswer === normalizeForComparison(reference)
+  );
+};
+
+export const buildExactMatchResult = (
+  reference: string,
+  words: string[]
+): CheckResult => ({
+  correct: true,
+  score: 100,
+  feedback: "答案正确，评分已按大小写不敏感处理。",
+  corrected: reference,
+  issues: [],
+  usedWords: resolveUsedWords(reference, words),
+});
 
 export const parseCheckResult = (
   raw: unknown,

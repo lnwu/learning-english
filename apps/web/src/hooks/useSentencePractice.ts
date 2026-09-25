@@ -22,7 +22,7 @@ export interface SentenceFeedback {
   feedback: string;
   corrected: string;
   issues: string[];
-  usedWords?: string[];
+  usedWords: string[];
 }
 
 export const useSentencePractice = () => {
@@ -104,11 +104,10 @@ export const useSentencePractice = () => {
         );
         setFeedback(result);
 
-        const attemptedWords = result.usedWords ?? question.words;
         const shouldRecord = scoredQuestionRef.current !== question;
         if (shouldRecord) {
           scoredQuestionRef.current = question;
-          attemptedWords.forEach((word) => {
+          result.usedWords.forEach((word) => {
             if (result.correct) {
               // 造句场景没有真实输入计时，不传 inputTimeSeconds，避免伪造时间抬高 speedScore
               recordCorrectAttempt(word);

@@ -1,7 +1,9 @@
 import { describe, it, expect } from "bun:test";
 import {
   buildCheckMessages,
+  buildExactMatchResult,
   buildGenerateMessages,
+  isExactMatchAnswer,
   parseCheckResult,
   parseGenerateResult,
 } from "./sentenceMessages";
@@ -50,6 +52,35 @@ describe("buildCheckMessages", () => {
     expect(messages[1].content).toContain("run");
     expect(messages[1].content).toContain("I run every day.");
     expect(messages[1].content).toContain("I run everyday.");
+  });
+});
+
+describe("isExactMatchAnswer", () => {
+  it("忽略大小写、标点与多余空白", () => {
+    expect(isExactMatchAnswer("I run every day.", "i run every day")).toBe(true);
+    expect(isExactMatchAnswer("I run every day.", "  I RUN EVERY DAY!  ")).toBe(
+      true
+    );
+  });
+
+  it("内容不同或两侧为空时返回 false", () => {
+    expect(isExactMatchAnswer("I run every day.", "I run everyday.")).toBe(false);
+    expect(isExactMatchAnswer("", "I run")).toBe(false);
+    expect(isExactMatchAnswer("I run", "")).toBe(false);
+    expect(isExactMatchAnswer("I run", "   ")).toBe(false);
+  });
+});
+
+describe("buildExactMatchResult", () => {
+  it("返回完整批改结果，usedWords 按参考译文推导", () => {
+    expect(buildExactMatchResult("I run every day.", ["run", "apple"])).toEqual({
+      correct: true,
+      score: 100,
+      feedback: "答案正确，评分已按大小写不敏感处理。",
+      corrected: "I run every day.",
+      issues: [],
+      usedWords: ["run"],
+    });
   });
 });
 
