@@ -87,7 +87,7 @@ export class Words {
     string,
     { result: MasteryResult; baseline: number | null }
   >();
-  #baselineByLengthCategory: (number | null)[] | null = null;
+  #baselineByLengthCategory: (number | null | undefined)[] | null = null;
 
   constructor() {
     makeAutoObservable(this);
@@ -98,16 +98,18 @@ export class Words {
     this.#baselineByLengthCategory = null;
   }
 
-  #invalidateWordCaches(...words: string[]) {
+  #invalidateWordCaches(invalidateBaseline: boolean, ...words: string[]) {
     for (const word of words) {
       this.#masteryCache.delete(word);
     }
-    this.#baselineByLengthCategory = null;
+    if (invalidateBaseline) {
+      this.#baselineByLengthCategory = null;
+    }
   }
 
   setWordData(word: string, data: WordData) {
     this.wordData.set(word, data);
-    this.#invalidateWordCaches(word);
+    this.#invalidateWordCaches(true, word);
   }
 
   get wordCount(): number {
@@ -141,14 +143,14 @@ export class Words {
 
   deleteWord(word: string) {
     this.wordData.delete(word);
-    this.#invalidateWordCaches(word);
+    this.#invalidateWordCaches(true, word);
   }
 
   moveWord(from: string, to: string, data: WordData) {
     this.wordData.delete(from);
     this.wordData.set(to, data);
     this.userInputs.delete(from);
-    this.#invalidateWordCaches(from, to);
+    this.#invalidateWordCaches(true, from, to);
   }
 
   removeAllWords() {
@@ -188,7 +190,7 @@ export class Words {
     }
     data.lastPracticedAt = now;
 
-    this.#invalidateWordCaches(word);
+    this.#invalidateWordCaches(correct && inputTimeSeconds !== undefined, word);
   }
 
   recordCorrectAttempt(word: string, inputTimeSeconds?: number) {
@@ -201,16 +203,23 @@ export class Words {
 
   #getBaselineByLengthCategory(): (number | null)[] {
     if (!this.#baselineByLengthCategory) {
-      const categoryTimes: number[][] = Array.from(
+      this.#baselineByLengthCategory = Array.from(
         { length: WORD_LENGTH_CATEGORY_COUNT },
-        () => []
+        () => undefined
       );
-      this.wordData.forEach((data, word) => {
-        categoryTimes[this.getWordLengthCategory(word)].push(...data.inputTimes);
-      });
-      this.#baselineByLengthCategory = categoryTimes.map(computeBaselineInputTime);
     }
-    return this.#baselineByLengthCategory;
+    const baselines = this.#baselineByLengthCategory;
+    for (let category = 0; category < WORD_LENGTH_CATEGORY_COUNT; category++) {
+      if (baselines[category] !== undefined) continue;
+      const times: number[] = [];
+      this.wordData.forEach((data, word) => {
+        if (this.getWordLengthCategory(word) === category) {
+          times.push(...data.inputTimes);
+        }
+      });
+      baselines[category] = computeBaselineInputTime(times);
+    }
+    return baselines as (number | null)[];
   }
 
   #getMastery(word: string, data: WordData): MasteryResult {

@@ -133,6 +133,19 @@ describe("calculateMasteryScore", () => {
     expect(result.level).toBe("learning");
   });
 
+  it("等级门槛窗口需至少 5 条近期记录才启用", () => {
+    const result = calculateMasteryScore({
+      ...baseWord,
+      correctCount: 90,
+      totalAttempts: 100,
+      inputTimes: [2, 2, 2, 2, 2],
+      attemptHistory: [true, true, true, true, false],
+      correctPracticeDates: ["2026-08-12", "2026-08-13", "2026-08-14"],
+    });
+    expect(result.score).toBeGreaterThanOrEqual(80);
+    expect(result.level).toBe("mastered");
+  });
+
   it("有个人基线时速度分按基线归一化", () => {
     const base = {
       ...baseWord,
@@ -252,6 +265,17 @@ describe("calculateMasteryScore", () => {
       correctPracticeDates: ["2026-08-12", "2026-08-13", "2026-08-14"],
     });
     expect(result.consistencyScore).toBeLessThanOrEqual(40);
+  });
+
+  it("过半异常耗时被清洗后稳定样本不足则不参与加权", () => {
+    const result = calculateMasteryScore({
+      ...baseWord,
+      correctCount: 8,
+      totalAttempts: 8,
+      inputTimes: [60, 61, 62, 2, 2],
+      correctPracticeDates: ["2026-08-12", "2026-08-13", "2026-08-14"],
+    });
+    expect(result.consistencyScore).toBe(50);
   });
 
   it("速度分过滤单次异常耗时", () => {
