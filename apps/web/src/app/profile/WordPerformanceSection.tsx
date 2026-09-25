@@ -135,7 +135,8 @@ export const WordPerformanceSection = observer(
 
           <div className="flex flex-col gap-4">
             {CATEGORY_META.map(({ category, labelKey }) => {
-              const avgTime = words.averageTimeByLengthCategory[category];
+              const baseline =
+                words.inputTimeBaselineByLengthCategory[category];
               const categoryWords = filteredWordsByCategory[category];
 
               return (
@@ -143,9 +144,9 @@ export const WordPerformanceSection = observer(
                   <div className="flex items-center justify-between gap-4 border-b bg-surface px-4 py-3">
                     <div className="text-sm font-medium">{t(labelKey)}</div>
                     <div className="text-base font-semibold tabular-nums">
-                      {avgTime !== null
-                        ? `${avgTime.toFixed(2)}${t("profile.seconds")}`
-                        : t("profile.noData")}
+                      {baseline !== null
+                        ? `${baseline.toFixed(2)}${t("profile.seconds")}`
+                        : t("profile.baselineInsufficient")}
                     </div>
                   </div>
 
