@@ -33,7 +33,7 @@
 - 页面提交后**不锁定答案**：输入框保持可编辑，首次批改后显示「重新批改」；重新批改只更新反馈、不改变计分。首次批改满分自动下一题，重新批改满分停留本题（让用户看反馈）。
 - `usedWords` 计分：批改接口只返回用户实际用到的目标词（同义替代也算），未用到的不记分；模型没返回该字段时回退全部目标词。
 - 造句**不传 `inputTimeSeconds`**：没有真实输入计时，伪造会抬高 speedScore；`calculateMasteryScore` 对无计时词让速度/稳定性因子不参与加权（见 `docs/WORD_FAMILIARITY_ALGORITHM.md`）。
-- 提交前先 `normalizeForComparison` 规范化判等：与参考译文完全一致直接满分，**省一次模型调用**；`resolveUsedWords`/`sanitizeUsedWords` 同文件可测，不在路由内联重复实现。
+- 提交前先 `normalizeForComparison` 规范化判等：与参考译文完全一致时用 `isExactMatchAnswer` + `buildExactMatchResult` 直接构造满分结果，**省一次模型调用**；`resolveUsedWords`/`sanitizeUsedWords` 在 `lib/sentenceCompare.ts` 维护，快路径与模型路径都产出同一份 `CheckResult`，字段集与「`usedWords` 缺失回退全部目标词」的语义只有 `lib/sentenceMessages.ts` 一处，客户端不再自带回退。
 - 生成与批改的 prompt、消息构造与响应解析在 `lib/sentenceMessages.ts`：`parseGenerateResult` 空字段判失败，`parseCheckResult` 对 `score` 做 0-100 夹取取整、截断超长 `feedback`/`corrected`、过滤非字符串 `issues`（防御模型异常输出），但**不改** `correct` 的判定语义。
 - 题目生成的抽词优先级：练习次数 ≥3 的词优先、少练的作补位（`lib/sentenceWords.ts` 的 `PRIORITIZED_MIN_ATTEMPTS`，纯函数可测），避免老词永远不出、新词过拟合；抽取数量在 `MIN_SENTENCE_WORDS`-`MAX_SENTENCE_WORDS` 间随机，单词不足时 hook 置 `insufficientWords` 状态（不再用字符串哨兵）。
 
