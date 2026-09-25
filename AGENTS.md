@@ -30,6 +30,7 @@
 - `infra` 变更按 `infra/AGENTS.md` 检查 Terraform plan 评论。
 - 纯文档变更（仅修改 Markdown 文档、`AGENTS.md` 或文档型 skill，且不涉及代码、配置、依赖或部署行为）不需要本地测试、构建、Preview 或浏览器验收；完成后直接提交并推送到 `main`，不创建 PR。
 - 除上述功能验收外，默认不启动 dev server、不做浏览器截图或人工点击验收。不要修改外部管理的 `.agents/skills/agent-browser`；OIDC token 只在内存中传递，不落盘、不打印、不写进文档，不执行未经确认的写操作。
+- shell 每次调用是新进程，环境变量不跨调用持久；`AGENT_BROWSER_SESSION` 必须在每条 `agent-browser` 命令内联设置（`export AGENT_BROWSER_SESSION="$(agent-browser session id --scope worktree --prefix vercel-preview)"` 后紧跟实际操作），否则丢失命名会话、回退到默认端点并可能误连其他浏览器实例。
 
 ## 关键环境不变量
 
