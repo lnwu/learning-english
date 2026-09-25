@@ -83,10 +83,6 @@ export class Words {
 
   private wordData: Map<string, WordData> = new Map();
   private userInputs: Map<string, string> = new Map();
-  #priorityCache = new Map<
-    string,
-    { priority: number; masteryScore: number }
-  >();
   #masteryCache = new Map<
     string,
     { result: MasteryResult; baseline: number | null }
@@ -98,14 +94,12 @@ export class Words {
   }
 
   private invalidateCaches() {
-    this.#priorityCache.clear();
     this.#masteryCache.clear();
     this.#baselineByLengthCategory = null;
   }
 
   #invalidateWordCaches(...words: string[]) {
     for (const word of words) {
-      this.#priorityCache.delete(word);
       this.#masteryCache.delete(word);
     }
     this.#baselineByLengthCategory = null;
@@ -234,25 +228,25 @@ export class Words {
 
   #getPriority(word: string, data: WordData): number {
     const masteryScore = this.#getMastery(word, data).score;
-    const cached = this.#priorityCache.get(word);
-    if (cached && cached.masteryScore === masteryScore) {
-      return cached.priority;
-    }
-    const priority = calculatePriority(
+    return calculatePriority(
       masteryScore,
       data.lastPracticedAt,
       data.totalAttempts,
       data.attemptHistory,
       data.correctPracticeDates
     );
-    this.#priorityCache.set(word, { priority, masteryScore });
-    return priority;
   }
 
   getMasteryScore(word: string): number {
     const data = this.wordData.get(word);
     if (!data) return 0;
     return this.#getMastery(word, data).score;
+  }
+
+  getWordPriority(word: string): number {
+    const data = this.wordData.get(word);
+    if (!data) return 0;
+    return this.#getPriority(word, data);
   }
 
   getMasteryLevelIndex(word: string): number {
