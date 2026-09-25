@@ -48,6 +48,10 @@ const CONSISTENCY_WEIGHT = 0.2;
 const REVIEW_WEIGHT = 0.15;
 const RECENT_FAILURE_MULTIPLIER = 3.0;
 const DAY_MS = 1000 * 60 * 60 * 24;
+const REVIEW_INTERVAL_SAME_DAY_WEIGHT = 0.5;
+const REVIEW_INTERVAL_SHORT_WEIGHT = 1.0;
+const REVIEW_INTERVAL_MEDIUM_WEIGHT = 1.5;
+const REVIEW_INTERVAL_LONG_WEIGHT = 1.0;
 
 const getLatestPracticeDateMs = (dates: readonly string[]): number | null => {
   let latest: number | null = null;
@@ -59,6 +63,36 @@ const getLatestPracticeDateMs = (dates: readonly string[]): number | null => {
   }
   return latest;
 };
+
+const getReviewIntervalWeight = (gapDays: number): number => {
+  if (gapDays <= 1) return REVIEW_INTERVAL_SAME_DAY_WEIGHT;
+  if (gapDays <= 3) return REVIEW_INTERVAL_SHORT_WEIGHT;
+  if (gapDays <= 7) return REVIEW_INTERVAL_MEDIUM_WEIGHT;
+  return REVIEW_INTERVAL_LONG_WEIGHT;
+};
+
+export function getSortedReviewDateMs(
+  correctPracticeDates: readonly string[]
+): number[] {
+  const seen = new Set<number>();
+  for (const date of correctPracticeDates) {
+    const ms = getLocalDateStartMs(getLocalPracticeDate(date));
+    if (ms !== null) {
+      seen.add(ms);
+    }
+  }
+  return Array.from(seen).sort((a, b) => a - b);
+}
+
+export function computeReviewWeight(dates: readonly number[]): number {
+  if (dates.length === 0) return 0;
+  let weight = 1;
+  for (let i = 1; i < dates.length; i++) {
+    const gapDays = Math.round((dates[i] - dates[i - 1]) / DAY_MS);
+    weight += getReviewIntervalWeight(gapDays);
+  }
+  return weight;
+}
 
 export function getExpectedInputTime(wordLength: number): number {
   if (wordLength <= 3) {
@@ -160,8 +194,12 @@ export function calculateMasteryScore(metrics: WordMetrics): MasteryResult {
     consistencyScore = Math.max(0, Math.min(100, 100 * Math.exp(-cv * 2)));
   }
 
-  const reviewDays = new Set(correctPracticeDates.map(getLocalPracticeDate)).size;
-  const reviewScore = Math.min(100, reviewDays * REVIEW_DAY_SCORE_MULTIPLIER);
+  const reviewDates = getSortedReviewDateMs(correctPracticeDates);
+  const reviewDays = reviewDates.length;
+  const reviewScore = Math.min(
+    100,
+    computeReviewWeight(reviewDates) * REVIEW_DAY_SCORE_MULTIPLIER
+  );
 
   const weightedFactors = [
     { score: accuracyScore, weight: ACCURACY_WEIGHT },

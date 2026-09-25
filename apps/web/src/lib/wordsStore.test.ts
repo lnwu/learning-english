@@ -224,7 +224,7 @@ describe("Words store", () => {
         totalAttempts: total,
         inputTimes: times,
         attemptHistory: history,
-        correctPracticeDates: ["2026-08-12", "2026-08-13", "2026-08-14"],
+        correctPracticeDates: ["2026-08-08", "2026-08-12", "2026-08-17"],
       });
 
     store.removeAllWords();
