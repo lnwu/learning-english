@@ -334,6 +334,46 @@ describe("Words store", () => {
     expect(long).toBeNull();
   });
 
+  it("纯答错不重算打字基线", () => {
+    const timed = (word: string, times: number[]) =>
+      makeWordData({
+        word,
+        id: `id-${word}`,
+        correctCount: times.length,
+        totalAttempts: times.length,
+        inputTimes: times,
+        attemptHistory: times.map(() => true),
+      });
+
+    store.removeAllWords();
+    store.setWordData("apple", timed("apple", [2, 2, 3, 10, 4]));
+    expect(store.inputTimeBaselineByLengthCategory[0]).toBe(3);
+
+    store.recordIncorrectAttempt("apple");
+    expect(store.inputTimeBaselineByLengthCategory[0]).toBe(3);
+  });
+
+  it("新增计时样本后按档重算基线", () => {
+    const timed = (word: string, times: number[]) =>
+      makeWordData({
+        word,
+        id: `id-${word}`,
+        correctCount: 0,
+        totalAttempts: 0,
+        inputTimes: times,
+        attemptHistory: [],
+      });
+
+    store.removeAllWords();
+    store.setWordData("apple", timed("apple", [2, 2, 4, 4, 8]));
+    expect(store.inputTimeBaselineByLengthCategory[0]).toBe(4);
+
+    for (let i = 0; i < 5; i++) {
+      store.recordCorrectAttempt("apple", 10);
+    }
+    expect(store.inputTimeBaselineByLengthCategory[0]).toBe(9);
+  });
+
   it("同一会话内抽词优先级随时间推进刷新", () => {
     const now = new Date("2026-08-20T12:00:00");
     setSystemTime(now);

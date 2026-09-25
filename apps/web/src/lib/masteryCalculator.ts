@@ -40,6 +40,7 @@ const CONSISTENCY_SAMPLE_SIZE = 10;
 const MIN_CONSISTENCY_SAMPLES = 3;
 const SPEED_ANOMALY_FACTOR = 5;
 const MIN_BASELINE_SAMPLES = 5;
+const MIN_GATE_RECENT_SAMPLES = 5;
 const REVIEW_DAY_SCORE_MULTIPLIER = 100 / MIN_REVIEW_DAYS_FOR_MASTERED;
 const ACCURACY_WEIGHT = 0.5;
 const SPEED_WEIGHT = 0.15;
@@ -82,6 +83,13 @@ function getMedian(values: readonly number[]): number {
 
 export function computeBaselineInputTime(times: readonly number[]): number | null {
   return times.length >= MIN_BASELINE_SAMPLES ? getMedian(times) : null;
+}
+
+export function cleanInputTimes(
+  times: readonly number[],
+  expectedTime: number
+): number[] {
+  return times.filter((t) => t <= expectedTime * SPEED_ANOMALY_FACTOR);
 }
 
 export function calculateMasteryScore(metrics: WordMetrics): MasteryResult {
@@ -128,9 +136,10 @@ export function calculateMasteryScore(metrics: WordMetrics): MasteryResult {
     baselineInputTime && baselineInputTime > 0
       ? baselineInputTime
       : getExpectedInputTime(word.length);
-  const speedSamples = inputTimes
-    .slice(-SPEED_SAMPLE_SIZE)
-    .filter((t) => t <= expectedTime * SPEED_ANOMALY_FACTOR);
+  const speedSamples = cleanInputTimes(
+    inputTimes.slice(-SPEED_SAMPLE_SIZE),
+    expectedTime
+  );
   const hasSpeedData = speedSamples.length > 0;
   const avgInputTime = hasSpeedData
     ? speedSamples.reduce((a, b) => a + b, 0) / speedSamples.length
@@ -138,12 +147,14 @@ export function calculateMasteryScore(metrics: WordMetrics): MasteryResult {
   const speedRatio = expectedTime / avgInputTime;
   const speedScore = Math.min(100, Math.max(0, speedRatio * SPEED_SCORE_MULTIPLIER));
 
-  const hasConsistencyData = inputTimes.length >= MIN_CONSISTENCY_SAMPLES;
+  const consistencySamples = cleanInputTimes(inputTimes, expectedTime).slice(
+    -CONSISTENCY_SAMPLE_SIZE
+  );
+  const hasConsistencyData = consistencySamples.length >= MIN_CONSISTENCY_SAMPLES;
   let consistencyScore = DEFAULT_EARLY_CONSISTENCY;
   if (hasConsistencyData) {
-    const lastTimes = inputTimes.slice(-CONSISTENCY_SAMPLE_SIZE);
-    const median = getMedian(lastTimes);
-    const deviations = lastTimes.map((t) => Math.abs(t - median));
+    const median = getMedian(consistencySamples);
+    const deviations = consistencySamples.map((t) => Math.abs(t - median));
     const mad = getMedian(deviations);
     const cv = median > 0 ? mad / median : 0;
     consistencyScore = Math.max(0, Math.min(100, 100 * Math.exp(-cv * 2)));
@@ -169,7 +180,7 @@ export function calculateMasteryScore(metrics: WordMetrics): MasteryResult {
   let score = Math.round(weightedTotal / totalWeight);
 
   let gateAccuracy = correctCount / totalAttempts;
-  if (attemptHistory.length >= MIN_RECENT_ACCURACY_SAMPLES) {
+  if (attemptHistory.length >= MIN_GATE_RECENT_SAMPLES) {
     const gateWindow = attemptHistory.slice(-GATE_ACCURACY_WINDOW);
     gateAccuracy =
       gateWindow.filter(Boolean).length / gateWindow.length;
