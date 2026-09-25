@@ -35,7 +35,7 @@
 
 - 全站采用中性极简风格：白底平铺、1px 描边分层、普通卡片无阴影，彩色仅用于状态语义；浮层组件与 `StatTile` 的既有轻微阴影例外保留。样式只用语义 token，不使用原始调色板类、`bg-white` 或普通卡片阴影；具体 token 以 `app/index.css` 为准。
 - 页面骨架统一使用 `PageContainer` 与 `PageHeader`；加载态使用 `LoadingState`，空态使用 `Empty`，危险操作使用 `Button variant="destructive"`。
-- 数据可视化是彩色例外：熟练度使用 `MASTERY_BAR_COLORS`，热力图使用 `--heatmap-1..4`；不要在普通界面新增装饰色。
+- 数据可视化是彩色例外：熟练度条形色值用 `MASTERY_BAR_COLORS`（键为 `MasteryLevel`，新增等级时类型会强制补齐），热力图使用 `--heatmap-1..4`；不要在普通界面新增装饰色。等级门槛、顺序与文案 key 只有 `lib/masteryLevels.ts` 一份来源，页面与图表都从 `MASTERY_LEVELS` 取。
 - 图标统一使用 lucide，按钮内图标使用 `data-icon="inline-start|inline-end"`；列表分隔使用 `divide-y` 或 `Separator`，间距使用 `gap-*`，不用 emoji、`space-x-*` 或 `space-y-*`。
 
 ## 词库状态管理

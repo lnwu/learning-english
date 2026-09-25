@@ -26,23 +26,12 @@ import { useFirestoreWords, useLocale, toast, useAuth, useWordsRepo } from "@/ho
 import { observer } from "mobx-react-lite";
 import Link from "next/link";
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { type Locale, type TranslationKey } from "@/lib/i18n";
+import { type Locale } from "@/lib/i18n";
 import PracticeHeatmap from "./PracticeHeatmap";
 import { ProfileAiSection } from "./ProfileAiSection";
 import { WordPerformanceSection } from "./WordPerformanceSection";
-import type { MasteryLevel } from "@/lib/masteryCalculator";
+import { MASTERY_LEVELS } from "@/lib/masteryLevels";
 import { averageMasteryScore, masteryDistribution } from "@/lib/masteryStats";
-
-const MASTERY_SEGMENTS: Array<{
-  key: MasteryLevel;
-  labelKey: TranslationKey;
-}> = [
-  { key: "new", labelKey: "mastery.new" },
-  { key: "learning", labelKey: "mastery.learning" },
-  { key: "familiar", labelKey: "mastery.familiar" },
-  { key: "proficient", labelKey: "mastery.proficient" },
-  { key: "mastered", labelKey: "mastery.mastered" },
-];
 
 const Profile = observer(() => {
   const { user } = useAuth();
@@ -269,7 +258,7 @@ const Profile = observer(() => {
               <p className="text-sm text-muted-foreground">{t('profile.noPracticeData')}</p>
             ) : (
               <div className="flex flex-col gap-3">
-                {MASTERY_SEGMENTS.map(({ key, labelKey }) => {
+                {MASTERY_LEVELS.map(({ key, labelKey }) => {
                   const count = masteryCounts[key];
                   const pct = totalWords > 0 ? Math.round((count / totalWords) * 100) : 0;
                   return (

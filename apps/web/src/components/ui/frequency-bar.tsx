@@ -4,9 +4,11 @@ import { useLocale } from "@/hooks";
 import {
   getMasteryLevel,
   getMasteryLevelIndex,
+  MASTERY_LEVELS,
   MASTERY_LEVEL_ORDER,
   type MasteryLevel,
-} from "@/lib/masteryCalculator";
+} from "@/lib/masteryLevels";
+import type { TranslationKey } from "@/lib/i18n";
 
 export const MASTERY_BAR_COLORS: Record<MasteryLevel, string> = {
   new: "bg-rose-500",
@@ -15,6 +17,11 @@ export const MASTERY_BAR_COLORS: Record<MasteryLevel, string> = {
   proficient: "bg-lime-500",
   mastered: "bg-emerald-500",
 };
+
+const MASTERY_LABEL_KEYS: Record<MasteryLevel, TranslationKey> =
+  Object.fromEntries(
+    MASTERY_LEVELS.map((level) => [level.key, level.labelKey])
+  ) as Record<MasteryLevel, TranslationKey>;
 
 interface MasteryBarProps {
   /** Mastery score from 0-100 */
@@ -30,28 +37,20 @@ const MasteryBar = React.forwardRef<HTMLDivElement, MasteryBarProps>(
     const level = getMasteryLevel(score);
     const levelIndex = getMasteryLevelIndex(score);
 
-    const levelLabels: Record<MasteryLevel, string> = {
-      new: t('mastery.new'),
-      learning: t('mastery.learning'),
-      familiar: t('mastery.familiar'),
-      proficient: t('mastery.proficient'),
-      mastered: t('mastery.mastered'),
-    };
-
     return (
       <div
         ref={ref}
         className={cn("flex items-center gap-2", className)}
-        title={`${t('profile.mastery')}: ${levelLabels[level]} (${score}%)`}
+        title={`${t('profile.mastery')}: ${t(MASTERY_LABEL_KEYS[level])} (${score}%)`}
       >
         <div className="flex gap-1">
-          {[0, 1, 2, 3, 4].map((barLevel) => (
+          {MASTERY_LEVEL_ORDER.map((barLevel, barIndex) => (
             <div
               key={barLevel}
               className={cn(
                 "w-4 h-3 rounded-sm transition-all duration-300",
-                barLevel <= levelIndex
-                  ? MASTERY_BAR_COLORS[MASTERY_LEVEL_ORDER[barLevel]]
+                barIndex <= levelIndex
+                  ? MASTERY_BAR_COLORS[barLevel]
                   : "bg-muted"
               )}
             />
@@ -59,7 +58,7 @@ const MasteryBar = React.forwardRef<HTMLDivElement, MasteryBarProps>(
         </div>
         {showLabel && (
           <span className="w-16 text-left text-xs whitespace-nowrap text-muted-foreground">
-            {levelLabels[level]}
+            {t(MASTERY_LABEL_KEYS[level])}
           </span>
         )}
       </div>

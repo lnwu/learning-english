@@ -1,4 +1,5 @@
 import { getLocalPracticeDate } from "@/lib/practiceDate";
+import { getMasteryLevel, type MasteryLevel } from "@/lib/masteryLevels";
 
 export interface WordMetrics {
   word: string;
@@ -42,24 +43,6 @@ const SPEED_WEIGHT = 0.15;
 const CONSISTENCY_WEIGHT = 0.2;
 const REVIEW_WEIGHT = 0.15;
 
-export type MasteryLevel =
-  | "new"
-  | "learning"
-  | "familiar"
-  | "proficient"
-  | "mastered";
-
-const MASTERY_LEVELS: Record<
-  MasteryLevel,
-  { min: number; max: number }
-> = {
-  new: { min: 0, max: 19 },
-  learning: { min: 20, max: 39 },
-  familiar: { min: 40, max: 59 },
-  proficient: { min: 60, max: 79 },
-  mastered: { min: 80, max: 100 },
-};
-
 export function getExpectedInputTime(wordLength: number): number {
   if (wordLength <= 3) {
     return 1.5;
@@ -70,30 +53,6 @@ export function getExpectedInputTime(wordLength: number): number {
   } else {
     return wordLength * 0.4 + 0.5;
   }
-}
-
-const MASTERY_LEVEL_ORDER: MasteryLevel[] = [
-  "new",
-  "learning",
-  "familiar",
-  "proficient",
-  "mastered",
-];
-
-export { MASTERY_LEVEL_ORDER };
-
-export function getMasteryLevel(score: number): MasteryLevel {
-  let level: MasteryLevel = "new";
-  for (const candidate of MASTERY_LEVEL_ORDER) {
-    if (score >= MASTERY_LEVELS[candidate].min) {
-      level = candidate;
-    }
-  }
-  return level;
-}
-
-export function getMasteryLevelIndex(score: number): number {
-  return MASTERY_LEVEL_ORDER.indexOf(getMasteryLevel(score));
 }
 
 function getMedian(values: number[]): number {
