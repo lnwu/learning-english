@@ -67,7 +67,7 @@
 
 ## 抽词优先级
 
-抽词优先级越高，练习时越容易被选中。它由三部分组成（实现：`calculatePriority`）：
+抽词优先级越高，练习时越容易被选中。它由四部分组成（实现：`calculatePriority`），拼写练习（`getRandomWords`）与造句练习达标桶（`pickSentenceWords`）共用同一份优先级：
 
 ```
 优先级 = 基础优先级 × 时间倍率 × 练习次数倍率 × 失败倍率

@@ -7,7 +7,10 @@ import {
 } from "./sentenceWords";
 import type { WordData } from "./wordsStore";
 
-const makeData = (totalAttempts: number): WordData => ({
+const makeData = (
+  totalAttempts: number,
+  overrides: Partial<WordData> = {}
+): WordData => ({
   word: "word",
   translation: "词",
   correctCount: 0,
@@ -18,6 +21,7 @@ const makeData = (totalAttempts: number): WordData => ({
   attemptHistory: [],
   createdAt: new Date("2026-01-01T00:00:00"),
   id: `id-${totalAttempts}`,
+  ...overrides,
 });
 
 const entries = (spec: Array<[string, number]>): Array<[string, WordData]> =>
@@ -96,5 +100,59 @@ describe("pickSentenceWords", () => {
     );
 
     expect(new Set(picked).size).toBe(picked.length);
+  });
+
+  it("达标词按抽词优先级加权：高优先级词先被抽中", () => {
+    const lowPriority: Array<[string, WordData]> = [
+      [
+        "a",
+        makeData(10, {
+          word: "a",
+          correctCount: 10,
+          inputTimes: [0.5, 0.5, 0.5],
+          attemptHistory: Array(10).fill(true),
+          correctPracticeDates: ["2026-09-23", "2026-09-24", "2026-09-25"],
+          lastPracticedAt: new Date(),
+        }),
+      ],
+    ];
+    const highPriority: Array<[string, WordData]> = [
+      [
+        "b",
+        makeData(6, {
+          word: "b",
+          correctCount: 3,
+          attemptHistory: [true, true, true, false, false, false],
+          correctPracticeDates: ["2026-09-25"],
+          lastPracticedAt: new Date(),
+        }),
+      ],
+    ];
+    const pool = [...lowPriority, ...highPriority];
+
+    expect(pickSentenceWords(pool, { count: 1, rng: () => 0.4 })).toEqual(["b"]);
+    expect(pickSentenceWords(pool, { count: 1, rng: () => 0.05 })).toEqual(["a"]);
+  });
+
+  it("近期答错的词比近期全对的词更容易被抽中", () => {
+    const base = {
+      word: "w",
+      correctCount: 5,
+      inputTimes: [1, 1, 1],
+      correctPracticeDates: ["2026-09-25"],
+      lastPracticedAt: new Date(),
+    };
+    const pool: Array<[string, WordData]> = [
+      ["a", makeData(10, { ...base, attemptHistory: Array(10).fill(true) })],
+      [
+        "b",
+        makeData(10, {
+          ...base,
+          attemptHistory: [...Array(9).fill(true), false],
+        }),
+      ],
+    ];
+
+    expect(pickSentenceWords(pool, { count: 1, rng: () => 0.5 })).toEqual(["b"]);
   });
 });
