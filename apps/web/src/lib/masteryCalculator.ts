@@ -29,6 +29,7 @@ const MIN_ACCURACY_FOR_FAMILIAR = 0.5;
 const MIN_ACCURACY_FOR_PROFICIENT = 0.7;
 const RECENT_ACCURACY_WINDOW = 10;
 const MIN_RECENT_ACCURACY_SAMPLES = 3;
+const GATE_ACCURACY_WINDOW = 30;
 const RECENT_ACCURACY_WEIGHT = 0.5;
 const DEFAULT_EARLY_CONSISTENCY = 50;
 const SPEED_SCORE_MULTIPLIER = 50;
@@ -145,17 +146,22 @@ export function calculateMasteryScore(metrics: WordMetrics): MasteryResult {
 
   let score = Math.round(weightedTotal / totalWeight);
 
-  const rawAccuracy = correctCount / totalAttempts;
+  let gateAccuracy = correctCount / totalAttempts;
+  if (attemptHistory.length >= MIN_RECENT_ACCURACY_SAMPLES) {
+    const gateWindow = attemptHistory.slice(-GATE_ACCURACY_WINDOW);
+    gateAccuracy =
+      gateWindow.filter(Boolean).length / gateWindow.length;
+  }
 
   if (
     totalAttempts < MIN_ATTEMPTS_FOR_FAMILIAR ||
-    rawAccuracy < MIN_ACCURACY_FOR_FAMILIAR
+    gateAccuracy < MIN_ACCURACY_FOR_FAMILIAR
   ) {
     score = Math.min(score, 39);
   } else if (
     totalAttempts < MIN_ATTEMPTS_FOR_PROFICIENT ||
     reviewDays < MIN_REVIEW_DAYS_FOR_PROFICIENT ||
-    rawAccuracy < MIN_ACCURACY_FOR_PROFICIENT
+    gateAccuracy < MIN_ACCURACY_FOR_PROFICIENT
   ) {
     score = Math.min(score, 59);
   } else if (
