@@ -81,7 +81,10 @@ export class Words {
 
   private wordData: Map<string, WordData> = new Map();
   private userInputs: Map<string, string> = new Map();
-  #priorityCache = new Map<string, number>();
+  #priorityCache = new Map<
+    string,
+    { priority: number; masteryScore: number }
+  >();
   #masteryCache = new Map<
     string,
     { result: MasteryResult; baseline: number | null }
@@ -228,17 +231,18 @@ export class Words {
   }
 
   #getPriority(word: string, data: WordData): number {
-    let priority = this.#priorityCache.get(word);
-    if (priority === undefined) {
-      const masteryScore = this.#getMastery(word, data).score;
-      priority = calculatePriority(
-        masteryScore,
-        data.lastPracticedAt,
-        data.totalAttempts,
-        data.attemptHistory
-      );
-      this.#priorityCache.set(word, priority);
+    const masteryScore = this.#getMastery(word, data).score;
+    const cached = this.#priorityCache.get(word);
+    if (cached && cached.masteryScore === masteryScore) {
+      return cached.priority;
     }
+    const priority = calculatePriority(
+      masteryScore,
+      data.lastPracticedAt,
+      data.totalAttempts,
+      data.attemptHistory
+    );
+    this.#priorityCache.set(word, { priority, masteryScore });
     return priority;
   }
 
