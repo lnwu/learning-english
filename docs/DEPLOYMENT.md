@@ -9,9 +9,11 @@
 ## PR 功能验收
 
 - `apps/web` 功能改动完成本地检查后，先提交并推送独立分支、创建 PR，再等待 Web `checks`、`build` 和 Vercel Preview 部署完成。
-- 从 `gh pr checks` 或 Vercel 评论读取实际 Preview URL；部署就绪后，按 `.agents/skills/user-chrome/SKILL.md` 使用 `agent-browser` 的 `user-chrome` session 连接用户已打开的 Chrome，验证 Preview 中的实际功能行为。
+- 从 `gh pr checks` 或 Vercel 评论读取实际 Preview URL；部署就绪后用 `agent-browser` 验证 Preview 中的实际功能行为：先按 `agent-browser skills get protected-vercel-deployments` 用 `vercel project token learning-english-web --scope wu-linings-projects` 签发短期 OIDC token，再带 `--headers '{"x-vercel-trusted-oidc-idp-token":"<token>"}'` 打开该 URL（session 关闭或重启后需重新签发并带表头打开）。
+- 前置：本机已安装 Vercel CLI（`bun install -g vercel`，需 ≥ 53.3.0）并完成一次 `vercel login`；项目 `learning-english-web`、scope `wu-linings-projects`。OIDC token 只在内存中传递，不落盘、不打印、不写进文档。
+- 若 OIDC 报 `TRUSTED_SOURCES_ENVIRONMENT_MISMATCH` 或项目自访问规则被改，暂停验收并请用户在 Vercel 的 Trusted Sources 处理，不擅自启用 Protection Bypass secret。
 - 自动化检查和浏览器验证都通过后，使用 `gh pr merge` 合并 PR；任一环节失败都先修复并重新走完流程，不合并未验证的 PR。
-- Chrome 远程调试需要用户批准；用户未批准时暂停验收，不将连接失败或未完成验证视为通过。
+- Preview 应用自身在 preview 环境匿名登录、数据在 `users/preview`，无需预置本站登录态。
 - 纯文档变更（仅修改 Markdown 文档、`AGENTS.md` 或文档型 skill，且不涉及代码、配置、依赖或部署行为）不需要测试、构建、Preview 或浏览器验收；完成后直接提交并推送到 `main`，不创建 PR。
 
 ## Vercel 环境变量（apps/web 项目）
