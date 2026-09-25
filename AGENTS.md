@@ -25,11 +25,11 @@
 
 - 用户明确要求的功能实现任务完成后，按以下顺序交付：`apps/web` 在仓库根目录运行 `bun run check`（影响构建时再运行 `bun run build`）→ 只提交本任务改动并推送独立分支 → 创建或更新 PR。
 - `apps/web` 功能 PR 必须等待 Web `checks`、`build` 与 Vercel Preview 部署完成；从 `gh pr checks` 或 Vercel 评论读取实际 Preview URL，不推测 URL。
-- Preview 就绪后，必须用 `agent-browser` 打开 Preview 验证本次功能改动：先按 `agent-browser skills get protected-vercel-deployments` 用 `vercel project token learning-english-web --scope wu-linings-projects` 签发短期 OIDC token，再带 `x-vercel-trusted-oidc-idp-token` 头打开 Preview（session 关闭或重启后需重新签发并带表头打开）。验证应检查实际行为和关键页面状态，不只确认页面能打开；Preview 应用自身匿名登录、数据在 `users/preview`，无需预置本站登录态。前置：本机已安装 Vercel CLI（`bun install -g vercel`，需 ≥ 53.3.0）并完成一次 `vercel login`。
-- 只有自动化检查和 Preview 浏览器验证均通过后，才使用 `gh pr merge` 合并 PR；验证失败时不得合并，先修复、重新推送并重新完成部署与验证。Vercel CLI 未安装、未登录或 OIDC 无法通过 Deployment Protection 时暂停验收，不得把未验证视为通过；OIDC 报 `TRUSTED_SOURCES_ENVIRONMENT_MISMATCH` 或项目自访问规则被改时，请用户在 Vercel 的 Trusted Sources 处理，不擅自启用 Protection Bypass secret。
+- Preview 就绪后，必须用 `agent-browser` 打开 Preview 验证本次功能改动：使用已保存的 Preview 会话（session 名 `vercel-preview`，`agent-browser state load .agent-browser/.preview-state.json`）。**会话失效或未建立时，暂停验收并要求用户手动重新登录**，不得引入 OIDC token、不得启用 Protection Bypass secret。初次建立：`agent-browser open <preview-url> --headed`，由用户在弹出的浏览器中亲自完成 Vercel 授权与应用登录，AI 随后执行 `agent-browser state save .agent-browser/.preview-state.json`；凭证明文只存在该忽略文件中，不打印、不提交、不写进文档。验证应检查实际行为和关键页面状态，不只确认页面能打开；Preview 应用自身匿名登录、数据在 `users/preview`，无需预置本站登录态。
+- 只有自动化检查和 Preview 浏览器验证均通过后，才使用 `gh pr merge` 合并 PR；验证失败时不得合并，先修复、重新推送并重新完成部署与验证。Preview 会话失效、用户未完成登录时暂停验收，不得把未验证视为通过，不擅自启用 Protection Bypass secret。
 - `infra` 变更按 `infra/AGENTS.md` 检查 Terraform plan 评论。
 - 纯文档变更（仅修改 Markdown 文档、`AGENTS.md` 或文档型 skill，且不涉及代码、配置、依赖或部署行为）不需要本地测试、构建、Preview 或浏览器验收；完成后直接提交并推送到 `main`，不创建 PR。
-- 除上述功能验收外，默认不启动 dev server、不做浏览器截图或人工点击验收。不要修改外部管理的 `.agents/skills/agent-browser`；OIDC token 只在内存中传递，不落盘、不打印、不写进文档，不执行未经确认的写操作。
+- 除上述功能验收外，默认不启动 dev server、不做浏览器截图或人工点击验收。不要修改外部管理的 `.agents/skills/agent-browser`；Preview 会话凭证只在内存与 `.agent-browser/.preview-state.json` 中传递，不打印、不写进文档，不执行未经确认的写操作。
 - shell 每次调用是新进程，环境变量不跨调用持久；`AGENT_BROWSER_SESSION` 必须在每条 `agent-browser` 命令内联设置（`export AGENT_BROWSER_SESSION="$(agent-browser session id --scope worktree --prefix vercel-preview)"` 后紧跟实际操作），否则丢失命名会话、回退到默认端点并可能误连其他浏览器实例。
 
 ## 关键环境不变量
