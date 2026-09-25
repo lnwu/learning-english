@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "bun:test";
+import { describe, it, expect, beforeEach, spyOn } from "bun:test";
 import {
   Words,
   isWordDataEqual,
@@ -8,6 +8,7 @@ import {
   mergeWordData,
   type WordData,
 } from "./wordsStore";
+import { calculatePriority } from "./masteryCalculator";
 import { formatLocalPracticeDate } from "./practiceDate";
 
 const makeWordData = (overrides: Partial<WordData> = {}): WordData => ({
@@ -183,6 +184,77 @@ describe("Words store", () => {
     );
 
     expect(store.getMasteryScore("apple")).toBeGreaterThanOrEqual(80);
+  });
+
+  it("同长度档其他词的计时变化会重算该词分数", () => {
+    const timed = (word: string, times: number[]) =>
+      makeWordData({
+        word,
+        id: `id-${word}`,
+        correctCount: 8,
+        totalAttempts: 8,
+        inputTimes: times,
+        attemptHistory: Array(8).fill(true),
+        correctPracticeDates: ["2026-08-12", "2026-08-13", "2026-08-14"],
+      });
+
+    store.removeAllWords();
+    store.setWordData("apple", timed("apple", [4, 4, 4, 4, 4]));
+    store.setWordData("grape", timed("grape", [2, 2, 2, 2, 2]));
+
+    const before = store.getMasteryScore("apple");
+    store.setWordData("grape", timed("grape", [8, 8, 8, 8, 8]));
+    const after = store.getMasteryScore("apple");
+
+    expect(after).toBeGreaterThan(before);
+  });
+
+  it("同档基线变化后其他词的抽词优先级随之刷新", () => {
+    const data = (word: string, correct: number, times: number[]): WordData =>
+      makeWordData({
+        word,
+        id: `id-${word}`,
+        correctCount: correct,
+        totalAttempts: 8,
+        inputTimes: times,
+        attemptHistory: [
+          ...Array(correct).fill(true),
+          ...Array(8 - correct).fill(false),
+        ],
+        correctPracticeDates: ["2026-08-12", "2026-08-13", "2026-08-14"],
+      });
+    const weight = (word: string) => {
+      const d = store.getWordData(word)!;
+      return calculatePriority(
+        store.getMasteryScore(word),
+        d.lastPracticedAt,
+        d.totalAttempts,
+        d.attemptHistory
+      );
+    };
+
+    store.removeAllWords();
+    store.setWordData("apple", data("apple", 8, [4, 4, 4, 4, 4]));
+    store.setWordData("grape", data("grape", 4, [2, 2, 2, 2, 2]));
+
+    const randomSpy = spyOn(Math, "random").mockReturnValue(0.5);
+    store.getRandomWords(1);
+
+    const appleStale = weight("apple");
+    const grapeBefore = weight("grape");
+    store.setWordData("grape", data("grape", 4, [8, 8, 8, 8, 8]));
+
+    const appleFresh = weight("apple");
+    const grapeAfter = weight("grape");
+    expect(appleStale).toBeGreaterThan(appleFresh);
+
+    const staleRatio = appleStale / (appleStale + grapeAfter);
+    const freshRatio = appleFresh / (appleFresh + grapeAfter);
+    randomSpy.mockReturnValue((staleRatio + freshRatio) / 2);
+    const picked = store.getRandomWords(1);
+    randomSpy.mockRestore();
+
+    expect(picked[0][0]).toBe("grape");
   });
 
   it("averageTimeByLengthCategory 按单词长度分组", () => {
