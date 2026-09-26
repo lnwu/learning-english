@@ -11,6 +11,7 @@ import {
   formatLocalPracticeDate,
 } from "@/lib/practiceDate";
 import { parseWordDoc } from "@/lib/wordDoc";
+import { pickWeightedRandom } from "@/lib/weightedPick";
 
 const SHORT_WORD_MAX_LENGTH = 5;
 const MEDIUM_WORD_MAX_LENGTH = 10;
@@ -21,36 +22,6 @@ const average = (values: number[]): number =>
 
 const arraysEqual = <T>(a: readonly T[], b: readonly T[]): boolean =>
   a.length === b.length && a.every((value, index) => value === b[index]);
-
-const pickWeightedRandom = <T extends { priority: number }>(
-  candidates: readonly T[],
-  max: number
-): T[] => {
-  const available = [...candidates];
-  const selected: T[] = [];
-  let totalPriority = available.reduce((sum, item) => sum + item.priority, 0);
-  const limit = Math.min(max, available.length);
-
-  for (let i = 0; i < limit; i++) {
-    let random = Math.random() * totalPriority;
-    let selectedIndex = 0;
-
-    for (let j = 0; j < available.length; j++) {
-      random -= available[j].priority;
-      if (random <= 0) {
-        selectedIndex = j;
-        break;
-      }
-    }
-
-    const selectedItem = available[selectedIndex];
-    selected.push(selectedItem);
-    available.splice(selectedIndex, 1);
-    totalPriority -= selectedItem.priority;
-  }
-
-  return selected;
-};
 
 export interface WordData {
   word: string;
@@ -305,7 +276,7 @@ export class Words {
       ([word, data]) => ({
         word,
         translation: data.translation,
-        priority: this.#getPriority(word, data, now),
+        weight: this.#getPriority(word, data, now),
         isNew: data.totalAttempts === 0,
       })
     );
@@ -318,10 +289,15 @@ export class Words {
       Words.MAX_NEW_WORDS_PER_ROUND
     );
 
-    const reviewSelected = pickWeightedRandom(reviewCandidates, max - newReserve);
+    const reviewSelected = pickWeightedRandom(
+      reviewCandidates,
+      max - newReserve,
+      Math.random
+    );
     const newSelected = pickWeightedRandom(
       newCandidates,
-      max - reviewSelected.length
+      max - reviewSelected.length,
+      Math.random
     );
 
     return [...newSelected, ...reviewSelected].map(

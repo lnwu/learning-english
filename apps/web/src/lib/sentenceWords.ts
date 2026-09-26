@@ -1,3 +1,5 @@
+import { pickWeightedRandom } from "@/lib/weightedPick";
+
 export const MIN_SENTENCE_WORDS = 2;
 export const MAX_SENTENCE_WORDS = 3;
 export const PRIORITIZED_MIN_ATTEMPTS = 3;
@@ -23,37 +25,6 @@ const shuffle = <T>(items: readonly T[], rng: () => number): T[] => {
     [result[i], result[j]] = [result[j], result[i]];
   }
   return result;
-};
-
-const pickWeightedRandom = <T extends { weight: number }>(
-  candidates: readonly T[],
-  max: number,
-  rng: () => number
-): T[] => {
-  const available = [...candidates];
-  const selected: T[] = [];
-  let totalWeight = available.reduce((sum, item) => sum + item.weight, 0);
-  const limit = Math.min(max, available.length);
-
-  for (let i = 0; i < limit; i++) {
-    let random = rng() * totalWeight;
-    let selectedIndex = available.length - 1;
-
-    for (let j = 0; j < available.length; j++) {
-      random -= available[j].weight;
-      if (random <= 0) {
-        selectedIndex = j;
-        break;
-      }
-    }
-
-    const selectedItem = available[selectedIndex];
-    selected.push(selectedItem);
-    available.splice(selectedIndex, 1);
-    totalWeight -= selectedItem.weight;
-  }
-
-  return selected;
 };
 
 export const pickSentenceWords = (
