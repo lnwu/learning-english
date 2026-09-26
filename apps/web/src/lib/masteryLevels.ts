@@ -38,3 +38,9 @@ export function getMasteryLevel(score: number): MasteryLevel {
 export function getMasteryLevelIndex(score: number): number {
   return MASTERY_LEVEL_ORDER.indexOf(getMasteryLevel(score));
 }
+
+export function getMasteryLevelCeiling(level: MasteryLevel): number {
+  const index = MASTERY_LEVEL_ORDER.indexOf(level);
+  const next = MASTERY_LEVELS[index + 1];
+  return next ? next.min - 1 : 100;
+}

@@ -3,6 +3,7 @@ import {
   MASTERY_LEVELS,
   MASTERY_LEVEL_ORDER,
   getMasteryLevel,
+  getMasteryLevelCeiling,
   getMasteryLevelIndex,
 } from "./masteryLevels";
 import { translations } from "./i18n";
@@ -26,6 +27,28 @@ describe("getMasteryLevelIndex", () => {
     expect(getMasteryLevelIndex(40)).toBe(2);
     expect(getMasteryLevelIndex(60)).toBe(3);
     expect(getMasteryLevelIndex(80)).toBe(4);
+  });
+});
+
+describe("getMasteryLevelCeiling", () => {
+  it("返回该等级可达到的最高分", () => {
+    expect(getMasteryLevelCeiling("new")).toBe(19);
+    expect(getMasteryLevelCeiling("learning")).toBe(39);
+    expect(getMasteryLevelCeiling("familiar")).toBe(59);
+    expect(getMasteryLevelCeiling("proficient")).toBe(79);
+    expect(getMasteryLevelCeiling("mastered")).toBe(100);
+  });
+
+  it("封顶分数仍落在对应等级内，且再加 1 分即进入下一级", () => {
+    MASTERY_LEVELS.forEach((level, index) => {
+      const ceiling = getMasteryLevelCeiling(level.key);
+      expect(getMasteryLevel(ceiling)).toBe(level.key);
+      const next = MASTERY_LEVELS[index + 1];
+      if (next) {
+        expect(ceiling).toBeLessThan(next.min);
+        expect(getMasteryLevel(ceiling + 1)).toBe(next.key);
+      }
+    });
   });
 });
 
