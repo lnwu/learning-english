@@ -41,4 +41,4 @@
 ## 日期与历史字段
 
 - `memory.lastReviewAt`/`due` 等时间统一存 epoch 毫秒；统计用的「本地日期」按客户端时区生成 `YYYY-MM-DD`，跨时区不解析 ISO 时间戳。
-- 输入判定（`practiceInput.ts`）：一轮内首字符开始计时；完全一致即 completed，之后多打/清空不再记对错。每轮每个词的首次完成输入定档为一次复习（错误 → Again、用过提示 → Hard、独立答对 → Good），同一轮后续输入不重复记分。
+- 输入判定（`practiceInput.ts`）：计时从输入第一个字符开始，单次插入多个字符（粘贴、联想补全）使计时失效；`resolveReview` 只为可信输入产出复习（错误 → Again、用过提示 → Hard、独立答对 → Good），同一轮后续输入不重复记分。

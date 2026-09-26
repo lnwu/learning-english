@@ -2,26 +2,42 @@ import { describe, it, expect } from "bun:test";
 import {
   createPracticeInputState,
   evaluatePracticeInput,
+  resolveReview,
+  type PracticeInputDecision,
   type PracticeInputState,
 } from "./practiceInput";
 
 const evaluate = (state: PracticeInputState, value: string, now = 1000, word = "apple") =>
   evaluatePracticeInput(state, word, value, now);
 
-describe("evaluatePracticeInput", () => {
-  it("首个字符开始计时，答对时返回耗时", () => {
-    const started = evaluate(createPracticeInputState(), "a", 1000);
-    expect(started.timerStartedAt).toBe(1000);
+const typeWord = (
+  state: PracticeInputState,
+  word: string,
+  start: number,
+): PracticeInputDecision => {
+  let current = evaluatePracticeInput(state, word, word.slice(0, 1), start);
+  for (let index = 1; index < word.length; index += 1) {
+    current = evaluatePracticeInput(current, word, word.slice(0, index + 1), start + index * 100);
+  }
+  return current;
+};
 
-    const done = evaluate(started, "apple", 4500);
+describe("evaluatePracticeInput", () => {
+  it("逐字符输入从首字符开始计时，答对时返回耗时", () => {
+    let state = evaluate(createPracticeInputState(), "a", 1000);
+    expect(state.timerStartedAt).toBe(1000);
+
+    state = evaluate(state, "ap", 1100);
+    state = evaluate(state, "app", 1200);
+    state = evaluate(state, "appl", 1300);
+    const done = evaluate(state, "apple", 4500);
     expect(done.recordCorrect).toBe(true);
     expect(done.inputTimeSeconds).toBe(3.5);
     expect(done.timerStartedAt).toBeNull();
   });
 
   it("答对后清空重打不重复记分", () => {
-    let state = evaluate(createPracticeInputState(), "a", 1000);
-    state = evaluate(state, "apple", 4500);
+    let state = typeWord(createPracticeInputState(), "apple", 1000);
     expect(state.recordCorrect).toBe(true);
 
     state = evaluate(state, "", 5000);
@@ -32,8 +48,7 @@ describe("evaluatePracticeInput", () => {
   });
 
   it("答对后继续多打字符不再记错误", () => {
-    let state = evaluate(createPracticeInputState(), "a", 1000);
-    state = evaluate(state, "apple", 2000);
+    let state = typeWord(createPracticeInputState(), "apple", 1000);
     expect(state.recordCorrect).toBe(true);
 
     state = evaluate(state, "apples", 2500);
@@ -48,6 +63,16 @@ describe("evaluatePracticeInput", () => {
 
     state = evaluate(state, "apples", 1500);
     expect(state.recordIncorrect).toBe(false);
+  });
+
+  it("首字符后整段插入补全不计正确也不计耗时", () => {
+    let state = evaluate(createPracticeInputState(), "a", 1000);
+    expect(state.timerStartedAt).toBe(1000);
+
+    state = evaluate(state, "apple", 1200);
+    expect(state.completed).toBe(true);
+    expect(state.recordCorrect).toBe(false);
+    expect(state.inputTimeSeconds).toBeUndefined();
   });
 
   it("长度达到词长且错误时记一次错误", () => {
@@ -91,5 +116,51 @@ describe("evaluatePracticeInput", () => {
     const state = evaluate(createPracticeInputState(), "a", 1000, "a");
     expect(state.recordCorrect).toBe(true);
     expect(state.inputTimeSeconds).toBe(0);
+  });
+});
+
+describe("resolveReview", () => {
+  it("逐字答对未用提示记 Good 并带耗时", () => {
+    const state = typeWord(createPracticeInputState(), "apple", 1000);
+    expect(resolveReview(state, false)).toEqual({
+      rating: 3,
+      hint: false,
+      inputTimeSeconds: 0.4,
+    });
+  });
+
+  it("用过提示答对记 Hard", () => {
+    const state = typeWord(createPracticeInputState(), "apple", 1000);
+    const review = resolveReview(state, true);
+    expect(review?.rating).toBe(2);
+    expect(review?.hint).toBe(true);
+    expect(review?.inputTimeSeconds).toBe(0.4);
+  });
+
+  it("逐字输入打错记 Again", () => {
+    let state = evaluate(createPracticeInputState(), "a", 1000);
+    state = evaluate(state, "ap", 1100);
+    state = evaluate(state, "app", 1200);
+    state = evaluate(state, "appl", 1300);
+    state = evaluate(state, "aplex", 1400);
+    expect(resolveReview(state, false)).toEqual({ rating: 1, hint: false });
+  });
+
+  it("整段插入完成不产生复习", () => {
+    let state = evaluate(createPracticeInputState(), "a", 1000);
+    state = evaluate(state, "apple", 1100);
+    expect(resolveReview(state, false)).toBeNull();
+  });
+
+  it("整段插入错误不产生复习", () => {
+    const state = evaluate(createPracticeInputState(), "aplex", 1000);
+    expect(state.recordIncorrect).toBe(true);
+    expect(resolveReview(state, false)).toBeNull();
+  });
+
+  it("未完成不产生复习", () => {
+    let state = evaluate(createPracticeInputState(), "a", 1000);
+    state = evaluate(state, "appl", 1100);
+    expect(resolveReview(state, false)).toBeNull();
   });
 });

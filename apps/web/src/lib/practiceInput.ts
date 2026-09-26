@@ -1,7 +1,10 @@
+import type { Rating } from "@/lib/masteryModel";
+
 export interface PracticeInputState {
   timerStartedAt: number | null;
   errorRecorded: boolean;
   completed: boolean;
+  lastValueLength: number;
 }
 
 export interface PracticeInputDecision extends PracticeInputState {
@@ -10,10 +13,17 @@ export interface PracticeInputDecision extends PracticeInputState {
   inputTimeSeconds?: number;
 }
 
+export interface PracticeReview {
+  rating: Rating;
+  hint: boolean;
+  inputTimeSeconds?: number;
+}
+
 export const createPracticeInputState = (): PracticeInputState => ({
   timerStartedAt: null,
   errorRecorded: false,
   completed: false,
+  lastValueLength: 0,
 });
 
 export const evaluatePracticeInput = (
@@ -27,13 +37,16 @@ export const evaluatePracticeInput = (
       timerStartedAt: state.timerStartedAt,
       errorRecorded: state.errorRecorded,
       completed: state.completed,
+      lastValueLength: value.length,
       recordCorrect: false,
       recordIncorrect: false,
     };
   }
 
   let timerStartedAt = state.timerStartedAt;
-  if (value.length === 0) {
+  if (value.length - state.lastValueLength > 1) {
+    timerStartedAt = null;
+  } else if (value.length === 0) {
     timerStartedAt = null;
   } else if (value.length === 1) {
     timerStartedAt = now;
@@ -64,6 +77,7 @@ export const evaluatePracticeInput = (
     timerStartedAt,
     errorRecorded,
     completed,
+    lastValueLength: value.length,
     recordCorrect,
     recordIncorrect,
   };
@@ -71,4 +85,24 @@ export const evaluatePracticeInput = (
     decision.inputTimeSeconds = inputTimeSeconds;
   }
   return decision;
+};
+
+export const resolveReview = (
+  decision: PracticeInputDecision,
+  hintUsed: boolean,
+): PracticeReview | null => {
+  if (decision.recordCorrect) {
+    const review: PracticeReview = {
+      rating: hintUsed ? 2 : 3,
+      hint: hintUsed,
+    };
+    if (decision.inputTimeSeconds !== undefined) {
+      review.inputTimeSeconds = decision.inputTimeSeconds;
+    }
+    return review;
+  }
+  if (decision.recordIncorrect && decision.timerStartedAt !== null) {
+    return { rating: 1, hint: hintUsed };
+  }
+  return null;
 };
