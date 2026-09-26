@@ -152,7 +152,7 @@ const WordsPractice = observer(() => {
       setRandomWords(words.getRandomWords());
     }
     setRoundInitialized(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, words.wordCount, randomWords.length]);
 
   useEffect(() => {

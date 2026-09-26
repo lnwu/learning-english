@@ -1,0 +1,21 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["react", "nextjs", "typescript", "import", "jsx-a11y"],
+  "env": {
+    "browser": true,
+    "node": true,
+    "es2026": true
+  },
+  "settings": {
+    "next": {
+      "rootDir": "."
+    }
+  },
+  "ignorePatterns": [
+    "node_modules/**",
+    ".next/**",
+    ".vercel/**",
+    "next-env.d.ts",
+    "*.tsbuildinfo"
+  ]
+}

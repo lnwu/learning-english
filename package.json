@@ -5,10 +5,12 @@
   "scripts": {
     "dev": "test -d apps/web/.vercel || bun x vercel link --cwd apps/web; bun run --filter '*' dev",
     "lint": "bun run --filter '*' lint",
+    "format": "bun run --filter '*' format",
+    "format:check": "bun run --filter '*' format:check",
     "typecheck": "bun run --filter '*' typecheck",
     "test": "bun run --filter '*' test",
     "build": "bun run --filter '*' build",
-    "check": "bun run lint && bun run typecheck && bun run test",
+    "check": "bun run lint && bun run format:check && bun run typecheck && bun run test",
     "sync:preview": "bun run scripts/sync-preview-words.mjs",
     "migrate:words-v2": "bun run scripts/migrate-words-v2.mjs",
     "calibrate:export": "bun run scripts/export-review-logs.mjs",
