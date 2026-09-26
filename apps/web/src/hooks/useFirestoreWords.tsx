@@ -22,6 +22,7 @@ import {
 import { tNow } from "@/lib/i18n";
 import { toast } from "@/hooks/useToast";
 import type { WordSense } from "@/lib/wordSenses";
+import type { Rating } from "@/lib/masteryModel";
 
 const words = new Words();
 const SYNC_INTERVAL_MS = 30 * 1000;
@@ -30,8 +31,11 @@ interface WordsContextValue {
   words: Words;
   addWord: (word: string, senses: WordSense[]) => Promise<void>;
   deleteWord: (word: string) => Promise<void>;
-  recordCorrectAttempt: (word: string, inputTimeSeconds?: number) => void;
-  recordIncorrectAttempt: (word: string) => void;
+  recordReview: (
+    word: string,
+    rating: Rating,
+    options?: { hint?: boolean; inputTimeSeconds?: number }
+  ) => void;
   syncToFirestore: () => Promise<void>;
   resetPracticeRecords: () => Promise<void>;
   updateTranslations: (
@@ -129,8 +133,7 @@ export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
       words,
       addWord: ledger.addWord,
       deleteWord: ledger.deleteWord,
-      recordCorrectAttempt: ledger.recordCorrectAttempt,
-      recordIncorrectAttempt: ledger.recordIncorrectAttempt,
+      recordReview: ledger.recordReview,
       syncToFirestore: ledger.sync,
       resetPracticeRecords: ledger.resetPracticeRecords,
       updateTranslations: ledger.updateTranslations,
