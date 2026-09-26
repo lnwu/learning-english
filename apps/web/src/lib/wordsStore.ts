@@ -230,20 +230,14 @@ export class Words {
     if (cached && cached.baseline === baseline) {
       return cached.result;
     }
-    const result = calculateMasteryScore({ ...data, baselineInputTime: baseline });
+    const result = calculateMasteryScore(data, baseline);
     this.#masteryCache.set(word, { result, baseline });
     return result;
   }
 
-  #getPriority(word: string, data: WordData): number {
+  #getPriority(word: string, data: WordData, now: number): number {
     const masteryScore = this.#getMastery(word, data).score;
-    return calculatePriority(
-      masteryScore,
-      data.lastPracticedAt,
-      data.totalAttempts,
-      data.attemptHistory,
-      data.correctPracticeDates
-    );
+    return calculatePriority(masteryScore, data, now);
   }
 
   getMasteryScore(word: string): number {
@@ -255,7 +249,7 @@ export class Words {
   getWordPriority(word: string): number {
     const data = this.wordData.get(word);
     if (!data) return 0;
-    return this.#getPriority(word, data);
+    return this.#getPriority(word, data, Date.now());
   }
 
   getMasteryLevelIndex(word: string): number {
@@ -306,11 +300,12 @@ export class Words {
   }
 
   getRandomWords(max: number = Words.MAX_RANDOM_WORDS): [string, string][] {
+    const now = Date.now();
     const candidates = Array.from(this.wordData.entries()).map(
       ([word, data]) => ({
         word,
         translation: data.translation,
-        priority: this.#getPriority(word, data),
+        priority: this.#getPriority(word, data, now),
         isNew: data.totalAttempts === 0,
       })
     );

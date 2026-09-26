@@ -1,7 +1,7 @@
 import { getLocalDateStartMs, getLocalPracticeDate } from "@/lib/practiceDate";
 import { getMasteryLevel, type MasteryLevel } from "@/lib/masteryLevels";
 
-export interface WordMetrics {
+export interface WordPracticeData {
   word: string;
   correctCount: number;
   totalAttempts: number;
@@ -9,7 +9,6 @@ export interface WordMetrics {
   lastPracticedAt: Date | null;
   correctPracticeDates?: string[];
   attemptHistory?: boolean[];
-  baselineInputTime?: number | null;
 }
 
 export interface MasteryResult {
@@ -126,7 +125,10 @@ export function cleanInputTimes(
   return times.filter((t) => t <= expectedTime * SPEED_ANOMALY_FACTOR);
 }
 
-export function calculateMasteryScore(metrics: WordMetrics): MasteryResult {
+export function calculateMasteryScore(
+  practiceData: WordPracticeData,
+  baseline: number | null
+): MasteryResult {
   const {
     word,
     correctCount,
@@ -134,8 +136,7 @@ export function calculateMasteryScore(metrics: WordMetrics): MasteryResult {
     inputTimes,
     correctPracticeDates = [],
     attemptHistory = [],
-    baselineInputTime = null,
-  } = metrics;
+  } = practiceData;
 
   if (totalAttempts === 0) {
     return {
@@ -167,9 +168,7 @@ export function calculateMasteryScore(metrics: WordMetrics): MasteryResult {
   }
 
   const expectedTime =
-    baselineInputTime && baselineInputTime > 0
-      ? baselineInputTime
-      : getExpectedInputTime(word.length);
+    baseline && baseline > 0 ? baseline : getExpectedInputTime(word.length);
   const speedSamples = cleanInputTimes(
     inputTimes.slice(-SPEED_SAMPLE_SIZE),
     expectedTime
@@ -256,11 +255,16 @@ export function calculateMasteryScore(metrics: WordMetrics): MasteryResult {
 
 export function calculatePriority(
   masteryScore: number,
-  lastPracticedAt: Date | null,
-  totalAttempts: number,
-  attemptHistory: readonly boolean[] = [],
-  correctPracticeDates: readonly string[] = []
+  practiceData: WordPracticeData,
+  now: number
 ): number {
+  const {
+    lastPracticedAt,
+    totalAttempts,
+    attemptHistory = [],
+    correctPracticeDates = [],
+  } = practiceData;
+
   const lastAttemptFailed =
     attemptHistory.length > 0 && !attemptHistory[attemptHistory.length - 1];
 
@@ -269,9 +273,9 @@ export function calculatePriority(
     : null;
   const daysSince =
     lastCorrectMs !== null
-      ? (Date.now() - lastCorrectMs) / DAY_MS
+      ? (now - lastCorrectMs) / DAY_MS
       : lastPracticedAt
-        ? (Date.now() - lastPracticedAt.getTime()) / DAY_MS
+        ? (now - lastPracticedAt.getTime()) / DAY_MS
         : 30;
 
   let recencyMultiplier: number;
