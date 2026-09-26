@@ -283,10 +283,8 @@ describe("Words store", () => {
       const d = store.getWordData(word)!;
       return calculatePriority(
         store.getMasteryScore(word),
-        d.lastPracticedAt,
-        d.totalAttempts,
-        d.attemptHistory,
-        d.correctPracticeDates
+        d,
+        Date.now()
       );
     };
 

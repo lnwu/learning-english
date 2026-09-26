@@ -40,10 +40,14 @@ export const useSentencePractice = () => {
 
   const pickWords = useCallback(() => {
     const count = pickWordCount(Math.random);
-    const picked = pickSentenceWords(words.wordEntries(), {
-      count,
-      rng: Math.random,
-    });
+    const picked = pickSentenceWords(
+      words.wordEntries().map(([word, data]) => ({
+        word,
+        priority: words.getWordPriority(word),
+        totalAttempts: data.totalAttempts,
+      })),
+      { count, rng: Math.random }
+    );
     if (picked.length >= MIN_SENTENCE_WORDS) {
       return picked;
     }

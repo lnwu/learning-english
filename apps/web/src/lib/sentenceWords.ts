@@ -1,9 +1,12 @@
-import { calculateMasteryScore, calculatePriority } from "@/lib/masteryCalculator";
-import type { WordData } from "@/lib/wordsStore";
-
 export const MIN_SENTENCE_WORDS = 2;
 export const MAX_SENTENCE_WORDS = 3;
 export const PRIORITIZED_MIN_ATTEMPTS = 3;
+
+export interface SentenceWordCandidate {
+  word: string;
+  priority: number;
+  totalAttempts: number;
+}
 
 export const pickWordCount = (
   rng: () => number,
@@ -53,34 +56,25 @@ const pickWeightedRandom = <T extends { weight: number }>(
   return selected;
 };
 
-const wordPriority = (data: Readonly<WordData>): number =>
-  calculatePriority(
-    calculateMasteryScore(data).score,
-    data.lastPracticedAt,
-    data.totalAttempts,
-    data.attemptHistory,
-    data.correctPracticeDates
-  );
-
 export const pickSentenceWords = (
-  entries: Array<[string, Readonly<WordData>]>,
+  candidates: readonly SentenceWordCandidate[],
   {
     count,
     rng,
     minAttempts = PRIORITIZED_MIN_ATTEMPTS,
   }: { count: number; rng: () => number; minAttempts?: number }
 ): string[] => {
-  if (count <= 0 || entries.length === 0) return [];
+  if (count <= 0 || candidates.length === 0) return [];
 
-  const practiced = entries.filter(
-    ([, data]) => data.totalAttempts >= minAttempts
+  const practiced = candidates.filter(
+    (candidate) => candidate.totalAttempts >= minAttempts
   );
-  const lessPracticed = entries.filter(
-    ([, data]) => data.totalAttempts < minAttempts
+  const lessPracticed = candidates.filter(
+    (candidate) => candidate.totalAttempts < minAttempts
   );
 
   const prioritized = pickWeightedRandom(
-    practiced.map(([word, data]) => ({ word, weight: wordPriority(data) })),
+    practiced.map(({ word, priority }) => ({ word, weight: priority })),
     count,
     rng
   ).map(({ word }) => word);
@@ -91,7 +85,7 @@ export const pickSentenceWords = (
   const remaining = count - prioritized.length;
   const fallback = shuffle(lessPracticed, rng)
     .slice(0, remaining)
-    .map(([word]) => word);
+    .map(({ word }) => word);
 
   return [...prioritized, ...fallback];
 };
