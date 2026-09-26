@@ -47,10 +47,11 @@ bun run sync:preview      # 手动同步 preview 数据（需 ADC + PROD_USER_UI
 
 ## 熟练度校准（导出与拟合）
 
-1. Actions 手动触发 `export-review-logs`：产物 artifact `calibration-export` 内含官方格式的 `revlog.csv`（`card_id,review_time,review_rating`）、原始 `reviews.json` 与校准报告 `report.json`；workflow 日志同时打印可靠性表、Brier 与 AUC。
-2. 本地拟合（需 Python）：`python -m pip install fsrs-optimizer`，再执行 `python -m fsrs_optimizer revlog.csv -y -o weights.json`；结果（优化后的 `w`、`evaluation.json` 指标）与报告一起评估。
-3. 只有样本达到门槛（`calibrationMetrics.ts` 的 `CALIBRATION_MIN_SAMPLES = 500`）且指标有改善时才发布：把新权重写入 `apps/web/src/lib/masteryModel.ts` 的 `W`、提升 `MODEL_VERSION`，走功能分支 + Preview 验收后合并。
-4. 本地导出（需 ADC 与 `PROD_USER_UID`）：`bun run calibrate:export --out calibration-out`；查看报告 `bun run calibrate:report calibration-out/reviews.json`。
+1. `export-review-logs` 每周一自动运行（也可手动触发）：产物 artifact `calibration-export` 内含官方格式的 `revlog.csv`（`card_id,review_time,review_rating`）、原始 `reviews.json` 与校准报告 `report.json`；workflow 日志同时打印可靠性表、Brier 与 AUC。
+2. 可校准样本达到门槛（`lib/calibrationMetrics.ts` 的 `CALIBRATION_MIN_SAMPLES = 500`）时，工作流自动创建 `calibration` 标签的 Issue（标题「熟练度校准样本已达标」，正文含指标与拟合步骤；已有未关闭的同类 Issue 则跳过）；未达标时只留 artifact，不打扰。
+3. 按 Issue 指引本地拟合（需 Python）：`python -m pip install fsrs-optimizer`，再执行 `python -m fsrs_optimizer revlog.csv -y -o weights.json`；结果（优化后的 `w`、`evaluation.json` 指标）与报告一起评估。
+4. 只有指标有改善时才发布：把新权重写入 `apps/web/src/lib/masteryModel.ts` 的 `W`、提升 `MODEL_VERSION`，走功能分支 + Preview 验收后合并，并关闭对应的校准 Issue。
+5. 本地导出（需 ADC 与 `PROD_USER_UID`）：`bun run calibrate:export --out calibration-out`；查看报告 `bun run calibrate:report calibration-out/reviews.json`；预览通知正文 `bun run calibrate:issue calibration-out/report.json --dry-run`。
 
 ## 事故处理
 
