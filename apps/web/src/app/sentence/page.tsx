@@ -20,7 +20,7 @@ import { CheckIcon, XIcon } from "lucide-react";
 import { useSentencePractice, useLocale, usePracticeTimeTracker } from "@/hooks";
 import { observer } from "mobx-react-lite";
 import Link from "next/link";
-import { useEffect, useState, type FormEvent, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { MIN_SENTENCE_WORDS } from "@/lib/sentenceWords";
 
 const Sentence = observer(() => {
@@ -47,6 +47,7 @@ const Sentence = observer(() => {
   const [lastCheckedAnswer, setLastCheckedAnswer] = useState("");
   const [isClient, setIsClient] = useState(false);
   const [hasTriedInitialGenerate, setHasTriedInitialGenerate] = useState(false);
+  const answerRef = useRef<HTMLTextAreaElement>(null);
   const noWords = words.wordCount < MIN_SENTENCE_WORDS;
 
   useEffect(() => {
@@ -56,6 +57,7 @@ const Sentence = observer(() => {
   useEffect(() => {
     setHasChecked(false);
     setLastCheckedAnswer("");
+    if (question) answerRef.current?.focus();
   }, [question]);
 
   useEffect(() => {
@@ -168,11 +170,11 @@ const Sentence = observer(() => {
 
                 <form onSubmit={handleSubmit} className="flex flex-col gap-2">
                   <Textarea
+                    ref={answerRef}
                     rows={3}
                     className="max-h-60 resize-y overflow-y-auto"
                     placeholder={t("sentence.answerPlaceholder")}
                     value={answer}
-                    autoFocus
                     disabled={checking}
                     onKeyDown={handleKeyDown}
                     onChange={(e) => setAnswer(e.target.value)}
