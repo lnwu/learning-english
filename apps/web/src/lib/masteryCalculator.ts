@@ -118,6 +118,30 @@ export function computeBaselineInputTime(times: readonly number[]): number | nul
   return times.length >= MIN_BASELINE_SAMPLES ? getMedian(times) : null;
 }
 
+export const WORD_LENGTH_CATEGORY_COUNT = 3;
+const SHORT_WORD_MAX_LENGTH = 5;
+const MEDIUM_WORD_MAX_LENGTH = 10;
+
+export function getWordLengthCategory(word: string): number {
+  const length = word.length;
+  if (length <= SHORT_WORD_MAX_LENGTH) return 0;
+  if (length <= MEDIUM_WORD_MAX_LENGTH) return 1;
+  return 2;
+}
+
+export function computeBaselinesByLengthCategory(
+  entries: Iterable<readonly [string, { readonly inputTimes: readonly number[] }]>
+): (number | null)[] {
+  const timesByCategory: number[][] = Array.from(
+    { length: WORD_LENGTH_CATEGORY_COUNT },
+    () => []
+  );
+  for (const [word, data] of entries) {
+    timesByCategory[getWordLengthCategory(word)].push(...data.inputTimes);
+  }
+  return timesByCategory.map((times) => computeBaselineInputTime(times));
+}
+
 export function cleanInputTimes(
   times: readonly number[],
   expectedTime: number

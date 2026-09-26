@@ -3,7 +3,9 @@ import {
   calculateMasteryScore,
   calculatePriority,
   computeBaselineInputTime,
+  computeBaselinesByLengthCategory,
   getExpectedInputTime,
+  getWordLengthCategory,
   type WordPracticeData,
 } from "./masteryCalculator";
 import { formatLocalPracticeDate } from "./practiceDate";
@@ -29,6 +31,37 @@ describe("computeBaselineInputTime", () => {
   it("样本足够时返回中位数，对单次异常耗时稳健", () => {
     expect(computeBaselineInputTime([1, 2, 3, 4, 5])).toBe(3);
     expect(computeBaselineInputTime([1, 2, 3, 4, 100])).toBe(3);
+  });
+});
+
+describe("getWordLengthCategory", () => {
+  it("按词长分为短/中/长三档", () => {
+    expect(getWordLengthCategory("apple")).toBe(0);
+    expect(getWordLengthCategory("banana")).toBe(1);
+    expect(getWordLengthCategory("pronunciation")).toBe(2);
+  });
+
+  it("档位边界为 5 与 10", () => {
+    expect(getWordLengthCategory("abcde")).toBe(0);
+    expect(getWordLengthCategory("abcdef")).toBe(1);
+    expect(getWordLengthCategory("abcdefghij")).toBe(1);
+    expect(getWordLengthCategory("abcdefghijk")).toBe(2);
+  });
+});
+
+describe("computeBaselinesByLengthCategory", () => {
+  it("按长度档汇总样本，每档样本 ≥5 时返回中位数", () => {
+    const baselines = computeBaselinesByLengthCategory([
+      ["apple", { inputTimes: [2, 2, 3, 10, 4] }],
+      ["banana", { inputTimes: [4, 4, 4, 4] }],
+      ["pronunciation", { inputTimes: [6, 6, 6, 6, 6, 6] }],
+    ]);
+
+    expect(baselines).toEqual([3, null, 6]);
+  });
+
+  it("无单词时每档都是 null", () => {
+    expect(computeBaselinesByLengthCategory([])).toEqual([null, null, null]);
   });
 });
 

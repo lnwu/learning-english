@@ -3,7 +3,8 @@ import type { DocumentData } from "firebase/firestore";
 import {
   calculateMasteryScore,
   calculatePriority,
-  computeBaselineInputTime,
+  computeBaselinesByLengthCategory,
+  getWordLengthCategory as getWordLengthCategoryForWord,
   type MasteryResult,
 } from "@/lib/masteryCalculator";
 import { getMasteryLevelIndex } from "@/lib/masteryLevels";
@@ -12,10 +13,6 @@ import {
 } from "@/lib/practiceDate";
 import { parseWordDoc } from "@/lib/wordDoc";
 import { pickWeightedRandom } from "@/lib/weightedPick";
-
-const SHORT_WORD_MAX_LENGTH = 5;
-const MEDIUM_WORD_MAX_LENGTH = 10;
-const WORD_LENGTH_CATEGORY_COUNT = 3;
 
 const average = (values: number[]): number =>
   values.reduce((sum, value) => sum + value, 0) / values.length;
@@ -58,7 +55,7 @@ export class Words {
     string,
     { result: MasteryResult; baseline: number | null }
   >();
-  #baselineByLengthCategory: (number | null | undefined)[] | null = null;
+  #baselineByLengthCategory: (number | null)[] | null = null;
 
   constructor() {
     makeAutoObservable(this);
@@ -174,23 +171,11 @@ export class Words {
 
   #getBaselineByLengthCategory(): (number | null)[] {
     if (!this.#baselineByLengthCategory) {
-      this.#baselineByLengthCategory = Array.from(
-        { length: WORD_LENGTH_CATEGORY_COUNT },
-        () => undefined
+      this.#baselineByLengthCategory = computeBaselinesByLengthCategory(
+        this.wordData.entries()
       );
     }
-    const baselines = this.#baselineByLengthCategory;
-    for (let category = 0; category < WORD_LENGTH_CATEGORY_COUNT; category++) {
-      if (baselines[category] !== undefined) continue;
-      const times: number[] = [];
-      this.wordData.forEach((data, word) => {
-        if (this.getWordLengthCategory(word) === category) {
-          times.push(...data.inputTimes);
-        }
-      });
-      baselines[category] = computeBaselineInputTime(times);
-    }
-    return baselines as (number | null)[];
+    return this.#baselineByLengthCategory;
   }
 
   #getMastery(word: string, data: WordData): MasteryResult {
@@ -236,10 +221,7 @@ export class Words {
   }
 
   getWordLengthCategory(word: string): number {
-    const length = word.length;
-    if (length <= SHORT_WORD_MAX_LENGTH) return 0;
-    if (length <= MEDIUM_WORD_MAX_LENGTH) return 1;
-    return 2;
+    return getWordLengthCategoryForWord(word);
   }
 
   get inputTimeBaselineByLengthCategory(): (number | null)[] {
