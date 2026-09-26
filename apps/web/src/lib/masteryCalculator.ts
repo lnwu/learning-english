@@ -1,5 +1,5 @@
 import { getLocalDateStartMs, getLocalPracticeDate } from "@/lib/practiceDate";
-import { getMasteryLevel, type MasteryLevel } from "@/lib/masteryLevels";
+import { getMasteryLevel, getMasteryLevelCeiling, type MasteryLevel } from "@/lib/masteryLevels";
 
 export interface WordPracticeData {
   word: string;
@@ -227,18 +227,18 @@ export function calculateMasteryScore(
     totalAttempts < MIN_ATTEMPTS_FOR_FAMILIAR ||
     gateAccuracy < MIN_ACCURACY_FOR_FAMILIAR
   ) {
-    score = Math.min(score, 39);
+    score = Math.min(score, getMasteryLevelCeiling("learning"));
   } else if (
     totalAttempts < MIN_ATTEMPTS_FOR_PROFICIENT ||
     reviewDays < MIN_REVIEW_DAYS_FOR_PROFICIENT ||
     gateAccuracy < MIN_ACCURACY_FOR_PROFICIENT
   ) {
-    score = Math.min(score, 59);
+    score = Math.min(score, getMasteryLevelCeiling("familiar"));
   } else if (
     totalAttempts < MIN_ATTEMPTS_FOR_MASTERED ||
     reviewDays < MIN_REVIEW_DAYS_FOR_MASTERED
   ) {
-    score = Math.min(score, 79);
+    score = Math.min(score, getMasteryLevelCeiling("proficient"));
   }
 
   const finalScore = Math.max(0, Math.min(100, Math.round(score)));
