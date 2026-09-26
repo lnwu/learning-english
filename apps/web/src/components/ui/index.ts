@@ -1,6 +1,5 @@
 export * from "./alert";
 export * from "./avatar";
-export * from "./badge";
 export * from "./button";
 export * from "./card";
 export * from "./confirm-dialog";
@@ -10,11 +9,9 @@ export * from "./empty";
 export * from "./frequency-bar";
 export * from "./input";
 export * from "./page";
-export * from "./progress";
 export * from "./separator";
 export { Toaster } from "./toaster";
 export * from "./spinner";
-export * from "./switch";
 export * from "./sync-indicator";
 export * from "./textarea";
 export * from "./toggle";

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { ApiParseResult } from "@/lib/apiRoute";
 import { isValidWordToken } from "@/lib/lemma";
 
-export type ApiField<T> = { ok: true; value: T } | { ok: false; error: string };
+type ApiField<T> = { ok: true; value: T } | { ok: false; error: string };
 
 export type FieldParser<T> = (raw: unknown) => ApiField<T>;
 

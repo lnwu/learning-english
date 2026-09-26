@@ -1,9 +1,9 @@
-export interface BatchTaskSuccess<T> {
+interface BatchTaskSuccess<T> {
   words: string[];
   result: T;
 }
 
-export interface BatchTaskFailure {
+interface BatchTaskFailure {
   words: string[];
   error: unknown;
 }
