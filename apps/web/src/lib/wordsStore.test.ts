@@ -247,6 +247,23 @@ describe("getRandomWords", () => {
     expect(picked.map(([word]) => word)).toEqual(["fresh"]);
   });
 
+  it("所有词都达上限且没有新词时返回空数组", () => {
+    const store = new Words();
+    const now = Date.now();
+    const today = new Date(now);
+    const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    addWord(store, "capped", {
+      memory: dueReviewMemory(now),
+      stats: stats({
+        reviewDays: 1,
+        lastReviewDay: todayKey,
+        dailyReviews: 3,
+      }),
+    });
+
+    expect(store.getRandomWords(5)).toEqual([]);
+  });
+
   it("当天已复习的常规词不参与补位", () => {
     const store = new Words();
     const now = Date.now();

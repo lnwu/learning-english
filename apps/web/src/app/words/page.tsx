@@ -134,6 +134,7 @@ const WordsPractice = observer(() => {
   const [isClient, setIsClient] = useState(false);
   const [shouldFocusFirst, setShouldFocusFirst] = useState(false);
   const [randomWords, setRandomWords] = useState<[string, string][]>([]);
+  const [roundInitialized, setRoundInitialized] = useState(false);
   const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
   const inputStatesRef = useRef<Map<string, PracticeInputState>>(new Map());
   const attemptStatesRef = useRef<Map<string, RoundAttempt>>(new Map());
@@ -144,9 +145,13 @@ const WordsPractice = observer(() => {
 
   // Initialize random words when words are loaded
   useEffect(() => {
-    if (!loading && words.wordCount > 0 && randomWords.length === 0) {
+    if (loading || words.wordCount === 0) {
+      return;
+    }
+    if (randomWords.length === 0) {
       setRandomWords(words.getRandomWords());
     }
+    setRoundInitialized(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, words.wordCount, randomWords.length]);
 
@@ -239,6 +244,38 @@ const WordsPractice = observer(() => {
           </EmptyHeader>
           <Button render={<Link href="/add-word" />} nativeButton={false} variant="outline">
             {t("addWord.title")}
+          </Button>
+        </Empty>
+      </PageContainer>
+    );
+  }
+
+  if (words.wordCount === 0) {
+    return (
+      <PageContainer>
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyTitle>{t("words.emptyLibraryTitle")}</EmptyTitle>
+            <EmptyDescription>{t("words.emptyLibraryDescription")}</EmptyDescription>
+          </EmptyHeader>
+          <Button render={<Link href="/add-word" />} nativeButton={false} variant="outline">
+            {t("addWord.title")}
+          </Button>
+        </Empty>
+      </PageContainer>
+    );
+  }
+
+  if (roundInitialized && randomWords.length === 0) {
+    return (
+      <PageContainer>
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyTitle>{t("words.allReviewedTitle")}</EmptyTitle>
+            <EmptyDescription>{t("words.allReviewedDescription")}</EmptyDescription>
+          </EmptyHeader>
+          <Button render={<Link href="/home" />} nativeButton={false} variant="outline">
+            {t("practiceHub.back")}
           </Button>
         </Empty>
       </PageContainer>
