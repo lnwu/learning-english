@@ -9,7 +9,8 @@
 
 ## Vercel 运行时
 
-`apps/web/vercel.json` 的 `bunVersion` 固定 `1.4.x`：Vercel Functions（API 路由与 SSR）在 Bun 上运行，Next 的 build/dev 也经 `bun run --bun` 执行；版本与本机 `packageManager`、CI 的 bun 1.4.2 对齐。
+- `apps/web/vercel.json` 的 `bunVersion` 固定 `1.4.x`：Vercel Functions（API 路由与 SSR）在 Bun 上运行，Next 的 build/dev 也经 `bun run --bun` 执行；版本与本机 `packageManager`、CI 的 bun 1.4.2 对齐。
+- `regions` 固定 `hkg1`：函数就近访问 Upstash（`sin1`）、Firestore / Identity Platform（`asia-east2`）与 DeepSeek API。
 
 ## Vercel 环境变量（apps/web 项目）
 
