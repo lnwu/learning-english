@@ -17,6 +17,7 @@
 - 中文不要通过 `next/font` 引入 Noto Sans SC，使用 `app/index.css` 中维护的系统字体栈。
 - 不要删除 `app/error.tsx` 与 `app/global-error.tsx`。
 - 修改翻译 prompt 或默认模型时，必须同步提升 `lib/translationCache.ts` 的缓存 key 前缀，避免长期复用旧释义。
+- 修改 `lib/masteryModel.ts` 的 FSRS 权重时必须提升 `MODEL_VERSION`，并按 `docs/DEPLOYMENT.md`「熟练度校准」的流程评估与发布。
 
 ## TypeScript 6/7 并排
 
