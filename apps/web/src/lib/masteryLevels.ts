@@ -1,11 +1,6 @@
 import type { TranslationKey } from "@/lib/i18n";
 
-export type MasteryLevel =
-  | "new"
-  | "learning"
-  | "familiar"
-  | "proficient"
-  | "mastered";
+export type MasteryLevel = "new" | "learning" | "familiar" | "proficient" | "mastered";
 
 export interface MasteryLevelDescriptor {
   key: MasteryLevel;
@@ -22,7 +17,7 @@ export const MASTERY_LEVELS: readonly MasteryLevelDescriptor[] = [
 ];
 
 export const MASTERY_LEVEL_ORDER: readonly MasteryLevel[] = MASTERY_LEVELS.map(
-  (level) => level.key
+  (level) => level.key,
 );
 
 export function getMasteryLevel(score: number): MasteryLevel {

@@ -147,11 +147,7 @@ describe("buildPracticeTimeWeeks", () => {
 
   it("填充秒数与档位，缺失日期为 0", () => {
     const end = new Date(2026, 7, 19);
-    const weeks = buildPracticeTimeWeeks(
-      new Map([["2026-08-19", 40 * 60]]),
-      end,
-      2
-    );
+    const weeks = buildPracticeTimeWeeks(new Map([["2026-08-19", 40 * 60]]), end, 2);
     expect(weeks[1][3]).toEqual({
       date: "2026-08-19",
       seconds: 40 * 60,
@@ -173,7 +169,7 @@ describe("getPracticeTimeMonthLabels", () => {
     const labels = getPracticeTimeMonthLabels(weeks);
     expect(labels.map((l) => l.month)).toEqual([8, 9, 10]);
     expect(labels.map((l) => l.weekIndex)).toEqual(
-      [...labels.map((l) => l.weekIndex)].sort((a, b) => a - b)
+      [...labels.map((l) => l.weekIndex)].sort((a, b) => a - b),
     );
   });
 });

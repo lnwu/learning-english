@@ -31,16 +31,13 @@ export interface CalibrationReport {
 
 export const DAY_MS = 86_400_000;
 export const CALIBRATION_MIN_SAMPLES = 500;
-const DEFAULT_BUCKET_EDGES: readonly number[] = [
-  0, 0.6, 0.7, 0.8, 0.9, 0.95, 1.000001,
-];
+const DEFAULT_BUCKET_EDGES: readonly number[] = [0, 0.6, 0.7, 0.8, 0.9, 0.95, 1.000001];
 
-const clamp01 = (value: number): number =>
-  Math.min(Math.max(value, 0), 1);
+const clamp01 = (value: number): number => Math.min(Math.max(value, 0), 1);
 
 export const buildCalibrationSamples = (
   cards: ReadonlyArray<ReadonlyArray<ReviewLogLike>>,
-  minGapMs: number = DAY_MS
+  minGapMs: number = DAY_MS,
 ): {
   samples: CalibrationSample[];
   skippedNoPrediction: number;
@@ -73,21 +70,16 @@ export const buildCalibrationSamples = (
   return { samples, skippedNoPrediction, skippedSameDay };
 };
 
-export const brierScore = (
-  samples: ReadonlyArray<CalibrationSample>
-): number | null => {
+export const brierScore = (samples: ReadonlyArray<CalibrationSample>): number | null => {
   if (samples.length === 0) return null;
   const total = samples.reduce(
-    (sum, sample) =>
-      sum + (sample.predicted - (sample.recalled ? 1 : 0)) ** 2,
-    0
+    (sum, sample) => sum + (sample.predicted - (sample.recalled ? 1 : 0)) ** 2,
+    0,
   );
   return total / samples.length;
 };
 
-export const rocAuc = (
-  samples: ReadonlyArray<CalibrationSample>
-): number | null => {
+export const rocAuc = (samples: ReadonlyArray<CalibrationSample>): number | null => {
   const positives = samples.filter((sample) => sample.recalled).length;
   const negatives = samples.length - positives;
   if (positives === 0 || negatives === 0) return null;
@@ -107,29 +99,22 @@ export const rocAuc = (
     i = j + 1;
   }
 
-  return (
-    (rankSumPositives - (positives * (positives + 1)) / 2) /
-    (positives * negatives)
-  );
+  return (rankSumPositives - (positives * (positives + 1)) / 2) / (positives * negatives);
 };
 
 export const calibrationBuckets = (
   samples: ReadonlyArray<CalibrationSample>,
-  edges: readonly number[] = DEFAULT_BUCKET_EDGES
+  edges: readonly number[] = DEFAULT_BUCKET_EDGES,
 ): CalibrationBucket[] => {
   const buckets: CalibrationBucket[] = [];
   for (let i = 0; i < edges.length - 1; i++) {
     const from = edges[i];
     const to = edges[i + 1];
-    const inBucket = samples.filter(
-      (sample) => sample.predicted >= from && sample.predicted < to
-    );
+    const inBucket = samples.filter((sample) => sample.predicted >= from && sample.predicted < to);
     if (inBucket.length === 0) continue;
     const meanPredicted =
-      inBucket.reduce((sum, sample) => sum + sample.predicted, 0) /
-      inBucket.length;
-    const observedRecall =
-      inBucket.filter((sample) => sample.recalled).length / inBucket.length;
+      inBucket.reduce((sum, sample) => sum + sample.predicted, 0) / inBucket.length;
+    const observedRecall = inBucket.filter((sample) => sample.recalled).length / inBucket.length;
     buckets.push({
       from,
       to,
@@ -148,10 +133,12 @@ export const buildCalibrationReport = (
     minGapMs?: number;
     edges?: readonly number[];
     minSamples?: number;
-  } = {}
+  } = {},
 ): CalibrationReport => {
-  const { samples, skippedNoPrediction, skippedSameDay } =
-    buildCalibrationSamples(cards, options.minGapMs);
+  const { samples, skippedNoPrediction, skippedSameDay } = buildCalibrationSamples(
+    cards,
+    options.minGapMs,
+  );
   const minSamples = options.minSamples ?? CALIBRATION_MIN_SAMPLES;
   return {
     totalReviews: cards.reduce((sum, card) => sum + card.length, 0),
@@ -160,10 +147,7 @@ export const buildCalibrationReport = (
     skippedSameDay,
     brier: brierScore(samples),
     auc: rocAuc(samples),
-    buckets: calibrationBuckets(
-      samples,
-      options.edges ?? DEFAULT_BUCKET_EDGES
-    ),
+    buckets: calibrationBuckets(samples, options.edges ?? DEFAULT_BUCKET_EDGES),
     meetsThreshold: samples.length >= minSamples,
   };
 };

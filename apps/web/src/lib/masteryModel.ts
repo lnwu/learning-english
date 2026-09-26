@@ -52,9 +52,8 @@ const SPEED_ANOMALY_FACTOR = 5;
 const WORD_LENGTH_CATEGORY_COUNT = 3;
 
 const W = [
-  0.212, 1.2931, 2.3065, 8.2956, 6.4133, 0.8334, 3.0194, 0.001, 1.8722,
-  0.1666, 0.796, 1.4835, 0.0614, 0.2629, 1.6483, 0.6014, 1.8729, 0.5425,
-  0.0912, 0.0658, 0.1542,
+  0.212, 1.2931, 2.3065, 8.2956, 6.4133, 0.8334, 3.0194, 0.001, 1.8722, 0.1666, 0.796, 1.4835,
+  0.0614, 0.2629, 1.6483, 0.6014, 1.8729, 0.5425, 0.0912, 0.0658, 0.1542,
 ] as const;
 
 const DECAY = -W[20];
@@ -62,9 +61,7 @@ const FACTOR = 0.9 ** (1 / DECAY) - 1;
 const MINUTE_MS = 60 * 1000;
 const LEARNING_STEP_MINUTES = [1, 10] as const;
 const RELEARNING_STEP_MINUTES = 10;
-const HARD_LEARNING_MINUTES = Math.round(
-  (LEARNING_STEP_MINUTES[0] + LEARNING_STEP_MINUTES[1]) / 2
-);
+const HARD_LEARNING_MINUTES = Math.round((LEARNING_STEP_MINUTES[0] + LEARNING_STEP_MINUTES[1]) / 2);
 const HARD_RELEARNING_MINUTES = Math.round(RELEARNING_STEP_MINUTES * 1.5);
 const LAST_LEARNING_STEP = LEARNING_STEP_MINUTES.length - 1;
 
@@ -104,24 +101,17 @@ export const initialStats = (): WordStats => ({
   hints: 0,
 });
 
-export const getLastReviewAt = (memory: WordMemory): number =>
-  memory.lastReviewAt ?? 0;
+export const getLastReviewAt = (memory: WordMemory): number => memory.lastReviewAt ?? 0;
 
 export const isNewMemory = (memory: WordMemory): boolean =>
   memory.state === "new" || memory.reps === 0;
 
-export const retrievability = (
-  memory: WordMemory,
-  now: number
-): number | null => {
+export const retrievability = (memory: WordMemory, now: number): number | null => {
   if (isNewMemory(memory) || memory.stability <= 0) return null;
   if (memory.lastReviewAt === null) return null;
   const elapsedDays = Math.floor((now - memory.lastReviewAt) / DAY_MS);
   if (elapsedDays <= 0) return 1;
-  return roundTo(
-    (1 + (FACTOR * elapsedDays) / memory.stability) ** DECAY,
-    8
-  );
+  return roundTo((1 + (FACTOR * elapsedDays) / memory.stability) ** DECAY, 8);
 };
 
 const getElapsedDays = (memory: WordMemory, now: number): number => {
@@ -129,27 +119,21 @@ const getElapsedDays = (memory: WordMemory, now: number): number => {
   return Math.max(0, Math.floor((now - memory.lastReviewAt) / DAY_MS));
 };
 
-const initialStability = (rating: Rating): number =>
-  Math.max(W[rating - 1], 0.1);
+const initialStability = (rating: Rating): number => Math.max(W[rating - 1], 0.1);
 
-const initialDifficulty = (rating: number): number =>
-  W[4] - Math.exp((rating - 1) * W[5]) + 1;
+const initialDifficulty = (rating: number): number => W[4] - Math.exp((rating - 1) * W[5]) + 1;
 
 const nextDifficulty = (difficulty: number, rating: Rating): number => {
   const delta = -W[6] * (rating - 3);
   const next = difficulty + (delta * (10 - difficulty)) / 9;
-  return clamp(
-    roundTo(W[7] * initialDifficulty(4) + (1 - W[7]) * next, 8),
-    1,
-    10
-  );
+  return clamp(roundTo(W[7] * initialDifficulty(4) + (1 - W[7]) * next, 8), 1, 10);
 };
 
 const recallStability = (
   difficulty: number,
   stability: number,
   retrievabilityBefore: number,
-  rating: Rating
+  rating: Rating,
 ): number => {
   const hardPenalty = rating === 2 ? W[15] : 1;
   const next =
@@ -166,7 +150,7 @@ const recallStability = (
 const forgetStability = (
   difficulty: number,
   stability: number,
-  retrievabilityBefore: number
+  retrievabilityBefore: number,
 ): number => {
   const stabilityAfterFail =
     W[11] *
@@ -174,54 +158,31 @@ const forgetStability = (
     ((stability + 1) ** W[13] - 1) *
     Math.exp(W[14] * (1 - retrievabilityBefore));
   const bound = stability / Math.exp(W[17] * W[18]);
-  return clamp(
-    roundTo(Math.min(stabilityAfterFail, bound), 8),
-    MIN_STABILITY,
-    MAX_STABILITY
-  );
+  return clamp(roundTo(Math.min(stabilityAfterFail, bound), 8), MIN_STABILITY, MAX_STABILITY);
 };
 
 const shortTermStability = (stability: number, rating: Rating): number => {
-  const factor =
-    stability ** -W[19] * Math.exp(W[17] * (rating - 3 + W[18]));
+  const factor = stability ** -W[19] * Math.exp(W[17] * (rating - 3 + W[18]));
   const masked = rating >= 2 ? Math.max(factor, 1) : factor;
   return clamp(roundTo(stability * masked, 8), MIN_STABILITY, MAX_STABILITY);
 };
 
 export const intervalDays = (stability: number): number => {
   const modifier = (REQUEST_RETENTION ** (1 / DECAY) - 1) / FACTOR;
-  return Math.min(
-    Math.max(1, Math.round(stability * modifier)),
-    MAX_STABILITY
-  );
+  return Math.min(Math.max(1, Math.round(stability * modifier)), MAX_STABILITY);
 };
 
-export const reviewMemory = (
-  memory: WordMemory,
-  rating: Rating,
-  now: number
-): WordMemory => {
+export const reviewMemory = (memory: WordMemory, rating: Rating, now: number): WordMemory => {
   const isNew = isNewMemory(memory);
   const elapsedDays = getElapsedDays(memory, now);
-  const retrievabilityBefore = isNew
-    ? 0
-    : ((1 + (FACTOR * elapsedDays) / memory.stability) ** DECAY);
+  const retrievabilityBefore = isNew ? 0 : (1 + (FACTOR * elapsedDays) / memory.stability) ** DECAY;
   const stability = isNew
     ? initialStability(rating)
     : elapsedDays === 0
       ? shortTermStability(memory.stability, rating)
       : rating === 1
-        ? forgetStability(
-            memory.difficulty,
-            memory.stability,
-            retrievabilityBefore
-          )
-        : recallStability(
-            memory.difficulty,
-            memory.stability,
-            retrievabilityBefore,
-            rating
-          );
+        ? forgetStability(memory.difficulty, memory.stability, retrievabilityBefore)
+        : recallStability(memory.difficulty, memory.stability, retrievabilityBefore, rating);
   const difficulty = isNew
     ? clamp(initialDifficulty(rating), 1, 10)
     : nextDifficulty(memory.difficulty, rating);
@@ -298,10 +259,7 @@ export const reviewMemory = (
 export const isMemoryDue = (memory: WordMemory, now: number): boolean =>
   memory.state !== "new" && memory.due <= now;
 
-export const isDailyLimitReached = (
-  stats: WordStats,
-  now: number
-): boolean =>
+export const isDailyLimitReached = (stats: WordStats, now: number): boolean =>
   stats.lastReviewDay === formatLocalPracticeDate(new Date(now)) &&
   stats.dailyReviews >= DAILY_REVIEW_LIMIT;
 
@@ -319,20 +277,14 @@ const levelUnlockedByReviewDays = (reviewDays: number): MasteryLevel => {
   return "mastered";
 };
 
-export const effectiveLevel = (
-  memory: WordMemory,
-  stats: WordStats
-): MasteryLevel => {
+export const effectiveLevel = (memory: WordMemory, stats: WordStats): MasteryLevel => {
   if (isNewMemory(memory)) return "new";
   const band = levelFromStability(memory.stability);
   const unlocked = levelUnlockedByReviewDays(stats.reviewDays);
   return LEVEL_RANK[band] <= LEVEL_RANK[unlocked] ? band : unlocked;
 };
 
-export const masteryScoreFor = (
-  memory: WordMemory,
-  stats: WordStats
-): number => {
+export const masteryScoreFor = (memory: WordMemory, stats: WordStats): number => {
   const level = effectiveLevel(memory, stats);
   const stability = memory.stability;
   let score: number;
@@ -369,27 +321,23 @@ export const getWordLengthCategory = (word: string): number => {
   return 2;
 };
 
-const getFallbackInputTime = (wordLength: number): number =>
-  wordLength * 0.4 + 0.5;
+const getFallbackInputTime = (wordLength: number): number => wordLength * 0.4 + 0.5;
 
 export const computeBaselinesByLengthCategory = (
-  entries: Iterable<readonly [string, { readonly inputTimes: readonly number[] }]>
+  entries: Iterable<readonly [string, { readonly inputTimes: readonly number[] }]>,
 ): Array<number | null> => {
-  const timesByCategory: number[][] = Array.from(
-    { length: WORD_LENGTH_CATEGORY_COUNT },
-    () => []
-  );
+  const timesByCategory: number[][] = Array.from({ length: WORD_LENGTH_CATEGORY_COUNT }, () => []);
   for (const [word, data] of entries) {
     timesByCategory[getWordLengthCategory(word)].push(...data.inputTimes);
   }
   return timesByCategory.map((times) =>
-    times.length >= MIN_BASELINE_SAMPLES ? median(times) : null
+    times.length >= MIN_BASELINE_SAMPLES ? median(times) : null,
   );
 };
 
 export const computeBaselineForWord = (
   entries: Iterable<readonly [string, { readonly inputTimes: readonly number[] }]>,
-  word: string
+  word: string,
 ): number => {
   const category = getWordLengthCategory(word);
   const times: number[] = [];
@@ -399,22 +347,16 @@ export const computeBaselineForWord = (
     }
     times.push(...data.inputTimes);
   }
-  return times.length >= MIN_BASELINE_SAMPLES
-    ? median(times)
-    : getFallbackInputTime(word.length);
+  return times.length >= MIN_BASELINE_SAMPLES ? median(times) : getFallbackInputTime(word.length);
 };
 
 export const calculateFluencyScore = (
   inputTimes: readonly number[],
-  baseline: number
+  baseline: number,
 ): number | null => {
   const samples = inputTimes
     .slice(-FLUENCY_SAMPLE_SIZE)
     .filter((time) => time <= baseline * SPEED_ANOMALY_FACTOR);
   if (samples.length < MIN_FLUENCY_SAMPLES) return null;
-  return clamp(
-    Math.round((FLUENCY_SCORE_MULTIPLIER * baseline) / median(samples)),
-    0,
-    100
-  );
+  return clamp(Math.round((FLUENCY_SCORE_MULTIPLIER * baseline) / median(samples)), 0, 100);
 };

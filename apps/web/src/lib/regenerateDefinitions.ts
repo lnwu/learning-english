@@ -32,12 +32,10 @@ const sanitizeSenses = (value: unknown): WordSense[] | null => {
 
 export const parseRegenerateResults = (
   raw: unknown,
-  requestedWords: string[]
+  requestedWords: string[],
 ): RegenerateResult[] => {
   const results =
-    typeof raw === "object" &&
-    raw !== null &&
-    Array.isArray((raw as { results?: unknown }).results)
+    typeof raw === "object" && raw !== null && Array.isArray((raw as { results?: unknown }).results)
       ? (raw as { results: unknown[] }).results
       : [];
 
@@ -45,14 +43,13 @@ export const parseRegenerateResults = (
   for (const item of results) {
     if (typeof item !== "object" || item === null) continue;
     const record = item as Record<string, unknown>;
-    const word =
-      typeof record.word === "string" ? record.word.trim().toLowerCase() : "";
+    const word = typeof record.word === "string" ? record.word.trim().toLowerCase() : "";
     if (!word) continue;
     byWord.set(word, sanitizeSenses(record.senses));
   }
 
   return requestedWords.map((word) => ({
     word,
-    senses: byWord.has(word) ? byWord.get(word) ?? null : null,
+    senses: byWord.has(word) ? (byWord.get(word) ?? null) : null,
   }));
 };

@@ -3,11 +3,7 @@ import { chunkWords, countFailedWords, runBatchedAiTask } from "./batchAiTask";
 
 describe("chunkWords", () => {
   it("按 batchSize 切分，最后一批可以更短", () => {
-    expect(chunkWords(["a", "b", "c", "d", "e"], 2)).toEqual([
-      ["a", "b"],
-      ["c", "d"],
-      ["e"],
-    ]);
+    expect(chunkWords(["a", "b", "c", "d", "e"], 2)).toEqual([["a", "b"], ["c", "d"], ["e"]]);
   });
 
   it("空列表返回空数组", () => {
@@ -60,7 +56,7 @@ describe("countFailedWords", () => {
       countFailedWords([
         { words: ["a", "b"], error: new Error("boom") },
         { words: ["c"], result: 1 },
-      ])
+      ]),
     ).toBe(2);
   });
 

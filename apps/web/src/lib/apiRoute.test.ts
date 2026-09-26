@@ -1,13 +1,4 @@
-import {
-  describe,
-  it,
-  expect,
-  beforeAll,
-  afterAll,
-  beforeEach,
-  afterEach,
-  spyOn,
-} from "bun:test";
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, spyOn } from "bun:test";
 import { NextResponse } from "next/server";
 import { DeepSeekError } from "./deepseek";
 import { mapApiError, withApiPost } from "./apiRoute";
@@ -23,15 +14,13 @@ let tokenNonce = 0;
 
 const makeToken = (uid: string) => {
   tokenNonce += 1;
-  const header = Buffer.from(
-    JSON.stringify({ alg: "none", typ: "JWT" })
-  ).toString("base64url");
+  const header = Buffer.from(JSON.stringify({ alg: "none", typ: "JWT" })).toString("base64url");
   const payload = Buffer.from(
     JSON.stringify({
       user_id: uid,
       exp: Math.floor(Date.now() / 1000) + 3600,
       jti: tokenNonce,
-    })
+    }),
   ).toString("base64url");
   return `${header}.${payload}.signature`;
 };
@@ -125,7 +114,7 @@ describe("withApiPost", () => {
       async () => {
         called = true;
         return okHandle();
-      }
+      },
     );
 
     expect(response.status).toBe(401);
@@ -138,7 +127,7 @@ describe("withApiPost", () => {
       makeRequest("{}", makeToken("uid-401")),
       { name: "guard-401b", limit: 10, fallbackError: "兜底" },
       okParse,
-      okHandle
+      okHandle,
     );
 
     expect(response.status).toBe(401);
@@ -150,7 +139,7 @@ describe("withApiPost", () => {
       makeRequest("not-json", makeToken("uid-bad-json")),
       { name: "guard-400", limit: 10, fallbackError: "兜底" },
       okParse,
-      okHandle
+      okHandle,
     );
 
     expect(response.status).toBe(400);
@@ -166,7 +155,7 @@ describe("withApiPost", () => {
         ok: false,
         response: NextResponse.json({ error: "无效单词" }, { status: 400 }),
       }),
-      okHandle
+      okHandle,
     );
 
     expect(response.status).toBe(400);
@@ -179,7 +168,7 @@ describe("withApiPost", () => {
       makeRequest("{}", makeToken("uid-ok")),
       { name: "handle-ok", limit: 10, fallbackError: "兜底" },
       okParse,
-      okHandle
+      okHandle,
     );
 
     expect(response.status).toBe(200);
@@ -194,7 +183,7 @@ describe("withApiPost", () => {
       okParse,
       async () => {
         throw new DeepSeekError("AI 服务返回错误，请稍后重试", 502);
-      }
+      },
     );
 
     expect(response.status).toBe(502);
@@ -211,7 +200,7 @@ describe("withApiPost", () => {
       okParse,
       async () => {
         throw new Error("boom");
-      }
+      },
     );
 
     expect(response.status).toBe(500);

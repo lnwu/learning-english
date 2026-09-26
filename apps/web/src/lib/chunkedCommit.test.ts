@@ -56,7 +56,7 @@ describe("commitInChunks", () => {
           calls.push(chunk);
           throw new Error("boom");
         },
-      })
+      }),
     ).rejects.toThrow("boom");
 
     expect(calls).toEqual([[1, 2]]);
@@ -78,7 +78,7 @@ describe("commitInChunks", () => {
         onChunkFailed: (_chunk, error) => {
           failures.push(error);
         },
-      })
+      }),
     ).rejects.toThrow("queue failed");
 
     expect(failures).toEqual([]);

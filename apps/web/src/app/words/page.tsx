@@ -1,9 +1,29 @@
 "use client";
 
-import { Button, Empty, EmptyDescription, EmptyHeader, EmptyTitle, Input, LoadingState, MasteryBar, PageContainer, PageHeader, SyncIndicator } from "@/components/ui";
+import {
+  Button,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+  Input,
+  LoadingState,
+  MasteryBar,
+  PageContainer,
+  PageHeader,
+  SyncIndicator,
+} from "@/components/ui";
 import { CheckIcon, XIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useCallback, useEffect, useMemo, useState, useRef, type FormEvent, type RefObject } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useRef,
+  type FormEvent,
+  type RefObject,
+} from "react";
 import { observer } from "mobx-react-lite";
 import Link from "next/link";
 import { useFirestoreWords, useSyncStatus, useLocale, usePracticeTimeTracker } from "@/hooks";
@@ -31,100 +51,117 @@ interface RoundAttempt {
   hintUsed: boolean;
 }
 
-const WordRow = observer(({ word, translation, words, onInputChange, onHintReveal, inputRefs, t }: WordRowProps) => {
-  const inputValue = words.getUserInput(word);
-  const senses = useMemo(() => decodeSenses(translation), [translation]);
-  const hasSense = senses.some((sense) => sense.chinese);
+const WordRow = observer(
+  ({ word, translation, words, onInputChange, onHintReveal, inputRefs, t }: WordRowProps) => {
+    const inputValue = words.getUserInput(word);
+    const senses = useMemo(() => decodeSenses(translation), [translation]);
+    const hasSense = senses.some((sense) => sense.chinese);
 
-  return (
-    <li className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-6 gap-y-2 py-4 first:pt-0">
-      <div className="max-w-md min-w-0 text-left">
-        <div
-          className={cn(
-            "flex min-h-8 flex-col items-start justify-start whitespace-pre-line",
-            hasSense ? "font-medium" : "text-muted-foreground italic"
-          )}
-        >
-          {hasSense ? (
-            senses.map((sense, index) => (
-              <span key={index}>
-                {[sense.pos, sense.chinese].filter(Boolean).join(" ")}
-                {sense.english && <span className="text-sm font-normal text-muted-foreground"> — {sense.english}</span>}
-              </span>
-            ))
-          ) : (
-            t("home.noTranslation")
-          )}
+    return (
+      <li className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-6 gap-y-2 py-4 first:pt-0">
+        <div className="max-w-md min-w-0 text-left">
+          <div
+            className={cn(
+              "flex min-h-8 flex-col items-start justify-start whitespace-pre-line",
+              hasSense ? "font-medium" : "text-muted-foreground italic",
+            )}
+          >
+            {hasSense
+              ? senses.map((sense, index) => (
+                  <span key={index}>
+                    {[sense.pos, sense.chinese].filter(Boolean).join(" ")}
+                    {sense.english && (
+                      <span className="text-sm font-normal text-muted-foreground">
+                        {" "}
+                        — {sense.english}
+                      </span>
+                    )}
+                  </span>
+                ))
+              : t("home.noTranslation")}
+          </div>
         </div>
-      </div>
-      <div className="flex items-center gap-3">
-        <Input
-          className="w-xs"
-          type="text"
-          id={word}
-          ref={(el) => {
-            if (el) {
-              inputRefs.current.set(word, el);
-            } else {
-              inputRefs.current.delete(word);
-            }
-          }}
-          onChange={(e) => onInputChange(word, e.target.value.toLowerCase())}
-          value={inputValue}
-        />
-        <button
-          type="button"
-          title={word}
-          aria-label={`${t("home.hint")}: ${word}`}
-          disabled={inputValue === word}
-          className={cn(
-            "group relative rounded-md px-1 outline-none",
-            inputValue !== word && "cursor-pointer focus-visible:ring-3 focus-visible:ring-ring/50"
-          )}
-          onMouseEnter={() => {
-            if (inputValue !== "" && inputValue !== word) {
-              onHintReveal(word);
-            }
-          }}
-          onFocus={() => {
-            if (inputValue !== "" && inputValue !== word) {
-              onHintReveal(word);
-            }
-          }}
-          onClick={() => {
-            if (inputValue !== word) {
-              onHintReveal(word);
-              const utterance = new SpeechSynthesisUtterance(word);
-              utterance.lang = "en-US";
-              speechSynthesis.speak(utterance);
-            }
-          }}
-        >
-          {inputValue === word ? (
-            <CheckIcon className="size-4 text-success" />
-          ) : (
-            <XIcon className="size-4 text-muted-foreground" />
-          )}
-          {inputValue !== word && (
-            <span className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 -translate-x-1/2 rounded-md border bg-popover px-2 py-1 text-xs whitespace-nowrap text-popover-foreground opacity-0 shadow-md transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
-              {word}
-            </span>
-          )}
-        </button>
-        <MasteryBar score={words.getMasteryScore(word)} />
-      </div>
-    </li>
-  );
-});
+        <div className="flex items-center gap-3">
+          <Input
+            className="w-xs"
+            type="text"
+            id={word}
+            ref={(el) => {
+              if (el) {
+                inputRefs.current.set(word, el);
+              } else {
+                inputRefs.current.delete(word);
+              }
+            }}
+            onChange={(e) => onInputChange(word, e.target.value.toLowerCase())}
+            value={inputValue}
+          />
+          <button
+            type="button"
+            title={word}
+            aria-label={`${t("home.hint")}: ${word}`}
+            disabled={inputValue === word}
+            className={cn(
+              "group relative rounded-md px-1 outline-none",
+              inputValue !== word &&
+                "cursor-pointer focus-visible:ring-3 focus-visible:ring-ring/50",
+            )}
+            onMouseEnter={() => {
+              if (inputValue !== "" && inputValue !== word) {
+                onHintReveal(word);
+              }
+            }}
+            onFocus={() => {
+              if (inputValue !== "" && inputValue !== word) {
+                onHintReveal(word);
+              }
+            }}
+            onClick={() => {
+              if (inputValue !== word) {
+                onHintReveal(word);
+                const utterance = new SpeechSynthesisUtterance(word);
+                utterance.lang = "en-US";
+                speechSynthesis.speak(utterance);
+              }
+            }}
+          >
+            {inputValue === word ? (
+              <CheckIcon className="size-4 text-success" />
+            ) : (
+              <XIcon className="size-4 text-muted-foreground" />
+            )}
+            {inputValue !== word && (
+              <span className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 -translate-x-1/2 rounded-md border bg-popover px-2 py-1 text-xs whitespace-nowrap text-popover-foreground opacity-0 shadow-md transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+                {word}
+              </span>
+            )}
+          </button>
+          <MasteryBar score={words.getMasteryScore(word)} />
+        </div>
+      </li>
+    );
+  },
+);
 
-const SubmitButton = observer(({ randomWords, words, label }: { randomWords: [string, string][]; words: Words; label: string }) => {
-  const allCorrect = randomWords.length > 0 && randomWords.every(([word]) => words.getUserInput(word) === word);
-  return (
-    <Button type="submit" disabled={!allCorrect}>
-      {label}
-    </Button>
-  );
-});
+const SubmitButton = observer(
+  ({
+    randomWords,
+    words,
+    label,
+  }: {
+    randomWords: [string, string][];
+    words: Words;
+    label: string;
+  }) => {
+    const allCorrect =
+      randomWords.length > 0 && randomWords.every(([word]) => words.getUserInput(word) === word);
+    return (
+      <Button type="submit" disabled={!allCorrect}>
+        {label}
+      </Button>
+    );
+  },
+);
 
 const WordsPractice = observer(() => {
   const { words, recordReview, syncToFirestore, loading, error } = useFirestoreWords();
@@ -152,7 +189,7 @@ const WordsPractice = observer(() => {
       setRandomWords(words.getRandomWords());
     }
     setRoundInitialized(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, words.wordCount, randomWords.length]);
 
   useEffect(() => {
@@ -186,39 +223,45 @@ const WordsPractice = observer(() => {
     return attempt;
   }, []);
 
-  const handleInputChange = useCallback((word: string, value: string) => {
-    const previous =
-      inputStatesRef.current.get(word) ?? createPracticeInputState();
-    const decision = evaluatePracticeInput(previous, word, value, Date.now());
-    inputStatesRef.current.set(word, decision);
+  const handleInputChange = useCallback(
+    (word: string, value: string) => {
+      const previous = inputStatesRef.current.get(word) ?? createPracticeInputState();
+      const decision = evaluatePracticeInput(previous, word, value, Date.now());
+      inputStatesRef.current.set(word, decision);
 
-    words.setUserInput(word, value);
+      words.setUserInput(word, value);
 
-    const attempt = getAttemptState(word);
-    if (attempt.reviewed) {
-      return;
-    }
-    if (decision.recordIncorrect) {
-      attempt.reviewed = true;
-      recordReview(word, 1, { hint: attempt.hintUsed });
-      return;
-    }
-    if (decision.completed) {
-      attempt.reviewed = true;
-      recordReview(word, attempt.hintUsed ? 2 : 3, {
-        hint: attempt.hintUsed,
-        inputTimeSeconds: decision.inputTimeSeconds,
-      });
-    }
-  }, [words, getAttemptState, recordReview]);
+      const attempt = getAttemptState(word);
+      if (attempt.reviewed) {
+        return;
+      }
+      if (decision.recordIncorrect) {
+        attempt.reviewed = true;
+        recordReview(word, 1, { hint: attempt.hintUsed });
+        return;
+      }
+      if (decision.completed) {
+        attempt.reviewed = true;
+        recordReview(word, attempt.hintUsed ? 2 : 3, {
+          hint: attempt.hintUsed,
+          inputTimeSeconds: decision.inputTimeSeconds,
+        });
+      }
+    },
+    [words, getAttemptState, recordReview],
+  );
 
-  const handleHintReveal = useCallback((word: string) => {
-    getAttemptState(word).hintUsed = true;
-  }, [getAttemptState]);
+  const handleHintReveal = useCallback(
+    (word: string) => {
+      getAttemptState(word).hintUsed = true;
+    },
+    [getAttemptState],
+  );
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const allCorrect = randomWords.length > 0 && randomWords.every(([word]) => words.getUserInput(word) === word);
+    const allCorrect =
+      randomWords.length > 0 && randomWords.every(([word]) => words.getUserInput(word) === word);
     if (!allCorrect) {
       return;
     }
@@ -285,7 +328,11 @@ const WordsPractice = observer(() => {
   return (
     isClient && (
       <>
-        <SyncIndicator syncing={syncing} pendingCount={pendingCount} onManualSync={syncToFirestore} />
+        <SyncIndicator
+          syncing={syncing}
+          pendingCount={pendingCount}
+          onManualSync={syncToFirestore}
+        />
         <PageContainer>
           <PageHeader
             className="mb-6"

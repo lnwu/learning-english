@@ -143,9 +143,10 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: var(--font-sans), "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Source Han Sans SC",
-      "Noto Sans CJK SC", "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji",
-      "Segoe UI Emoji", sans-serif;
+    font-family:
+      var(--font-sans), "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Source Han Sans SC",
+      "Noto Sans CJK SC", "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans",
+      "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
   }
 
   button:not(:disabled),

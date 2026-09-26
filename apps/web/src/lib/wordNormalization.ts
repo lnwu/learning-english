@@ -7,10 +7,7 @@ export interface WordRename {
   to: string;
 }
 
-const resolveTarget = (
-  word: string,
-  lemmaByWord: Map<string, string>
-): string | null => {
+const resolveTarget = (word: string, lemmaByWord: Map<string, string>): string | null => {
   const seen = new Set<string>([word]);
   let target = word;
 
@@ -27,7 +24,7 @@ const resolveTarget = (
 
 export const resolveRenamePlan = (
   words: Iterable<string>,
-  lemmaByWord: Map<string, string>
+  lemmaByWord: Map<string, string>,
 ): WordRename[] => {
   const plan: WordRename[] = [];
 
@@ -50,7 +47,7 @@ export interface NormalizeDocPlan {
 
 export const buildNormalizeDocPlan = (
   plan: WordRename[],
-  getData: (word: string) => WordData | undefined
+  getData: (word: string) => WordData | undefined,
 ): NormalizeDocPlan => {
   const projected = new Map<string, WordData>();
   const read = (word: string) => projected.get(word) ?? getData(word);

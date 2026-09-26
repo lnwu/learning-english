@@ -22,8 +22,6 @@ describe("sanitizeLemma", () => {
     expect(sanitizeLemma("exist!", "existed")).toBe("existed");
     expect(sanitizeLemma("two words", "existed")).toBe("existed");
     expect(sanitizeLemma("中", "existed")).toBe("existed");
-    expect(
-      sanitizeLemma("x".repeat(MAX_LEMMA_LENGTH + 1), "existed")
-    ).toBe("existed");
+    expect(sanitizeLemma("x".repeat(MAX_LEMMA_LENGTH + 1), "existed")).toBe("existed");
   });
 });

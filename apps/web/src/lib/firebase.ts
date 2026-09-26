@@ -38,13 +38,9 @@ const REQUIRED_ENV_ENTRIES = [
 ] as const;
 
 const readFirebaseConfig = () => {
-  const missing = REQUIRED_ENV_ENTRIES.filter(([, value]) => !value).map(
-    ([name]) => name
-  );
+  const missing = REQUIRED_ENV_ENTRIES.filter(([, value]) => !value).map(([name]) => name);
   if (missing.length > 0) {
-    throw new Error(
-      `Missing Firebase environment variables: ${missing.join(", ")}.`
-    );
+    throw new Error(`Missing Firebase environment variables: ${missing.join(", ")}.`);
   }
 
   return firebaseConfig;
@@ -92,8 +88,7 @@ const PREVIEW_USER_ID = "preview";
 export const getEffectiveUserId = (user: User): string =>
   isPreviewEnv ? PREVIEW_USER_ID : user.uid;
 
-export const signInAnonymously = async () =>
-  firebaseSignInAnonymously(getAuthInstance());
+export const signInAnonymously = async () => firebaseSignInAnonymously(getAuthInstance());
 
 export const signOut = async () => firebaseSignOut(getAuthInstance());
 

@@ -7,12 +7,8 @@ describe("averageMasteryScore", () => {
   });
 
   it("返回四舍五入后的平均分", () => {
-    expect(
-      averageMasteryScore([{ masteryScore: 10 }, { masteryScore: 20 }])
-    ).toBe(15);
-    expect(
-      averageMasteryScore([{ masteryScore: 10 }, { masteryScore: 21 }])
-    ).toBe(16);
+    expect(averageMasteryScore([{ masteryScore: 10 }, { masteryScore: 20 }])).toBe(15);
+    expect(averageMasteryScore([{ masteryScore: 10 }, { masteryScore: 21 }])).toBe(16);
   });
 });
 
@@ -25,7 +21,7 @@ describe("masteryDistribution", () => {
         { masteryScore: 40 },
         { masteryScore: 80 },
         { masteryScore: 100 },
-      ])
+      ]),
     ).toEqual({
       new: 2,
       learning: 0,

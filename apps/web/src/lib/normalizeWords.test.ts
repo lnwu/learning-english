@@ -1,8 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import {
-  buildNormalizeMessages,
-  parseNormalizeResults,
-} from "./normalizeWords";
+import { buildNormalizeMessages, parseNormalizeResults } from "./normalizeWords";
 
 describe("buildNormalizeMessages", () => {
   it("system 提示包含原形规则与 JSON 结构", () => {
@@ -27,7 +24,7 @@ describe("parseNormalizeResults", () => {
           { word: "attackers", lemma: "attacker" },
         ],
       },
-      ["attackers", "existed"]
+      ["attackers", "existed"],
     );
     expect(results).toEqual([
       { word: "attackers", lemma: "attacker" },
@@ -36,26 +33,24 @@ describe("parseNormalizeResults", () => {
   });
 
   it("模型漏项时原词作为原形", () => {
-    const results = parseNormalizeResults(
-      { results: [{ word: "attackers", lemma: "attacker" }] },
-      ["attackers", "existed"]
-    );
+    const results = parseNormalizeResults({ results: [{ word: "attackers", lemma: "attacker" }] }, [
+      "attackers",
+      "existed",
+    ]);
     expect(results[1]).toEqual({ word: "existed", lemma: "existed" });
   });
 
   it("非法原形回退原词", () => {
-    const results = parseNormalizeResults(
-      { results: [{ word: "existed", lemma: "not valid!" }] },
-      ["existed"]
-    );
+    const results = parseNormalizeResults({ results: [{ word: "existed", lemma: "not valid!" }] }, [
+      "existed",
+    ]);
     expect(results).toEqual([{ word: "existed", lemma: "existed" }]);
   });
 
   it("大小写与空格做规范化", () => {
-    const results = parseNormalizeResults(
-      { results: [{ word: " Existed ", lemma: " Exist " }] },
-      ["existed"]
-    );
+    const results = parseNormalizeResults({ results: [{ word: " Existed ", lemma: " Exist " }] }, [
+      "existed",
+    ]);
     expect(results).toEqual([{ word: "existed", lemma: "exist" }]);
   });
 

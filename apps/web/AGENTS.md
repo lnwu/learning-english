@@ -21,9 +21,8 @@
 
 ## TypeScript 6/7 并排
 
-- `typescript` 别名指向 `@typescript/typescript6`，向 typescript-eslint 与 Next 提供 JS API；`@typescript/native` 别名指向 TypeScript 7，提供 `bun x tsc`。不要移除别名或将 `typescript` 直接改为 `^7`。
+- `typescript` 别名指向 `@typescript/typescript6`，向 Next 提供 JS API；`@typescript/native` 别名指向 TypeScript 7，提供 `bun x tsc`。不要移除别名或将 `typescript` 直接改为 `^7`。
 - `apps/web/tsconfig.json` 必须保留 `"types": ["bun", "node"]`，否则测试文件无法解析 `bun:test`。
-- typescript-eslint 支持 TypeScript 7 JS API 后，再切回单一 TypeScript 7 并删除本节。
 
 ## UI 组件与性能
 

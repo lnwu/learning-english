@@ -19,7 +19,8 @@
 ## 工具链
 
 - 项目统一使用 Bun；安装依赖和执行工具分别使用 `bun install`、`bun x <命令>`，不要使用 npm/npx。
-- 在仓库根目录使用统一入口：`bun run lint`、`bun run typecheck`、`bun run test`、`bun run build`；`bun run check` 一次执行 lint、typecheck 和 test。CI 与本地验证使用相同入口，不直接调用 `tsc` 或 `eslint`。
+- 在仓库根目录使用统一入口：`bun run lint`、`bun run format`、`bun run format:check`、`bun run typecheck`、`bun run test`、`bun run build`；`bun run check` 一次执行 lint、format:check、typecheck 和 test。CI 与本地验证使用相同入口，不直接调用 `tsc`、`oxlint` 或 `oxfmt`。
+- Lint 使用 oxlint（配置 `apps/web/.oxlintrc.json`），格式化使用 oxfmt（配置 `apps/web/.oxfmtrc.jsonc`）；局部禁用规则使用 `oxlint-disable-next-line <plugin>/<rule>` 注释。
 - `apps/web` 使用 `bun test`（`bun:test`），测试文件与源码同目录并命名为 `*.test.ts`。
 
 ## 交付与验收

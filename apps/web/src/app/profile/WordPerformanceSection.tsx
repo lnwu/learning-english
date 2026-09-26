@@ -76,7 +76,7 @@ const WordPerformanceRow = memo(
         </Button>
       </div>
     </div>
-  )
+  ),
 );
 
 WordPerformanceRow.displayName = "WordPerformanceRow";
@@ -116,7 +116,7 @@ export const WordPerformanceSection = observer(
       };
       Object.entries(wordsByCategory).forEach(([cat, categoryWords]) => {
         filtered[Number(cat)] = categoryWords.filter(({ word }) =>
-          word.toLowerCase().includes(query)
+          word.toLowerCase().includes(query),
         );
       });
       return filtered;
@@ -126,9 +126,7 @@ export const WordPerformanceSection = observer(
       <Card className="mb-6">
         <CardHeader>
           <CardTitle>{t("profile.speedByLength")}</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            {t("profile.speedByLengthDesc")}
-          </p>
+          <p className="text-sm text-muted-foreground">{t("profile.speedByLengthDesc")}</p>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <Input
@@ -141,8 +139,7 @@ export const WordPerformanceSection = observer(
 
           <div className="flex flex-col gap-4">
             {CATEGORY_META.map(({ category, labelKey }) => {
-              const baseline =
-                words.inputTimeBaselineByLengthCategory[category];
+              const baseline = words.inputTimeBaselineByLengthCategory[category];
               const categoryWords = filteredWordsByCategory[category];
 
               return (
@@ -180,7 +177,7 @@ export const WordPerformanceSection = observer(
                             onDelete={onDelete}
                             t={t}
                           />
-                        )
+                        ),
                       )}
                     </div>
                   )}
@@ -197,5 +194,5 @@ export const WordPerformanceSection = observer(
         </CardContent>
       </Card>
     );
-  }
+  },
 );

@@ -1,7 +1,13 @@
 "use client";
 
 import { useState, useEffect, useMemo, type ReactNode, FC } from "react";
-import { getAuthInstance, onAuthStateChanged, isPreviewEnv, signInAnonymously, type User } from "@/lib/firebase";
+import {
+  getAuthInstance,
+  onAuthStateChanged,
+  isPreviewEnv,
+  signInAnonymously,
+  type User,
+} from "@/lib/firebase";
 import { AuthContext } from "@/hooks/useAuth";
 
 export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
@@ -26,9 +32,5 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
   const value = useMemo(() => ({ user, loading }), [user, loading]);
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

@@ -5,12 +5,8 @@ import {
   type PracticeInputState,
 } from "./practiceInput";
 
-const evaluate = (
-  state: PracticeInputState,
-  value: string,
-  now = 1000,
-  word = "apple"
-) => evaluatePracticeInput(state, word, value, now);
+const evaluate = (state: PracticeInputState, value: string, now = 1000, word = "apple") =>
+  evaluatePracticeInput(state, word, value, now);
 
 describe("evaluatePracticeInput", () => {
   it("首个字符开始计时，答对时返回耗时", () => {

@@ -19,10 +19,8 @@ export const sanitizeWordSenses = (value: unknown): WordSense[] => {
     if (typeof raw !== "object" || raw === null) continue;
     const record = raw as Record<string, unknown>;
     const pos = typeof record.pos === "string" ? record.pos.trim() : "";
-    const chinese =
-      typeof record.chinese === "string" ? record.chinese.trim() : "";
-    const english =
-      typeof record.english === "string" ? record.english.trim() : "";
+    const chinese = typeof record.chinese === "string" ? record.chinese.trim() : "";
+    const english = typeof record.english === "string" ? record.english.trim() : "";
     if (
       pos &&
       pos.length <= MAX_POS_LENGTH &&
@@ -42,11 +40,7 @@ export const encodeSenses = (senses: WordSense[]): string =>
   senses
     .map((sense) => {
       const head = [sense.pos, sense.chinese].filter(Boolean).join(" ");
-      const english = sense.english
-        ? head
-          ? ` — ${sense.english}`
-          : sense.english
-        : "";
+      const english = sense.english ? (head ? ` — ${sense.english}` : sense.english) : "";
       return `${head}${english}`.trim();
     })
     .join("\n");

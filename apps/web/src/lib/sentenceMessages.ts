@@ -1,9 +1,5 @@
 import type { ChatMessage } from "@/lib/deepseek";
-import {
-  normalizeForComparison,
-  resolveUsedWords,
-  sanitizeUsedWords,
-} from "@/lib/sentenceCompare";
+import { normalizeForComparison, resolveUsedWords, sanitizeUsedWords } from "@/lib/sentenceCompare";
 
 export const MAX_SENTENCE_LENGTH = 500;
 export const MAX_TRANSLATION_LENGTH = 2000;
@@ -55,19 +51,15 @@ export const buildGenerateMessages = (words: SentenceWord[]): ChatMessage[] => [
   {
     role: "user",
     content: `请使用以下单词造句（括号内为该词的参考中文译法）：${words
-      .map((item) =>
-        item.translation ? `${item.word}（${item.translation}）` : item.word
-      )
+      .map((item) => (item.translation ? `${item.word}（${item.translation}）` : item.word))
       .join(", ")}`,
   },
 ];
 
 export const parseGenerateResult = (raw: unknown): GenerateResult | null => {
   const result = (raw ?? {}) as Partial<GenerateResult>;
-  const chinese =
-    typeof result.chinese === "string" ? result.chinese.trim() : "";
-  const english =
-    typeof result.english === "string" ? result.english.trim() : "";
+  const chinese = typeof result.chinese === "string" ? result.chinese.trim() : "";
+  const english = typeof result.english === "string" ? result.english.trim() : "";
   if (!chinese || !english) return null;
   return { chinese, english };
 };
@@ -91,10 +83,7 @@ export const buildCheckMessages = (input: CheckInput): ChatMessage[] => [
   },
 ];
 
-export const isExactMatchAnswer = (
-  reference: string,
-  userAnswer: string
-): boolean => {
+export const isExactMatchAnswer = (reference: string, userAnswer: string): boolean => {
   const normalizedAnswer = normalizeForComparison(userAnswer);
   return (
     reference.length > 0 &&
@@ -103,10 +92,7 @@ export const isExactMatchAnswer = (
   );
 };
 
-export const buildExactMatchResult = (
-  reference: string,
-  words: string[]
-): CheckResult => ({
+export const buildExactMatchResult = (reference: string, words: string[]): CheckResult => ({
   correct: true,
   score: 100,
   feedback: "答案正确，评分已按大小写不敏感处理。",
@@ -115,10 +101,7 @@ export const buildExactMatchResult = (
   usedWords: resolveUsedWords(reference, words),
 });
 
-export const parseCheckResult = (
-  raw: unknown,
-  words: string[]
-): CheckResult => {
+export const parseCheckResult = (raw: unknown, words: string[]): CheckResult => {
   const result = (raw ?? {}) as Partial<CheckResult>;
   const score =
     typeof result.score === "number" && Number.isFinite(result.score)
@@ -129,13 +112,9 @@ export const parseCheckResult = (
     correct: Boolean(result.correct),
     score,
     feedback:
-      typeof result.feedback === "string"
-        ? result.feedback.slice(0, MAX_FEEDBACK_LENGTH)
-        : "",
+      typeof result.feedback === "string" ? result.feedback.slice(0, MAX_FEEDBACK_LENGTH) : "",
     corrected:
-      typeof result.corrected === "string"
-        ? result.corrected.slice(0, MAX_CORRECTED_LENGTH)
-        : "",
+      typeof result.corrected === "string" ? result.corrected.slice(0, MAX_CORRECTED_LENGTH) : "",
     issues: Array.isArray(result.issues)
       ? result.issues
           .filter((issue): issue is string => typeof issue === "string")

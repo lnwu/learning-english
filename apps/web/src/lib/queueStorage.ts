@@ -153,10 +153,7 @@ export const createLocalStorageQueueStorage = (userId: string): QueueStorage => 
         items.forEach((item) => {
           if (!item || typeof item.wordId !== "string") return;
           try {
-            localStorage.setItem(
-              `${itemKeyPrefix}${item.wordId}`,
-              JSON.stringify(item)
-            );
+            localStorage.setItem(`${itemKeyPrefix}${item.wordId}`, JSON.stringify(item));
           } catch (error) {
             migrationFailed = true;
             console.error("Failed to migrate sync queue item:", error);
@@ -199,23 +196,14 @@ export const createLocalStorageQueueStorage = (userId: string): QueueStorage => 
     save(item) {
       ensureMigrated();
       if (memoryItems) {
-        memoryItems = [
-          ...memoryItems.filter((entry) => entry.wordId !== item.wordId),
-          item,
-        ];
+        memoryItems = [...memoryItems.filter((entry) => entry.wordId !== item.wordId), item];
         return;
       }
       try {
-        localStorage.setItem(
-          `${itemKeyPrefix}${item.wordId}`,
-          JSON.stringify(item)
-        );
+        localStorage.setItem(`${itemKeyPrefix}${item.wordId}`, JSON.stringify(item));
       } catch (error) {
         console.error("Failed to save sync queue:", error);
-        memoryItems = [
-          ...readAll().filter((entry) => entry.wordId !== item.wordId),
-          item,
-        ];
+        memoryItems = [...readAll().filter((entry) => entry.wordId !== item.wordId), item];
       }
     },
 

@@ -18,10 +18,9 @@ export const MASTERY_BAR_COLORS: Record<MasteryLevel, string> = {
   mastered: "bg-emerald-500",
 };
 
-const MASTERY_LABEL_KEYS: Record<MasteryLevel, TranslationKey> =
-  Object.fromEntries(
-    MASTERY_LEVELS.map((level) => [level.key, level.labelKey])
-  ) as Record<MasteryLevel, TranslationKey>;
+const MASTERY_LABEL_KEYS: Record<MasteryLevel, TranslationKey> = Object.fromEntries(
+  MASTERY_LEVELS.map((level) => [level.key, level.labelKey]),
+) as Record<MasteryLevel, TranslationKey>;
 
 interface MasteryBarProps {
   /** Mastery score from 0-100 */
@@ -41,7 +40,7 @@ const MasteryBar = React.forwardRef<HTMLDivElement, MasteryBarProps>(
       <div
         ref={ref}
         className={cn("flex items-center gap-2", className)}
-        title={`${t('profile.mastery')}: ${t(MASTERY_LABEL_KEYS[level])} (${score}%)`}
+        title={`${t("profile.mastery")}: ${t(MASTERY_LABEL_KEYS[level])} (${score}%)`}
       >
         <div className="flex gap-1">
           {MASTERY_LEVEL_ORDER.map((barLevel, barIndex) => (
@@ -49,9 +48,7 @@ const MasteryBar = React.forwardRef<HTMLDivElement, MasteryBarProps>(
               key={barLevel}
               className={cn(
                 "w-4 h-3 rounded-sm transition-all duration-300",
-                barIndex <= levelIndex
-                  ? MASTERY_BAR_COLORS[barLevel]
-                  : "bg-muted"
+                barIndex <= levelIndex ? MASTERY_BAR_COLORS[barLevel] : "bg-muted",
               )}
             />
           ))}
@@ -63,7 +60,7 @@ const MasteryBar = React.forwardRef<HTMLDivElement, MasteryBarProps>(
         )}
       </div>
     );
-  }
+  },
 );
 
 MasteryBar.displayName = "MasteryBar";

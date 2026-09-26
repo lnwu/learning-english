@@ -21,11 +21,10 @@ export async function POST(request: Request) {
     },
     parse,
     async ({ words }) => {
-      const raw = await chatCompletionJson<unknown>(
-        buildNormalizeMessages(words),
-        { temperature: 0.2 }
-      );
+      const raw = await chatCompletionJson<unknown>(buildNormalizeMessages(words), {
+        temperature: 0.2,
+      });
       return NextResponse.json({ results: parseNormalizeResults(raw, words) });
-    }
+    },
   );
 }

@@ -35,12 +35,8 @@ const PracticeHeatmap = memo(({ practiceTime }: { practiceTime: Map<string, numb
     if (!container) return;
     const observer = new ResizeObserver((entries) => {
       const width = entries[0]?.contentRect.width ?? 0;
-      const weeks = Math.floor(
-        (width - HEATMAP_WEEKDAY_COLUMN_PX) / HEATMAP_CELL_PITCH_PX
-      );
-      setWeekCount(
-        Math.min(PRACTICE_TIME_HEATMAP_WEEKS, Math.max(MIN_HEATMAP_WEEKS, weeks))
-      );
+      const weeks = Math.floor((width - HEATMAP_WEEKDAY_COLUMN_PX) / HEATMAP_CELL_PITCH_PX);
+      setWeekCount(Math.min(PRACTICE_TIME_HEATMAP_WEEKS, Math.max(MIN_HEATMAP_WEEKS, weeks)));
     });
     observer.observe(container);
     return () => observer.disconnect();
@@ -48,7 +44,7 @@ const PracticeHeatmap = memo(({ practiceTime }: { practiceTime: Map<string, numb
 
   const weeks = useMemo(
     () => buildPracticeTimeWeeks(practiceTime, new Date(), weekCount),
-    [practiceTime, weekCount]
+    [practiceTime, weekCount],
   );
   const monthLabels = useMemo(() => getPracticeTimeMonthLabels(weeks), [weeks]);
 
@@ -96,7 +92,7 @@ const PracticeHeatmap = memo(({ practiceTime }: { practiceTime: Map<string, numb
                   aria-label={`${cell.date} · ${formatPracticeDuration(cell.seconds, locale)}`}
                   className={cn(
                     "group relative aspect-square w-full rounded-sm",
-                    PRACTICE_TIME_LEVEL_CLASSES[cell.level]
+                    PRACTICE_TIME_LEVEL_CLASSES[cell.level],
                   )}
                 >
                   <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1 -translate-x-1/2 rounded-md border bg-popover px-2 py-1 text-xs whitespace-nowrap text-popover-foreground opacity-0 shadow-md transition-opacity duration-200 group-hover:opacity-100">
@@ -105,8 +101,8 @@ const PracticeHeatmap = memo(({ practiceTime }: { practiceTime: Map<string, numb
                 </div>
               ) : (
                 <div key={`${weekIndex}-${dayIndex}`} className="aspect-square w-full" />
-              )
-            )
+              ),
+            ),
           )}
         </div>
       </div>

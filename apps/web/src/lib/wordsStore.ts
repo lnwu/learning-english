@@ -99,10 +99,7 @@ const statsEquals = (a: WordStats, b: WordStats): boolean =>
   a.dailyReviews === b.dailyReviews &&
   a.hints === b.hints;
 
-const reviewsEqual = (
-  a: readonly ReviewLogEntry[],
-  b: readonly ReviewLogEntry[]
-): boolean =>
+const reviewsEqual = (a: readonly ReviewLogEntry[], b: readonly ReviewLogEntry[]): boolean =>
   a.length === b.length &&
   a.every(
     (entry, index) =>
@@ -112,7 +109,7 @@ const reviewsEqual = (
       entry.h === b[index].h &&
       entry.r === b[index].r &&
       entry.s === b[index].s &&
-      entry.d === b[index].d
+      entry.d === b[index].d,
   );
 
 const mergeMemory = (a: WordMemory, b: WordMemory): WordMemory => {
@@ -123,22 +120,19 @@ const mergeMemory = (a: WordMemory, b: WordMemory): WordMemory => {
 };
 
 const mergeStats = (a: WordStats, b: WordStats): WordStats => {
-  const later =
-    (a.lastReviewDay ?? "") >= (b.lastReviewDay ?? "") ? a : b;
+  const later = (a.lastReviewDay ?? "") >= (b.lastReviewDay ?? "") ? a : b;
   const sameDay = a.lastReviewDay === b.lastReviewDay;
   return {
     reviewDays: Math.max(a.reviewDays, b.reviewDays),
     lastReviewDay: later.lastReviewDay,
-    dailyReviews: sameDay
-      ? Math.max(a.dailyReviews, b.dailyReviews)
-      : later.dailyReviews,
+    dailyReviews: sameDay ? Math.max(a.dailyReviews, b.dailyReviews) : later.dailyReviews,
     hints: Math.max(a.hints, b.hints),
   };
 };
 
 const mergeReviews = (
   a: readonly ReviewLogEntry[],
-  b: readonly ReviewLogEntry[]
+  b: readonly ReviewLogEntry[],
 ): ReviewLogEntry[] => {
   const byId = new Map<string, ReviewLogEntry>();
   [...a, ...b].forEach((entry) => {
@@ -149,10 +143,8 @@ const mergeReviews = (
     .slice(-MAX_REVIEWS);
 };
 
-const mergeInputTimes = (
-  a: readonly number[],
-  b: readonly number[]
-): number[] => [...a, ...b].slice(-MAX_INPUT_TIMES);
+const mergeInputTimes = (a: readonly number[], b: readonly number[]): number[] =>
+  [...a, ...b].slice(-MAX_INPUT_TIMES);
 
 export class Words {
   static MAX_RANDOM_WORDS = MAX_ROUND_WORDS;
@@ -220,7 +212,7 @@ export class Words {
       hint?: boolean;
       inputTimeSeconds?: number;
       now?: number;
-    } = {}
+    } = {},
   ): void {
     const data = this.wordData.get(word);
     if (!data) return;
@@ -330,13 +322,10 @@ export class Words {
       createdAt: data.createdAt.getTime(),
       due: data.memory.due,
       isNew: isNewMemory(data.memory),
-      isStep:
-        data.memory.state === "learning" ||
-        data.memory.state === "relearning",
+      isStep: data.memory.state === "learning" || data.memory.state === "relearning",
       dueNow: isMemoryDue(data.memory, now),
       capped: isDailyLimitReached(data.stats, now),
-      reviewedToday:
-        data.stats.lastReviewDay === today && data.stats.dailyReviews > 0,
+      reviewedToday: data.stats.lastReviewDay === today && data.stats.dailyReviews > 0,
       retrievability: retrievability(data.memory, now) ?? 1,
     }));
 
@@ -356,49 +345,37 @@ export class Words {
     take(
       items
         .filter((item) => item.isStep && item.dueNow && !item.capped)
-        .sort((a, b) => a.due - b.due || tieBreak(a, b))
+        .sort((a, b) => a.due - b.due || tieBreak(a, b)),
     );
     take(
       items
         .filter(
           (item) =>
-            !item.isNew &&
-            !item.isStep &&
-            item.dueNow &&
-            !item.capped &&
-            !item.reviewedToday
+            !item.isNew && !item.isStep && item.dueNow && !item.capped && !item.reviewedToday,
         )
-        .sort((a, b) => a.retrievability - b.retrievability || tieBreak(a, b))
+        .sort((a, b) => a.retrievability - b.retrievability || tieBreak(a, b)),
     );
 
-    const newQuota = Math.min(
-      NEW_WORDS_PER_ROUND,
-      Math.floor(max / 2),
-      max - selected.length
-    );
+    const newQuota = Math.min(NEW_WORDS_PER_ROUND, Math.floor(max / 2), max - selected.length);
     take(
       items
         .filter((item) => item.isNew)
         .sort((a, b) => a.createdAt - b.createdAt || tieBreak(a, b))
-        .slice(0, newQuota)
+        .slice(0, newQuota),
     );
 
     take(
       items
-        .filter(
-          (item) => !item.isNew && !item.capped && !item.reviewedToday
-        )
-        .sort((a, b) => a.retrievability - b.retrievability || tieBreak(a, b))
+        .filter((item) => !item.isNew && !item.capped && !item.reviewedToday)
+        .sort((a, b) => a.retrievability - b.retrievability || tieBreak(a, b)),
     );
     take(
       items
         .filter((item) => item.isNew)
-        .sort((a, b) => a.createdAt - b.createdAt || tieBreak(a, b))
+        .sort((a, b) => a.createdAt - b.createdAt || tieBreak(a, b)),
     );
 
-    return selected.map(
-      (item): [string, string] => [item.word, item.translation]
-    );
+    return selected.map((item): [string, string] => [item.word, item.translation]);
   }
 
   get practiceStats(): PracticeStat[] {
@@ -426,7 +403,7 @@ export class Words {
 
 export const mergeWordData = (
   target: Readonly<WordData>,
-  source: Readonly<WordData>
+  source: Readonly<WordData>,
 ): WordData => ({
   ...target,
   memory: mergeMemory(target.memory, source.memory),
@@ -434,15 +411,10 @@ export const mergeWordData = (
   inputTimes: mergeInputTimes(target.inputTimes, source.inputTimes),
   reviews: mergeReviews(target.reviews, source.reviews),
   createdAt:
-    target.createdAt.getTime() <= source.createdAt.getTime()
-      ? target.createdAt
-      : source.createdAt,
+    target.createdAt.getTime() <= source.createdAt.getTime() ? target.createdAt : source.createdAt,
 });
 
-const isWordDataEqual = (
-  a: Readonly<WordData>,
-  b: Readonly<WordData>
-): boolean =>
+const isWordDataEqual = (a: Readonly<WordData>, b: Readonly<WordData>): boolean =>
   a.id === b.id &&
   a.word === b.word &&
   a.translation === b.translation &&
@@ -452,10 +424,7 @@ const isWordDataEqual = (
   arraysEqual(a.inputTimes, b.inputTimes) &&
   reviewsEqual(a.reviews, b.reviews);
 
-const isSyncableDataEqual = (
-  a: SyncableWordData,
-  b: SyncableWordData
-): boolean =>
+const isSyncableDataEqual = (a: SyncableWordData, b: SyncableWordData): boolean =>
   memoryEquals(a.memory, b.memory) &&
   statsEquals(a.stats, b.stats) &&
   arraysEqual(a.inputTimes, b.inputTimes) &&
@@ -463,7 +432,7 @@ const isSyncableDataEqual = (
 
 export const isQueueItemStale = (
   firestore: SyncableWordData,
-  queued: SyncableWordData
+  queued: SyncableWordData,
 ): boolean => {
   const firestoreAt = getLastReviewAt(firestore.memory);
   const queuedAt = getLastReviewAt(queued.memory);
@@ -477,7 +446,7 @@ export const mergeSnapshotIntoStore = (
   snapshot: {
     docs: Array<{ id: string; data: () => DocumentData }>;
   },
-  pending: PendingWordUpdate[] = []
+  pending: PendingWordUpdate[] = [],
 ): MergedSnapshotResult => {
   const byId = new Map<string, WordData>();
   const byWord = new Map<string, WordData>();
@@ -490,10 +459,7 @@ export const mergeSnapshotIntoStore = (
   for (const item of pending) {
     const firestoreWord = byId.get(item.wordId);
     if (!firestoreWord) continue;
-    if (
-      getLastReviewAt(firestoreWord.memory) >
-      getLastReviewAt(item.data.memory)
-    ) {
+    if (getLastReviewAt(firestoreWord.memory) > getLastReviewAt(item.data.memory)) {
       continue;
     }
 

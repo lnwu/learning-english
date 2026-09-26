@@ -106,10 +106,7 @@ describe("wordList", () => {
   });
 
   it("过滤非字符串与空值并截断到上限", () => {
-    expect(valueOf(parser, [" ab ", 5, "", "cdef", "ghij"])).toEqual([
-      "ab",
-      "cdef",
-    ]);
+    expect(valueOf(parser, [" ab ", 5, "", "cdef", "ghij"])).toEqual(["ab", "cdef"]);
   });
 
   it("截断后仍超长返回统一文案", () => {
@@ -135,7 +132,7 @@ describe("sentenceWordList", () => {
         { word: "", translation: "x" },
         null,
         "bad",
-      ])
+      ]),
     ).toEqual([{ word: "tree", translation: "树" }]);
   });
 
@@ -145,7 +142,7 @@ describe("sentenceWordList", () => {
         { word: "a", translation: "" },
         { word: "b", translation: "" },
         { word: "c", translation: "" },
-      ])
+      ]),
     ).toEqual([
       { word: "a", translation: "" },
       { word: "b", translation: "" },
@@ -153,12 +150,8 @@ describe("sentenceWordList", () => {
   });
 
   it("单词或释义超长返回统一文案", () => {
-    expect(
-      errorOf(parser, [{ word: "abcdef", translation: "" }])
-    ).toBe("输入内容过长");
-    expect(
-      errorOf(parser, [{ word: "a", translation: "五个字以上" }])
-    ).toBe("输入内容过长");
+    expect(errorOf(parser, [{ word: "abcdef", translation: "" }])).toBe("输入内容过长");
+    expect(errorOf(parser, [{ word: "a", translation: "五个字以上" }])).toBe("输入内容过长");
   });
 });
 

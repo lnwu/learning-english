@@ -5,14 +5,8 @@ import { observer } from "mobx-react-lite";
 import { Button, ConfirmDialog } from "@/components/ui";
 import { useFirestoreWords, useLocale, toast } from "@/hooks";
 import { postJson } from "@/lib/apiClient";
-import {
-  MAX_REGENERATE_BATCH_SIZE,
-  type RegenerateResult,
-} from "@/lib/regenerateDefinitions";
-import {
-  MAX_NORMALIZE_BATCH_SIZE,
-  type NormalizeResult,
-} from "@/lib/normalizeWords";
+import { MAX_REGENERATE_BATCH_SIZE, type RegenerateResult } from "@/lib/regenerateDefinitions";
+import { MAX_NORMALIZE_BATCH_SIZE, type NormalizeResult } from "@/lib/normalizeWords";
 import { resolveRenamePlan } from "@/lib/wordNormalization";
 import { countFailedWords, runBatchedAiTask } from "@/lib/batchAiTask";
 import type { WordSense } from "@/lib/wordSenses";
@@ -52,7 +46,7 @@ export const ProfileAiSection = observer(() => {
           postJson<{ results?: RegenerateResult[] }>(
             "/api/regenerate-definitions",
             { words: batch },
-            t("profile.regenerateFailed")
+            t("profile.regenerateFailed"),
           ),
         onProgress: setRegenerateProgress,
       });
@@ -101,8 +95,7 @@ export const ProfileAiSection = observer(() => {
     } catch (err) {
       console.error("Regenerate all failed:", err);
       toast({
-        title:
-          err instanceof Error ? err.message : t("profile.regenerateFailed"),
+        title: err instanceof Error ? err.message : t("profile.regenerateFailed"),
         variant: "destructive",
       });
     } finally {
@@ -133,7 +126,7 @@ export const ProfileAiSection = observer(() => {
           postJson<{ results?: NormalizeResult[] }>(
             "/api/normalize-words",
             { words: batch },
-            t("profile.normalizeFailed")
+            t("profile.normalizeFailed"),
           ),
         onProgress: setNormalizeProgress,
       });
@@ -145,7 +138,7 @@ export const ProfileAiSection = observer(() => {
           continue;
         }
         const lemmaByWord = new Map(
-          (outcome.result.results ?? []).map((item) => [item.word, item.lemma])
+          (outcome.result.results ?? []).map((item) => [item.word, item.lemma]),
         );
         renames.push(...resolveRenamePlan(outcome.words, lemmaByWord));
       }
@@ -160,9 +153,7 @@ export const ProfileAiSection = observer(() => {
       }
 
       const { renamed, merged } =
-        renames.length > 0
-          ? await normalizeWordForms(renames)
-          : { renamed: 0, merged: 0 };
+        renames.length > 0 ? await normalizeWordForms(renames) : { renamed: 0, merged: 0 };
 
       if (failedWords > 0) {
         toast({
@@ -184,8 +175,7 @@ export const ProfileAiSection = observer(() => {
     } catch (err) {
       console.error("Normalize all failed:", err);
       toast({
-        title:
-          err instanceof Error ? err.message : t("profile.normalizeFailed"),
+        title: err instanceof Error ? err.message : t("profile.normalizeFailed"),
         variant: "destructive",
       });
     } finally {
@@ -199,8 +189,8 @@ export const ProfileAiSection = observer(() => {
     <>
       <div className="flex flex-col gap-2 py-6 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <div className="flex flex-col gap-1">
-          <h3 className="text-sm font-medium">{t('profile.regenerateTitle')}</h3>
-          <p className="text-sm text-muted-foreground">{t('profile.regenerateDesc')}</p>
+          <h3 className="text-sm font-medium">{t("profile.regenerateTitle")}</h3>
+          <p className="text-sm text-muted-foreground">{t("profile.regenerateDesc")}</p>
         </div>
         <Button
           variant="outline"
@@ -209,15 +199,15 @@ export const ProfileAiSection = observer(() => {
           disabled={regenerating || totalWords === 0}
         >
           {regenerating
-            ? `${t('common.loading')} ${regenerateProgress}/${totalWords}`
-            : t('profile.regenerateButton')}
+            ? `${t("common.loading")} ${regenerateProgress}/${totalWords}`
+            : t("profile.regenerateButton")}
         </Button>
       </div>
 
       <div className="flex flex-col gap-2 py-6 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <div className="flex flex-col gap-1">
-          <h3 className="text-sm font-medium">{t('profile.normalizeTitle')}</h3>
-          <p className="text-sm text-muted-foreground">{t('profile.normalizeDesc')}</p>
+          <h3 className="text-sm font-medium">{t("profile.normalizeTitle")}</h3>
+          <p className="text-sm text-muted-foreground">{t("profile.normalizeDesc")}</p>
         </div>
         <Button
           variant="outline"
@@ -226,18 +216,18 @@ export const ProfileAiSection = observer(() => {
           disabled={normalizing || totalWords === 0}
         >
           {normalizing
-            ? `${t('common.loading')} ${normalizeProgress}/${totalWords}`
-            : t('profile.normalizeButton')}
+            ? `${t("common.loading")} ${normalizeProgress}/${totalWords}`
+            : t("profile.normalizeButton")}
         </Button>
       </div>
 
       <ConfirmDialog
         open={showRegenerateDialog}
         onOpenChange={setShowRegenerateDialog}
-        title={t('profile.regenerateConfirm')}
-        description={t('profile.regenerateConfirmDesc')}
-        confirmText={t('common.confirm')}
-        cancelText={t('common.cancel')}
+        title={t("profile.regenerateConfirm")}
+        description={t("profile.regenerateConfirmDesc")}
+        confirmText={t("common.confirm")}
+        cancelText={t("common.cancel")}
         onConfirm={handleRegenerateAll}
         variant="default"
       />
@@ -245,10 +235,10 @@ export const ProfileAiSection = observer(() => {
       <ConfirmDialog
         open={showNormalizeDialog}
         onOpenChange={setShowNormalizeDialog}
-        title={t('profile.normalizeConfirm')}
-        description={t('profile.normalizeConfirmDesc')}
-        confirmText={t('common.confirm')}
-        cancelText={t('common.cancel')}
+        title={t("profile.normalizeConfirm")}
+        description={t("profile.normalizeConfirmDesc")}
+        confirmText={t("common.confirm")}
+        cancelText={t("common.cancel")}
         onConfirm={handleNormalizeWords}
         variant="default"
       />

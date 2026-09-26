@@ -2,12 +2,20 @@
   "name": "learning-english",
   "version": "1.0.0",
   "description": "A modern web application to help users learn English vocabulary through interactive practice and automatic translations",
+  "license": "UNLICENSED",
+  "author": "wind2729@gmail.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lnwu/learning-english.git"
+  },
   "scripts": {
     "dev": "bun run --bun next dev",
     "build": "bun run --bun next build",
     "start": "bun run --bun next start",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check",
     "typecheck": "tsc --noEmit",
     "test": "bun test"
   },
@@ -39,14 +47,8 @@
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
     "@typescript/native": "npm:typescript@^7.0.2",
-    "eslint": "^9.39.3",
-    "eslint-config-next": "^16.0.1",
+    "oxfmt": "^0.70.0",
+    "oxlint": "^1.85.0",
     "typescript": "npm:@typescript/typescript6@^6.0.2"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/lnwu/learning-english.git"
-  },
-  "author": "wind2729@gmail.com",
-  "license": "UNLICENSED"
+  }
 }

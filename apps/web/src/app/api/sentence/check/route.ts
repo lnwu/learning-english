@@ -47,9 +47,9 @@ export async function POST(request: Request) {
       }
 
       const result = await chatCompletionJson<unknown>(
-        buildCheckMessages({ chinese, words, reference, userAnswer })
+        buildCheckMessages({ chinese, words, reference, userAnswer }),
       );
       return NextResponse.json(parseCheckResult(result, words));
-    }
+    },
   );
 }

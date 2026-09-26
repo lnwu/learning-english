@@ -8,11 +8,7 @@ import {
   type WordSyncUpdate,
 } from "./wordSync";
 import type { SyncQueueItem } from "./queueStorage";
-import {
-  initialMemory,
-  initialStats,
-  type WordMemory,
-} from "./masteryModel";
+import { initialMemory, initialStats, type WordMemory } from "./masteryModel";
 import type { SyncableWordData, WordData } from "./wordsStore";
 
 const memoryAt = (at: number | null): WordMemory => ({
@@ -26,9 +22,7 @@ const memoryAt = (at: number | null): WordMemory => ({
   reps: at === null ? 0 : 1,
 });
 
-const makeSyncable = (
-  overrides: Partial<SyncableWordData> = {}
-): SyncableWordData => ({
+const makeSyncable = (overrides: Partial<SyncableWordData> = {}): SyncableWordData => ({
   memory: memoryAt(1000),
   stats: {
     ...initialStats(),
@@ -37,9 +31,7 @@ const makeSyncable = (
     dailyReviews: 1,
   },
   inputTimes: [1],
-  reviews: [
-    { id: "r1", at: 1000, g: 3, h: false, r: null, s: 2.3065, d: 2.1181 },
-  ],
+  reviews: [{ id: "r1", at: 1000, g: 3, h: false, r: null, s: 2.3065, d: 2.1181 }],
   ...overrides,
 });
 
@@ -108,9 +100,7 @@ describe("buildWordUpdates", () => {
 describe("collectStaleQueueItemIds", () => {
   it("远端复习更晚时判定为 stale", () => {
     const byId = new Map([["id-apple", makeWordData()]]);
-    const staleIds = collectStaleQueueItemIds({ byId, byWord: byId }, [
-      makeItem(),
-    ]);
+    const staleIds = collectStaleQueueItemIds({ byId, byWord: byId }, [makeItem()]);
 
     expect(staleIds).toEqual(["q1"]);
   });
@@ -133,9 +123,7 @@ describe("collectStaleQueueItemIds", () => {
   });
 
   it("队列复习更晚或远端无该词时不判定为 stale", () => {
-    const byId = new Map([
-      ["id-apple", makeWordData({ memory: memoryAt(1000) })],
-    ]);
+    const byId = new Map([["id-apple", makeWordData({ memory: memoryAt(1000) })]]);
     const staleIds = collectStaleQueueItemIds({ byId, byWord: byId }, [
       makeItem({ data: makeSyncable({ memory: memoryAt(5000) }) }),
       makeItem({ id: "q2", wordId: "id-missing" }),
@@ -188,9 +176,7 @@ describe("classifySyncBatchFailure", () => {
   });
 });
 
-const makeUpdate = (
-  overrides: Partial<WordSyncUpdate> = {}
-): WordSyncUpdate => ({
+const makeUpdate = (overrides: Partial<WordSyncUpdate> = {}): WordSyncUpdate => ({
   word: "apple",
   data: makeSyncable(),
   queueItemIds: ["q1"],

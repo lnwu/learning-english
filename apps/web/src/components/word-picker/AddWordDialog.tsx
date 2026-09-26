@@ -84,8 +84,7 @@ const AddWordDialog = ({ word, onClose, onFinished }: AddWordDialogProps) => {
         if (cancelled) return;
         console.error("Failed to translate word:", error);
         toast({
-          title:
-            error instanceof Error ? error.message : t("addWord.addFailed"),
+          title: error instanceof Error ? error.message : t("addWord.addFailed"),
           variant: "destructive",
         });
         onFinishedRef.current?.();
@@ -102,7 +101,7 @@ const AddWordDialog = ({ word, onClose, onFinished }: AddWordDialogProps) => {
   const handleConfirmAdd = async () => {
     if (!word || status !== "ready") return;
 
-    const finalWord = useOriginal ? word : lemma ?? word;
+    const finalWord = useOriginal ? word : (lemma ?? word);
 
     if (words.hasWord(finalWord)) {
       toast({
@@ -121,10 +120,7 @@ const AddWordDialog = ({ word, onClose, onFinished }: AddWordDialogProps) => {
     } catch (error) {
       console.error("Failed to add word:", error);
       toast({
-        title:
-          error instanceof Error
-            ? error.message
-            : tRef.current("addWord.addFailed"),
+        title: error instanceof Error ? error.message : tRef.current("addWord.addFailed"),
         variant: "destructive",
       });
     } finally {
@@ -152,9 +148,7 @@ const AddWordDialog = ({ word, onClose, onFinished }: AddWordDialogProps) => {
           </DialogTitle>
         </DialogHeader>
         {status === "loading" && (
-          <div className="text-sm text-muted-foreground">
-            {t("common.loading")}
-          </div>
+          <div className="text-sm text-muted-foreground">{t("common.loading")}</div>
         )}
         {status === "exists" && word && lemma && (
           <div className="space-y-2">
@@ -169,9 +163,7 @@ const AddWordDialog = ({ word, onClose, onFinished }: AddWordDialogProps) => {
         {status === "ready" && (
           <div className="space-y-3">
             <div>
-              <div className="text-sm font-medium">
-                {t("addWord.confirmSenses")}
-              </div>
+              <div className="text-sm font-medium">{t("addWord.confirmSenses")}</div>
               <div className="text-sm text-muted-foreground whitespace-pre-line">
                 {encodeSenses(senses)}
               </div>
@@ -198,9 +190,7 @@ const AddWordDialog = ({ word, onClose, onFinished }: AddWordDialogProps) => {
         )}
         <DialogFooter>
           {status === "exists" ? (
-            <Button onClick={() => onFinishedRef.current?.()}>
-              {t("addWord.gotIt")}
-            </Button>
+            <Button onClick={() => onFinishedRef.current?.()}>{t("addWord.gotIt")}</Button>
           ) : (
             <>
               <Button variant="outline" onClick={onClose}>

@@ -3,10 +3,7 @@ export const MAX_SENTENCE_WORDS = 3;
 
 export const pickWordCount = (
   rng: () => number,
-  {
-    min = MIN_SENTENCE_WORDS,
-    max = MAX_SENTENCE_WORDS,
-  }: { min?: number; max?: number } = {}
+  { min = MIN_SENTENCE_WORDS, max = MAX_SENTENCE_WORDS }: { min?: number; max?: number } = {},
 ): number => Math.floor(rng() * (max - min + 1)) + min;
 
 const shuffle = <T>(items: readonly T[], rng: () => number): T[] => {
@@ -20,7 +17,7 @@ const shuffle = <T>(items: readonly T[], rng: () => number): T[] => {
 
 export const pickSentenceWords = (
   candidates: readonly string[],
-  { count, rng }: { count: number; rng: () => number }
+  { count, rng }: { count: number; rng: () => number },
 ): string[] => {
   if (count <= 0 || candidates.length === 0) return [];
   return shuffle(candidates, rng).slice(0, count);

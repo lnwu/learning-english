@@ -17,9 +17,7 @@ export const usePracticeTimeTracker = () => {
     });
 
     const updateActive = () => {
-      recorder.setActive(
-        document.visibilityState === "visible" && document.hasFocus()
-      );
+      recorder.setActive(document.visibilityState === "visible" && document.hasFocus());
     };
 
     const flush = () => {

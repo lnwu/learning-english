@@ -32,9 +32,7 @@ export const optionalText =
 
 export const wordToken = (): FieldParser<string> => (raw) => {
   const value = typeof raw === "string" ? raw.trim().toLowerCase() : "";
-  return isValidWordToken(value)
-    ? { ok: true, value }
-    : { ok: false, error: "无效单词" };
+  return isValidWordToken(value) ? { ok: true, value } : { ok: false, error: "无效单词" };
 };
 
 export const wordTokenList =
@@ -98,10 +96,7 @@ export const sentenceWordList =
             };
             return {
               word: typeof record.word === "string" ? record.word.trim() : "",
-              translation:
-                typeof record.translation === "string"
-                  ? record.translation.trim()
-                  : "",
+              translation: typeof record.translation === "string" ? record.translation.trim() : "",
             };
           })
           .filter((item) => item.word)
@@ -111,7 +106,7 @@ export const sentenceWordList =
     const hasOverlongItem = items.some(
       (item) =>
         item.word.length > options.maxWordLength ||
-        item.translation.length > options.maxTranslationLength
+        item.translation.length > options.maxTranslationLength,
     );
     if (hasOverlongItem) {
       return { ok: false, error: "输入内容过长" };

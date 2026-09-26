@@ -10,7 +10,7 @@ describe("i18n", () => {
 
   it("占位符 key 都包含同名变量", () => {
     const placeholderKeys = (Object.keys(translations.zh) as TranslationKey[]).filter((key) =>
-      /\{\w+\}/.test(translations.zh[key])
+      /\{\w+\}/.test(translations.zh[key]),
     );
     expect(placeholderKeys.length).toBeGreaterThan(0);
     for (const key of placeholderKeys) {
@@ -21,12 +21,8 @@ describe("i18n", () => {
   });
 
   it("t 支持参数替换", () => {
-    expect(
-      t("profile.deleteConfirm", "zh", { word: "apple" })
-    ).toBe("确定删除「apple」吗？");
-    expect(t("profile.deleteConfirm", "en", { word: "apple" })).toBe(
-      'Delete "apple"?'
-    );
+    expect(t("profile.deleteConfirm", "zh", { word: "apple" })).toBe("确定删除「apple」吗？");
+    expect(t("profile.deleteConfirm", "en", { word: "apple" })).toBe('Delete "apple"?');
   });
 
   it("t 支持多参数替换", () => {
@@ -39,7 +35,7 @@ describe("i18n", () => {
 
   it("formatMessage 未知占位符原样保留", () => {
     expect(formatMessage("hello {name} {unknown}", { name: "world" })).toBe(
-      "hello world {unknown}"
+      "hello world {unknown}",
     );
   });
 });

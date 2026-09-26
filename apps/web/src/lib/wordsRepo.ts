@@ -58,9 +58,9 @@ export const createWordsRepo = (userId: string): WordsRepo => {
             snapshot.docs.map((item) => ({
               id: item.id,
               data: () => item.data(),
-            }))
+            })),
           ),
-        onError
+        onError,
       );
     },
 
@@ -95,19 +95,15 @@ export const createWordsRepo = (userId: string): WordsRepo => {
     },
 
     async loadPracticeTime() {
-      const snapshot = await getDocs(
-        collection(db, "users", userId, "practiceTime")
-      );
-      return new Map(
-        snapshot.docs.map((item) => [item.id, Number(item.data().seconds) || 0])
-      );
+      const snapshot = await getDocs(collection(db, "users", userId, "practiceTime"));
+      return new Map(snapshot.docs.map((item) => [item.id, Number(item.data().seconds) || 0]));
     },
 
     async addPracticeTime(dateId, seconds) {
       await setDoc(
         doc(db, "users", userId, "practiceTime", dateId),
         { seconds: increment(seconds) },
-        { merge: true }
+        { merge: true },
       );
     },
   };

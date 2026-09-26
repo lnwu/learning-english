@@ -10,10 +10,7 @@ interface BatchTaskFailure {
 
 export type BatchTaskOutcome<T> = BatchTaskSuccess<T> | BatchTaskFailure;
 
-export const chunkWords = (
-  words: readonly string[],
-  batchSize: number
-): string[][] => {
+export const chunkWords = (words: readonly string[], batchSize: number): string[][] => {
   const batches: string[][] = [];
   for (let i = 0; i < words.length; i += batchSize) {
     batches.push(words.slice(i, i + batchSize));
@@ -43,10 +40,5 @@ export const runBatchedAiTask = async <T>(input: {
   return outcomes;
 };
 
-export const countFailedWords = <T>(
-  outcomes: ReadonlyArray<BatchTaskOutcome<T>>
-): number =>
-  outcomes.reduce(
-    (sum, outcome) => ("error" in outcome ? sum + outcome.words.length : sum),
-    0
-  );
+export const countFailedWords = <T>(outcomes: ReadonlyArray<BatchTaskOutcome<T>>): number =>
+  outcomes.reduce((sum, outcome) => ("error" in outcome ? sum + outcome.words.length : sum), 0);

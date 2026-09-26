@@ -11,9 +11,7 @@ import {
 
 const MINUTE_MS = 60 * 1000;
 
-const card = (
-  reviews: Array<Partial<ReviewLogLike> & { at: number }>
-): ReviewLogLike[] =>
+const card = (reviews: Array<Partial<ReviewLogLike> & { at: number }>): ReviewLogLike[] =>
   reviews.map((review) => ({
     g: 3,
     r: 0.9,
@@ -23,15 +21,14 @@ const card = (
 describe("buildCalibrationSamples", () => {
   it("排除首次复习与同日复习，保留跨天样本", () => {
     const start = 1_000_000;
-    const { samples, skippedNoPrediction, skippedSameDay } =
-      buildCalibrationSamples([
-        card([
-          { at: start, g: 3, r: null },
-          { at: start + 10 * MINUTE_MS, g: 3, r: 1 },
-          { at: start + 2 * DAY_MS, g: 3, r: 0.9 },
-          { at: start + 2 * DAY_MS + DAY_MS, g: 1, r: 0.85 },
-        ]),
-      ]);
+    const { samples, skippedNoPrediction, skippedSameDay } = buildCalibrationSamples([
+      card([
+        { at: start, g: 3, r: null },
+        { at: start + 10 * MINUTE_MS, g: 3, r: 1 },
+        { at: start + 2 * DAY_MS, g: 3, r: 0.9 },
+        { at: start + 2 * DAY_MS + DAY_MS, g: 1, r: 0.85 },
+      ]),
+    ]);
 
     expect(samples).toHaveLength(2);
     expect(samples[0]).toEqual({ predicted: 0.9, recalled: true });
@@ -58,7 +55,7 @@ describe("brierScore", () => {
       brierScore([
         { predicted: 0.9, recalled: true },
         { predicted: 0.8, recalled: false },
-      ])
+      ]),
     ).toBeCloseTo(0.325, 6);
     expect(brierScore([])).toBeNull();
   });
@@ -70,13 +67,13 @@ describe("rocAuc", () => {
       rocAuc([
         { predicted: 0.9, recalled: true },
         { predicted: 0.8, recalled: false },
-      ])
+      ]),
     ).toBe(1);
     expect(
       rocAuc([
         { predicted: 0.8, recalled: true },
         { predicted: 0.9, recalled: false },
-      ])
+      ]),
     ).toBe(0);
   });
 
@@ -85,7 +82,7 @@ describe("rocAuc", () => {
       rocAuc([
         { predicted: 0.9, recalled: true },
         { predicted: 0.9, recalled: false },
-      ])
+      ]),
     ).toBe(0.5);
     expect(rocAuc([{ predicted: 0.9, recalled: true }])).toBeNull();
   });
@@ -99,7 +96,7 @@ describe("calibrationBuckets", () => {
         { predicted: 0.7, recalled: false },
         { predicted: 0.9, recalled: true },
       ],
-      [0, 0.5, 1]
+      [0, 0.5, 1],
     );
 
     expect(buckets).toHaveLength(2);
@@ -114,9 +111,7 @@ describe("calibrationBuckets", () => {
   });
 
   it("空区间不出现在结果里", () => {
-    expect(
-      calibrationBuckets([{ predicted: 0.9, recalled: true }], [0, 0.5, 1])
-    ).toHaveLength(1);
+    expect(calibrationBuckets([{ predicted: 0.9, recalled: true }], [0, 0.5, 1])).toHaveLength(1);
   });
 });
 
@@ -130,7 +125,7 @@ describe("buildCalibrationReport", () => {
           { at: 3 * DAY_MS, g: 1, r: 0.8 },
         ]),
       ],
-      { minSamples: 2 }
+      { minSamples: 2 },
     );
 
     expect(report.totalReviews).toBe(3);
