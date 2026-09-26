@@ -80,6 +80,10 @@ const zh = {
     'practiceHub.sentence.title': '造句练习',
     'practiceHub.sentence.description': '用词汇库的单词造句，练习真实语境中的表达',
     'practiceHub.back': '返回练习中心',
+    'words.emptyLibraryTitle': '词库为空',
+    'words.emptyLibraryDescription': '先添加单词，开始拼写练习。',
+    'words.allReviewedTitle': '今天的复习已完成',
+    'words.allReviewedDescription': '所有单词今天都已复习或达到上限，明天再来继续。',
 
     // Profile page
     'profile.title': '用户资料',
@@ -241,6 +245,10 @@ const en: Record<TranslationKey, string> = {
     'practiceHub.sentence.title': 'Sentence Practice',
     'practiceHub.sentence.description': 'Build sentences with your words in real-life contexts',
     'practiceHub.back': 'Back to Hub',
+    'words.emptyLibraryTitle': 'Your word list is empty',
+    'words.emptyLibraryDescription': 'Add a word to start spelling practice.',
+    'words.allReviewedTitle': 'All caught up for today',
+    'words.allReviewedDescription': 'Every word has been reviewed or hit the daily limit. Come back tomorrow.',
 
     // Profile page
     'profile.title': 'User Profile',
