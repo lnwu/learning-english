@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import { useFirestoreWords, useSyncStatus } from "@/hooks/useFirestoreWords";
 import { postJson } from "@/lib/apiClient";
 import { tNow } from "@/lib/i18n";
@@ -27,7 +27,7 @@ export interface SentenceFeedback {
 
 export const useSentencePractice = () => {
   const firestore = useFirestoreWords();
-  const { words, recordCorrectAttempt, recordIncorrectAttempt } = firestore;
+  const { words } = firestore;
   const { syncing, pendingCount } = useSyncStatus();
 
   const [question, setQuestion] = useState<SentenceQuestion | null>(null);
@@ -36,22 +36,10 @@ export const useSentencePractice = () => {
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [insufficientWords, setInsufficientWords] = useState(false);
-  const scoredQuestionRef = useRef<SentenceQuestion | null>(null);
 
   const pickWords = useCallback(() => {
     const count = pickWordCount(Math.random);
-    const picked = pickSentenceWords(
-      words.wordEntries().map(([word, data]) => ({
-        word,
-        priority: words.getWordPriority(word),
-        totalAttempts: data.totalAttempts,
-      })),
-      { count, rng: Math.random }
-    );
-    if (picked.length >= MIN_SENTENCE_WORDS) {
-      return picked;
-    }
-    return words.getRandomWords(count).map(([word]) => word);
+    return pickSentenceWords(words.knownWords(), { count, rng: Math.random });
   }, [words]);
 
   const generate = useCallback(async () => {
@@ -59,7 +47,6 @@ export const useSentencePractice = () => {
     setInsufficientWords(false);
     setFeedback(null);
     setQuestion(null);
-    scoredQuestionRef.current = null;
 
     const targetWords = pickWords();
     if (targetWords.length < MIN_SENTENCE_WORDS) {
@@ -107,19 +94,6 @@ export const useSentencePractice = () => {
           tNow("sentence.checkFailed")
         );
         setFeedback(result);
-
-        const shouldRecord = scoredQuestionRef.current !== question;
-        if (shouldRecord) {
-          scoredQuestionRef.current = question;
-          result.usedWords.forEach((word) => {
-            if (result.correct) {
-              // 造句场景没有真实输入计时，不传 inputTimeSeconds，避免伪造时间抬高 speedScore
-              recordCorrectAttempt(word);
-            } else {
-              recordIncorrectAttempt(word);
-            }
-          });
-        }
         return result;
       } catch (err) {
         setError(err instanceof Error ? err.message : tNow("sentence.checkFailed"));
@@ -128,7 +102,7 @@ export const useSentencePractice = () => {
         setChecking(false);
       }
     },
-    [question, recordCorrectAttempt, recordIncorrectAttempt]
+    [question]
   );
 
   return {

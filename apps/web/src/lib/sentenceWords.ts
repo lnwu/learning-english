@@ -1,14 +1,5 @@
-import { pickWeightedRandom } from "@/lib/weightedPick";
-
 export const MIN_SENTENCE_WORDS = 2;
 export const MAX_SENTENCE_WORDS = 3;
-export const PRIORITIZED_MIN_ATTEMPTS = 3;
-
-export interface SentenceWordCandidate {
-  word: string;
-  priority: number;
-  totalAttempts: number;
-}
 
 export const pickWordCount = (
   rng: () => number,
@@ -28,35 +19,9 @@ const shuffle = <T>(items: readonly T[], rng: () => number): T[] => {
 };
 
 export const pickSentenceWords = (
-  candidates: readonly SentenceWordCandidate[],
-  {
-    count,
-    rng,
-    minAttempts = PRIORITIZED_MIN_ATTEMPTS,
-  }: { count: number; rng: () => number; minAttempts?: number }
+  candidates: readonly string[],
+  { count, rng }: { count: number; rng: () => number }
 ): string[] => {
   if (count <= 0 || candidates.length === 0) return [];
-
-  const practiced = candidates.filter(
-    (candidate) => candidate.totalAttempts >= minAttempts
-  );
-  const lessPracticed = candidates.filter(
-    (candidate) => candidate.totalAttempts < minAttempts
-  );
-
-  const prioritized = pickWeightedRandom(
-    practiced.map(({ word, priority }) => ({ word, weight: priority })),
-    count,
-    rng
-  ).map(({ word }) => word);
-  if (prioritized.length >= count) {
-    return prioritized;
-  }
-
-  const remaining = count - prioritized.length;
-  const fallback = shuffle(lessPracticed, rng)
-    .slice(0, remaining)
-    .map(({ word }) => word);
-
-  return [...prioritized, ...fallback];
+  return shuffle(candidates, rng).slice(0, count);
 };
