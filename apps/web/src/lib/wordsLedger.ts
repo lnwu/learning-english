@@ -32,7 +32,7 @@ export interface WordsLedgerStatus {
   dataLostCount: number;
 }
 
-export const INITIAL_WORDS_LEDGER_STATUS: WordsLedgerStatus = Object.freeze({
+const INITIAL_WORDS_LEDGER_STATUS: WordsLedgerStatus = Object.freeze({
   loading: true,
   error: null,
   syncing: false,

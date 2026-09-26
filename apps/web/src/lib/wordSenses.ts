@@ -5,9 +5,9 @@ export interface WordSense {
 }
 
 export const MAX_SENSES = 4;
-export const MAX_POS_LENGTH = 10;
-export const MAX_DEFINITION_LENGTH = 150;
-export const MAX_TRANSLATION_LENGTH = 50;
+const MAX_POS_LENGTH = 10;
+const MAX_DEFINITION_LENGTH = 150;
+const MAX_TRANSLATION_LENGTH = 50;
 
 const SENSE_LINE_PATTERN = /^([a-zA-Z]+\.)\s+(.+?)\s*—\s*(.+)$/;
 

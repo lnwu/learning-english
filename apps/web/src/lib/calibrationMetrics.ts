@@ -31,7 +31,7 @@ export interface CalibrationReport {
 
 export const DAY_MS = 86_400_000;
 export const CALIBRATION_MIN_SAMPLES = 500;
-export const DEFAULT_BUCKET_EDGES: readonly number[] = [
+const DEFAULT_BUCKET_EDGES: readonly number[] = [
   0, 0.6, 0.7, 0.8, 0.9, 0.95, 1.000001,
 ];
 

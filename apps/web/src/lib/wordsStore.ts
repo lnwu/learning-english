@@ -11,7 +11,6 @@ import {
   calculateFluencyScore,
   computeBaselineForWord,
   computeBaselinesByLengthCategory,
-  effectiveLevel,
   getLastReviewAt,
   getWordLengthCategory,
   initialMemory,
@@ -116,14 +115,14 @@ const reviewsEqual = (
       entry.d === b[index].d
   );
 
-export const mergeMemory = (a: WordMemory, b: WordMemory): WordMemory => {
+const mergeMemory = (a: WordMemory, b: WordMemory): WordMemory => {
   const aAt = getLastReviewAt(a);
   const bAt = getLastReviewAt(b);
   if (aAt !== bAt) return aAt > bAt ? a : b;
   return a.stability <= b.stability ? a : b;
 };
 
-export const mergeStats = (a: WordStats, b: WordStats): WordStats => {
+const mergeStats = (a: WordStats, b: WordStats): WordStats => {
   const later =
     (a.lastReviewDay ?? "") >= (b.lastReviewDay ?? "") ? a : b;
   const sameDay = a.lastReviewDay === b.lastReviewDay;
@@ -137,7 +136,7 @@ export const mergeStats = (a: WordStats, b: WordStats): WordStats => {
   };
 };
 
-export const mergeReviews = (
+const mergeReviews = (
   a: readonly ReviewLogEntry[],
   b: readonly ReviewLogEntry[]
 ): ReviewLogEntry[] => {
@@ -150,7 +149,7 @@ export const mergeReviews = (
     .slice(-MAX_REVIEWS);
 };
 
-export const mergeInputTimes = (
+const mergeInputTimes = (
   a: readonly number[],
   b: readonly number[]
 ): number[] => [...a, ...b].slice(-MAX_INPUT_TIMES);
@@ -273,12 +272,6 @@ export class Words {
 
   getMasteryLevelIndex(word: string): number {
     return getMasteryLevelIndex(this.getMasteryScore(word));
-  }
-
-  getMasteryLevel(word: string) {
-    const data = this.wordData.get(word);
-    if (!data) return "new" as const;
-    return effectiveLevel(data.memory, data.stats);
   }
 
   get overallAverageInputTime(): number | null {
@@ -446,7 +439,7 @@ export const mergeWordData = (
       : source.createdAt,
 });
 
-export const isWordDataEqual = (
+const isWordDataEqual = (
   a: Readonly<WordData>,
   b: Readonly<WordData>
 ): boolean =>
@@ -459,7 +452,7 @@ export const isWordDataEqual = (
   arraysEqual(a.inputTimes, b.inputTimes) &&
   reviewsEqual(a.reviews, b.reviews);
 
-export const isSyncableDataEqual = (
+const isSyncableDataEqual = (
   a: SyncableWordData,
   b: SyncableWordData
 ): boolean =>

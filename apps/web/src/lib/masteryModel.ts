@@ -2,7 +2,7 @@ import type { MasteryLevel } from "@/lib/masteryLevels";
 import { formatLocalPracticeDate } from "@/lib/practiceDate";
 
 export type Rating = 1 | 2 | 3;
-export type MemoryState = "new" | "learning" | "review" | "relearning";
+type MemoryState = "new" | "learning" | "review" | "relearning";
 
 export interface WordMemory {
   stability: number;
@@ -36,20 +36,20 @@ export interface ReviewLogEntry {
 
 export const MODEL_VERSION = "fsrs-6";
 export const DAY_MS = 1000 * 60 * 60 * 24;
-export const MIN_STABILITY = 0.001;
-export const MAX_STABILITY = 36500;
-export const REQUEST_RETENTION = 0.9;
+const MIN_STABILITY = 0.001;
+const MAX_STABILITY = 36500;
+const REQUEST_RETENTION = 0.9;
 export const DAILY_REVIEW_LIMIT = 3;
 export const MAX_REVIEWS = 200;
 export const MAX_INPUT_TIMES = 20;
 export const NEW_WORDS_PER_ROUND = 2;
 export const MAX_ROUND_WORDS = 5;
-export const MIN_BASELINE_SAMPLES = 5;
-export const FLUENCY_SCORE_MULTIPLIER = 80;
-export const FLUENCY_SAMPLE_SIZE = 5;
-export const MIN_FLUENCY_SAMPLES = 3;
-export const SPEED_ANOMALY_FACTOR = 5;
-export const WORD_LENGTH_CATEGORY_COUNT = 3;
+const MIN_BASELINE_SAMPLES = 5;
+const FLUENCY_SCORE_MULTIPLIER = 80;
+const FLUENCY_SAMPLE_SIZE = 5;
+const MIN_FLUENCY_SAMPLES = 3;
+const SPEED_ANOMALY_FACTOR = 5;
+const WORD_LENGTH_CATEGORY_COUNT = 3;
 
 const W = [
   0.212, 1.2931, 2.3065, 8.2956, 6.4133, 0.8334, 3.0194, 0.001, 1.8722,
@@ -354,7 +354,7 @@ export const masteryScoreFor = (
   return clamp(Math.round(score), 0, 100);
 };
 
-export const median = (values: readonly number[]): number => {
+const median = (values: readonly number[]): number => {
   const sorted = [...values].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
   if (sorted.length % 2 === 0) {
@@ -369,7 +369,7 @@ export const getWordLengthCategory = (word: string): number => {
   return 2;
 };
 
-export const getFallbackInputTime = (wordLength: number): number =>
+const getFallbackInputTime = (wordLength: number): number =>
   wordLength * 0.4 + 0.5;
 
 export const computeBaselinesByLengthCategory = (
