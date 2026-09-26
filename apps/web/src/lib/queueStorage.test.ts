@@ -165,8 +165,7 @@ describe("createLocalStorageQueueStorage", () => {
     ).toBeTruthy();
   });
 
-  it("忽略格式非法或缺少 wordId 的条目", () => {
-    const storage = createLocalStorageQueueStorage("user-1");
+  it("忽略格式非法或缺少 wordId 的条目，并在首次访问时清理", () => {
     localStorageMock.setItem("sync_queue:user-1:broken", "{not json");
     localStorageMock.setItem(
       "sync_queue:user-1:no-word",
@@ -177,7 +176,26 @@ describe("createLocalStorageQueueStorage", () => {
       JSON.stringify({ id: "q", wordId: "id-x", data: {} })
     );
 
+    const storage = createLocalStorageQueueStorage("user-1");
     expect(storage.load()).toEqual([]);
+    expect(localStorageMock.getItem("sync_queue:user-1:broken")).toBeNull();
+    expect(localStorageMock.getItem("sync_queue:user-1:no-word")).toBeNull();
+    expect(localStorageMock.getItem("sync_queue:user-1:no-attempts")).toBeNull();
+  });
+
+  it("清理无效条目时保留有效条目", () => {
+    localStorageMock.setItem(
+      "sync_queue:user-1:legacy",
+      JSON.stringify({ correctCount: 1, totalAttempts: 1 })
+    );
+    const storage = createLocalStorageQueueStorage("user-1");
+    storage.save(makeItem("id-apple", "apple"));
+
+    expect(storage.load().map((item) => item.word)).toEqual(["apple"]);
+    expect(localStorageMock.getItem("sync_queue:user-1:legacy")).toBeNull();
+    expect(
+      localStorageMock.getItem("sync_queue:user-1:id-apple")
+    ).toBeTruthy();
   });
 
   it("首次访问时迁移历史全局数组队列", () => {

@@ -85,6 +85,21 @@ export const createLocalStorageQueueStorage = (userId: string): QueueStorage => 
     if (migrated) return;
     migrated = true;
     migrateLegacyQueue();
+    pruneInvalidItems();
+  };
+
+  const pruneInvalidItems = (): void => {
+    try {
+      const invalidKeys: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (!key || !key.startsWith(itemKeyPrefix)) continue;
+        if (!parseItem(localStorage.getItem(key))) invalidKeys.push(key);
+      }
+      invalidKeys.forEach((key) => localStorage.removeItem(key));
+    } catch (error) {
+      console.error("Failed to prune invalid sync queue items:", error);
+    }
   };
 
   const readAll = (): SyncQueueItem[] => {
