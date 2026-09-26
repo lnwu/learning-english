@@ -10,7 +10,9 @@
     "build": "turbo build",
     "check": "turbo lint typecheck test",
     "sync:preview": "bun run scripts/sync-preview-words.mjs",
-    "migrate:words-v2": "bun run scripts/migrate-words-v2.mjs"
+    "migrate:words-v2": "bun run scripts/migrate-words-v2.mjs",
+    "calibrate:export": "bun run scripts/export-review-logs.mjs",
+    "calibrate:report": "bun run scripts/calibration-report.mjs"
   },
   "workspaces": [
     "apps/*"

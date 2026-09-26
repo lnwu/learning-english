@@ -45,6 +45,13 @@ bun run sync:preview      # 手动同步 preview 数据（需 ADC + PROD_USER_UI
 3. 再触发一次并勾选 `apply` 执行；脚本幂等，已迁移的文档只清理遗留旧字段，不覆盖上线后产生的练习数据。
 4. 本地执行（需 ADC 与 `PROD_USER_UID`）：`bun run migrate:words-v2`；`--apply` 写入，`--uid preview` 只迁移 preview。
 
+## 熟练度校准（导出与拟合）
+
+1. Actions 手动触发 `export-review-logs`：产物 artifact `calibration-export` 内含官方格式的 `revlog.csv`（`card_id,review_time,review_rating`）、原始 `reviews.json` 与校准报告 `report.json`；workflow 日志同时打印可靠性表、Brier 与 AUC。
+2. 本地拟合（需 Python）：`python -m pip install fsrs-optimizer`，再执行 `python -m fsrs_optimizer revlog.csv -y -o weights.json`；结果（优化后的 `w`、`evaluation.json` 指标）与报告一起评估。
+3. 只有样本达到门槛（`calibrationMetrics.ts` 的 `CALIBRATION_MIN_SAMPLES = 500`）且指标有改善时才发布：把新权重写入 `apps/web/src/lib/masteryModel.ts` 的 `W`、提升 `MODEL_VERSION`，走功能分支 + Preview 验收后合并。
+4. 本地导出（需 ADC 与 `PROD_USER_UID`）：`bun run calibrate:export --out calibration-out`；查看报告 `bun run calibrate:report calibration-out/reviews.json`。
+
 ## 事故处理
 
 - **生产词库没有 PITR，删除不可恢复**：删 `users/{uid}` 子集合前先导出；Firestore 库级删除有保护（`DELETE_PROTECTION_ENABLED` + `prevent_destroy`）。
