@@ -11,7 +11,6 @@ import {
   MasteryBar,
   PageContainer,
   PageHeader,
-  SyncIndicator,
 } from "@/components/ui";
 import { CheckIcon, XIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -26,7 +25,7 @@ import {
 } from "react";
 import { observer } from "mobx-react-lite";
 import Link from "next/link";
-import { useFirestoreWords, useSyncStatus, useLocale, usePracticeTimeTracker } from "@/hooks";
+import { useFirestoreWords, useLocale, usePracticeTimeTracker } from "@/hooks";
 import { decodeSenses } from "@/lib/wordSenses";
 import {
   createPracticeInputState,
@@ -164,8 +163,7 @@ const SubmitButton = observer(
 );
 
 const WordsPractice = observer(() => {
-  const { words, recordReview, syncToFirestore, loading, error } = useFirestoreWords();
-  const { syncing, pendingCount } = useSyncStatus();
+  const { words, recordReview, loading, error } = useFirestoreWords();
   const { t } = useLocale();
   usePracticeTimeTracker();
   const [isClient, setIsClient] = useState(false);
@@ -327,49 +325,42 @@ const WordsPractice = observer(() => {
 
   return (
     isClient && (
-      <>
-        <SyncIndicator
-          syncing={syncing}
-          pendingCount={pendingCount}
-          onManualSync={syncToFirestore}
+      <PageContainer>
+        <PageHeader
+          className="mb-6"
+          title={t("practiceHub.words.title")}
+          description={t("practiceHub.words.description")}
+          actions={
+            <>
+              <Button render={<Link href="/add-word" />} nativeButton={false} variant="outline">
+                {t("addWord.title")}
+              </Button>
+              <Button render={<Link href="/home" />} nativeButton={false} variant="ghost">
+                {t("practiceHub.back")}
+              </Button>
+            </>
+          }
         />
-        <PageContainer>
-          <PageHeader
-            className="mb-6"
-            title={t("practiceHub.words.title")}
-            description={t("practiceHub.words.description")}
-            actions={
-              <>
-                <Button render={<Link href="/add-word" />} nativeButton={false} variant="outline">
-                  {t("addWord.title")}
-                </Button>
-                <Button render={<Link href="/home" />} nativeButton={false} variant="ghost">
-                  {t("practiceHub.back")}
-                </Button>
-              </>
-            }
-          />
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <ul className="divide-y">
-              {randomWords.map(([word, translation]) => (
-                <WordRow
-                  key={word}
-                  word={word}
-                  translation={translation}
-                  words={words}
-                  onInputChange={handleInputChange}
-                  onHintReveal={handleHintReveal}
-                  inputRefs={inputRefs}
-                  t={t}
-                />
-              ))}
-            </ul>
-            <div className="flex justify-end">
-              <SubmitButton randomWords={randomWords} words={words} label={t("home.refresh")} />
-            </div>
-          </form>
-        </PageContainer>
-      </>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <ul className="divide-y">
+            {randomWords.map(([word, translation]) => (
+              <WordRow
+                key={word}
+                word={word}
+                translation={translation}
+                words={words}
+                onInputChange={handleInputChange}
+                onHintReveal={handleHintReveal}
+                inputRefs={inputRefs}
+                t={t}
+              />
+            ))}
+          </ul>
+          <div className="flex justify-end">
+            <SubmitButton randomWords={randomWords} words={words} label={t("home.refresh")} />
+          </div>
+        </form>
+      </PageContainer>
     )
   );
 });

@@ -51,6 +51,7 @@
 ### 必须保持的行为
 
 - `useFirestoreWords()` 只返回稳定 context；高频变化的 `syncing` 与 `pendingCount` 只通过 `useSyncStatus()` 暴露。`Words` 的 `wordData` / `userInputs` 是私有字段，外部一律走 `wordCount`、`knownWords()`、`hasWord()`、`wordEntries()`、`getWordData()`（只读 `WordData`）以及 `getUserInput()`、`setUserInput()`、`clearUserInputs()`；字段使用 TypeScript `private`，不要使用 `#private`，否则 MobX observer 可能无法响应变化。
+- 同步指示器在根 `layout.tsx` 内只渲染一次，组件（`components/ui/sync-indicator.tsx`）自行订阅 `useSyncStatus()` 并取 `syncToFirestore`；有待同步或正在同步时在所有页面显示，页面不要各自渲染。
 - 派生数据使用 `Words` computed getter；写入口只通过 `Words` 的具名命令修改数据。练习数据重置走 `resetPracticeRecords()`，由 store 完成重置并返回待落库清单，不要在调用方原地修改 `WordData`。
 - `mergeSnapshotIntoStore` 必须保持增量合并及现有支配判定，不得改成全量替换 store 内容；支配判定按 `memory.lastReviewAt`，stale 判定统一使用 `collectStaleQueueItemIds(merged, queue)`，不要混用快照与 `byId` 视图。
 - 复习时间取客户端真实时刻写入 `memory.lastReviewAt`，不得改用同步时刻。
