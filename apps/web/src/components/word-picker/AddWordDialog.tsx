@@ -8,7 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useState } from "react";
 import { useFirestoreWords, useLocale, toast } from "@/hooks";
 import { postJson } from "@/lib/apiClient";
 import { encodeSenses, type WordSense } from "@/lib/wordSenses";
@@ -21,41 +21,37 @@ interface AddWordDialogProps {
 
 type Status = "loading" | "ready" | "exists";
 
+interface TranslateResult {
+  word: string;
+  status: Exclude<Status, "loading">;
+  senses: WordSense[];
+  lemma: string;
+}
+
 const AddWordDialog = ({ word, onClose, onFinished }: AddWordDialogProps) => {
   const { words, addWord } = useFirestoreWords();
   const { t } = useLocale();
-  const [status, setStatus] = useState<Status>("loading");
-  const [senses, setSenses] = useState<WordSense[]>([]);
-  const [lemma, setLemma] = useState<string | null>(null);
-  const [useOriginal, setUseOriginal] = useState(false);
+  const [translated, setTranslated] = useState<TranslateResult | null>(null);
+  const [useOriginalFor, setUseOriginalFor] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
-  const tRef = useRef(t);
-  tRef.current = t;
-  const onFinishedRef = useRef(onFinished);
-  onFinishedRef.current = onFinished;
+
+  const notifyFinished = useEffectEvent(() => {
+    onFinished?.();
+  });
 
   useEffect(() => {
-    if (!word) {
-      setStatus("loading");
-      setSenses([]);
-      setLemma(null);
-      setUseOriginal(false);
-      return;
-    }
+    if (!word) return;
 
     let cancelled = false;
 
     const run = async () => {
-      setStatus("loading");
-      setSenses([]);
-      setLemma(null);
-      setUseOriginal(false);
-      const t = tRef.current;
       try {
         const data = await postJson<{
           lemma?: string;
           senses: WordSense[] | null;
         }>("/api/translate", { word }, t("addWord.addFailed"));
+
+        if (cancelled) return;
 
         const fetched = data.senses;
         if (!fetched || fetched.length === 0) {
@@ -63,23 +59,17 @@ const AddWordDialog = ({ word, onClose, onFinished }: AddWordDialogProps) => {
             title: t("addWord.notRecognized", { word }),
             variant: "destructive",
           });
-          onFinishedRef.current?.();
+          notifyFinished();
           return;
         }
 
         const normalized = data.lemma && data.lemma !== word ? data.lemma : word;
-        if (normalized !== word && words.hasWord(normalized)) {
-          if (cancelled) return;
-          setSenses(fetched);
-          setLemma(normalized);
-          setStatus("exists");
-          return;
-        }
-
-        if (cancelled) return;
-        setSenses(fetched);
-        setLemma(normalized);
-        setStatus("ready");
+        setTranslated({
+          word,
+          status: normalized !== word && words.hasWord(normalized) ? "exists" : "ready",
+          senses: fetched,
+          lemma: normalized,
+        });
       } catch (error) {
         if (cancelled) return;
         console.error("Failed to translate word:", error);
@@ -87,7 +77,7 @@ const AddWordDialog = ({ word, onClose, onFinished }: AddWordDialogProps) => {
           title: error instanceof Error ? error.message : t("addWord.addFailed"),
           variant: "destructive",
         });
-        onFinishedRef.current?.();
+        notifyFinished();
       }
     };
 
@@ -96,31 +86,37 @@ const AddWordDialog = ({ word, onClose, onFinished }: AddWordDialogProps) => {
     return () => {
       cancelled = true;
     };
-  }, [word, words]);
+  }, [word, words, t]);
+
+  const current = word && translated?.word === word ? translated : null;
+  const status: Status = current?.status ?? "loading";
+  const senses = current?.senses ?? [];
+  const lemma = current?.lemma ?? null;
+  const useOriginal = useOriginalFor === word;
 
   const handleConfirmAdd = async () => {
-    if (!word || status !== "ready") return;
+    if (!word || current?.status !== "ready") return;
 
-    const finalWord = useOriginal ? word : (lemma ?? word);
+    const finalWord = useOriginal ? word : current.lemma;
 
     if (words.hasWord(finalWord)) {
       toast({
-        title: tRef.current("addWord.wordExists", { word: finalWord }),
+        title: t("addWord.wordExists", { word: finalWord }),
         variant: "destructive",
       });
-      onFinishedRef.current?.();
+      onFinished?.();
       return;
     }
 
     setConfirming(true);
     try {
-      await addWord(finalWord, senses);
-      toast({ title: tRef.current("addWord.addSuccess"), variant: "success" });
-      onFinishedRef.current?.();
+      await addWord(finalWord, current.senses);
+      toast({ title: t("addWord.addSuccess"), variant: "success" });
+      onFinished?.();
     } catch (error) {
       console.error("Failed to add word:", error);
       toast({
-        title: error instanceof Error ? error.message : tRef.current("addWord.addFailed"),
+        title: error instanceof Error ? error.message : t("addWord.addFailed"),
         variant: "destructive",
       });
     } finally {
@@ -173,14 +169,14 @@ const AddWordDialog = ({ word, onClose, onFinished }: AddWordDialogProps) => {
                 <Button
                   size="sm"
                   variant={useOriginal ? "outline" : "default"}
-                  onClick={() => setUseOriginal(false)}
+                  onClick={() => setUseOriginalFor(null)}
                 >
                   {t("addWord.saveLemma", { word: lemma })}
                 </Button>
                 <Button
                   size="sm"
                   variant={useOriginal ? "default" : "outline"}
-                  onClick={() => setUseOriginal(true)}
+                  onClick={() => setUseOriginalFor(word)}
                 >
                   {t("addWord.keepOriginal", { word })}
                 </Button>
@@ -190,7 +186,7 @@ const AddWordDialog = ({ word, onClose, onFinished }: AddWordDialogProps) => {
         )}
         <DialogFooter>
           {status === "exists" ? (
-            <Button onClick={() => onFinishedRef.current?.()}>{t("addWord.gotIt")}</Button>
+            <Button onClick={() => onFinished?.()}>{t("addWord.gotIt")}</Button>
           ) : (
             <>
               <Button variant="outline" onClick={onClose}>
