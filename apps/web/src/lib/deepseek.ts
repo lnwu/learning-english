@@ -1,5 +1,5 @@
 const DEFAULT_BASE_URL = "https://api.deepseek.com";
-const DEFAULT_MODEL = "deepseek-v4-flash";
+const DEFAULT_MODEL = "deepseek-flash";
 const REQUEST_TIMEOUT_MS = 30000;
 const MAX_ATTEMPTS = 2;
 const RETRY_DELAY_MS = 300;

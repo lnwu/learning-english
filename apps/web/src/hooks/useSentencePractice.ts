@@ -4,7 +4,11 @@ import { useCallback, useState } from "react";
 import { useFirestoreWords, useSyncStatus } from "@/hooks/useFirestoreWords";
 import { postJson } from "@/lib/apiClient";
 import { tNow } from "@/lib/i18n";
-import { MIN_SENTENCE_WORDS, pickSentenceWords, pickWordCount } from "@/lib/sentenceWords";
+import {
+  MIN_SENTENCE_WORDS,
+  SENTENCE_WORD_POOL_SIZE,
+  pickSentenceWords,
+} from "@/lib/sentenceWords";
 
 export interface SentenceQuestion {
   chinese: string;
@@ -33,10 +37,14 @@ export const useSentencePractice = () => {
   const [error, setError] = useState<string | null>(null);
   const [insufficientWords, setInsufficientWords] = useState(false);
 
-  const pickWords = useCallback(() => {
-    const count = pickWordCount(Math.random);
-    return pickSentenceWords(words.knownWords(), { count, rng: Math.random });
-  }, [words]);
+  const pickWords = useCallback(
+    () =>
+      pickSentenceWords(words.knownWords(), {
+        count: SENTENCE_WORD_POOL_SIZE,
+        rng: Math.random,
+      }),
+    [words],
+  );
 
   const generate = useCallback(async () => {
     setError(null);
@@ -44,8 +52,8 @@ export const useSentencePractice = () => {
     setFeedback(null);
     setQuestion(null);
 
-    const targetWords = pickWords();
-    if (targetWords.length < MIN_SENTENCE_WORDS) {
+    const candidateWords = pickWords();
+    if (candidateWords.length < MIN_SENTENCE_WORDS) {
       setInsufficientWords(true);
       return;
     }
@@ -55,7 +63,7 @@ export const useSentencePractice = () => {
       const result = await postJson<SentenceQuestion>(
         "/api/sentence/generate",
         {
-          words: targetWords.map((word) => ({
+          words: candidateWords.map((word) => ({
             word,
             translation: words.getTranslation(word) ?? "",
           })),

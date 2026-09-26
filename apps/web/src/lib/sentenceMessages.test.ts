@@ -9,7 +9,7 @@ import {
 } from "./sentenceMessages";
 
 describe("buildGenerateMessages", () => {
-  it("user 消息带上目标词与参考译法", () => {
+  it("user 消息带上候选词与参考译法，system 要求返回所选词", () => {
     const messages = buildGenerateMessages([
       { word: "apple", translation: "苹果" },
       { word: "run", translation: "" },
@@ -17,7 +17,7 @@ describe("buildGenerateMessages", () => {
 
     expect(messages).toHaveLength(2);
     expect(messages[0].role).toBe("system");
-    expect(messages[0].content).toContain("chinese");
+    expect(messages[0].content).toContain('"words"');
     expect(messages[1].content).toContain("apple（苹果）");
     expect(messages[1].content).toContain("run");
     expect(messages[1].content).not.toContain("run（）");
@@ -25,17 +25,57 @@ describe("buildGenerateMessages", () => {
 });
 
 describe("parseGenerateResult", () => {
-  it("去除首尾空白后返回结果", () => {
-    expect(parseGenerateResult({ chinese: " 你好 ", english: " hi " })).toEqual({
+  const candidates = ["apple", "run", "banana"];
+
+  it("去除首尾空白后返回结果，words 匹配候选词原文", () => {
+    expect(
+      parseGenerateResult(
+        { chinese: " 你好 ", english: " hi ", words: ["RUN", " apple "] },
+        candidates,
+      ),
+    ).toEqual({
       chinese: "你好",
       english: "hi",
+      words: ["run", "apple"],
     });
   });
 
   it("字段缺失或为空时返回 null", () => {
-    expect(parseGenerateResult(null)).toBeNull();
-    expect(parseGenerateResult({ chinese: "", english: "hi" })).toBeNull();
-    expect(parseGenerateResult({ chinese: "你好", english: 42 })).toBeNull();
+    expect(parseGenerateResult(null, candidates)).toBeNull();
+    expect(
+      parseGenerateResult({ chinese: "", english: "hi", words: ["apple", "run"] }, candidates),
+    ).toBeNull();
+    expect(
+      parseGenerateResult({ chinese: "你好", english: 42, words: ["apple", "run"] }, candidates),
+    ).toBeNull();
+  });
+
+  it("过滤非候选词与重复项", () => {
+    const result = parseGenerateResult(
+      { chinese: "你好", english: "hi", words: ["apple", "orange", "APPLE", 42, "run"] },
+      candidates,
+    );
+
+    expect(result?.words).toEqual(["apple", "run"]);
+  });
+
+  it("所选词超过 3 个时只保留前 3 个", () => {
+    const result = parseGenerateResult(
+      { chinese: "你好", english: "hi", words: ["apple", "run", "banana", "pear"] },
+      [...candidates, "pear"],
+    );
+
+    expect(result?.words).toEqual(["apple", "run", "banana"]);
+  });
+
+  it("有效词不足 2 个时返回 null", () => {
+    expect(
+      parseGenerateResult({ chinese: "你好", english: "hi", words: ["apple"] }, candidates),
+    ).toBeNull();
+    expect(
+      parseGenerateResult({ chinese: "你好", english: "hi", words: [] }, candidates),
+    ).toBeNull();
+    expect(parseGenerateResult({ chinese: "你好", english: "hi" }, candidates)).toBeNull();
   });
 });
 
