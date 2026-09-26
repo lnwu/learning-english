@@ -58,9 +58,7 @@ describe("buildCheckMessages", () => {
 describe("isExactMatchAnswer", () => {
   it("忽略大小写、标点与多余空白", () => {
     expect(isExactMatchAnswer("I run every day.", "i run every day")).toBe(true);
-    expect(isExactMatchAnswer("I run every day.", "  I RUN EVERY DAY!  ")).toBe(
-      true
-    );
+    expect(isExactMatchAnswer("I run every day.", "  I RUN EVERY DAY!  ")).toBe(true);
   });
 
   it("内容不同或两侧为空时返回 false", () => {
@@ -97,7 +95,7 @@ describe("parseCheckResult", () => {
         issues: ["时态"],
         usedWords: ["run", "banana"],
       },
-      words
+      words,
     );
 
     expect(result).toEqual({
@@ -121,7 +119,7 @@ describe("parseCheckResult", () => {
   it("feedback 与 corrected 超长时截断", () => {
     const result = parseCheckResult(
       { feedback: "a".repeat(2500), corrected: "b".repeat(600) },
-      words
+      words,
     );
 
     expect(result.feedback).toHaveLength(2000);
@@ -131,7 +129,7 @@ describe("parseCheckResult", () => {
   it("issues 过滤非字符串并限制条数", () => {
     const result = parseCheckResult(
       { issues: [...Array.from({ length: 12 }, (_, i) => `i${i}`), 42, null] },
-      words
+      words,
     );
 
     expect(result.issues).toHaveLength(10);

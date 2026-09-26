@@ -1,10 +1,6 @@
 import { tNow } from "@/lib/i18n";
 import { mergeSnapshotIntoStore, type Words } from "@/lib/wordsStore";
-import {
-  buildWordUpdates,
-  collectStaleQueueItemIds,
-  runWordSync,
-} from "@/lib/wordSync";
+import { buildWordUpdates, collectStaleQueueItemIds, runWordSync } from "@/lib/wordSync";
 import {
   attemptUpdateFields,
   practiceFields,
@@ -14,11 +10,7 @@ import {
 import type { WordsRepo } from "@/lib/wordsRepo";
 import type { WordSense } from "@/lib/wordSenses";
 import type { Rating } from "@/lib/masteryModel";
-import type {
-  NewQueueItem,
-  QueueStorage,
-  SyncQueueItem,
-} from "@/lib/queueStorage";
+import type { NewQueueItem, QueueStorage, SyncQueueItem } from "@/lib/queueStorage";
 import { buildNormalizeDocPlan } from "@/lib/wordNormalization";
 
 const MAX_SYNC_RETRIES = 3;
@@ -105,8 +97,7 @@ export class WordsLedger {
     const existing = this.#queue.get(queued.wordId);
     if (
       existing &&
-      (existing.data.memory.lastReviewAt ?? 0) >
-        (queued.data.memory.lastReviewAt ?? 0)
+      (existing.data.memory.lastReviewAt ?? 0) > (queued.data.memory.lastReviewAt ?? 0)
     ) {
       return;
     }
@@ -179,7 +170,7 @@ export class WordsLedger {
             queue.map((item) => ({
               wordId: item.wordId,
               data: item.data,
-            }))
+            })),
           );
 
           const staleIds = collectStaleQueueItemIds(merged, queue);
@@ -212,7 +203,7 @@ export class WordsLedger {
   recordReview = (
     word: string,
     rating: Rating,
-    options: { hint?: boolean; inputTimeSeconds?: number } = {}
+    options: { hint?: boolean; inputTimeSeconds?: number } = {},
   ): void => {
     this.#words.recordReview(word, rating, options);
     this.#enqueueAttempt(word);
@@ -246,7 +237,7 @@ export class WordsLedger {
               type: "update" as const,
               wordId,
               fields: attemptUpdateFields(data),
-            }))
+            })),
           );
         },
         queue: {
@@ -314,7 +305,7 @@ export class WordsLedger {
   };
 
   updateTranslations = async (
-    updates: Array<{ word: string; senses: WordSense[] }>
+    updates: Array<{ word: string; senses: WordSense[] }>,
   ): Promise<void> => {
     const repo = this.#repo;
     if (!repo) {
@@ -344,7 +335,7 @@ export class WordsLedger {
           type: "update" as const,
           wordId,
           fields,
-        }))
+        })),
       );
     } catch (error) {
       console.error("Failed to update translations:", error);
@@ -353,24 +344,20 @@ export class WordsLedger {
   };
 
   normalizeWordForms = async (
-    renames: Array<{ from: string; to: string }>
+    renames: Array<{ from: string; to: string }>,
   ): Promise<{ renamed: number; merged: number }> => {
     const repo = this.#repo;
     if (!repo) {
       throw new Error(tNow("error.notAuthenticated"));
     }
 
-    const plan = renames.filter(
-      ({ from, to }) => from !== to && this.#words.hasWord(from)
-    );
+    const plan = renames.filter(({ from, to }) => from !== to && this.#words.hasWord(from));
     if (plan.length === 0) return { renamed: 0, merged: 0 };
 
     try {
       await this.sync();
 
-      const docPlan = buildNormalizeDocPlan(plan, (word) =>
-        this.#words.getWordData(word)
-      );
+      const docPlan = buildNormalizeDocPlan(plan, (word) => this.#words.getWordData(word));
 
       if (docPlan.operations.length > 0) {
         await repo.commitWordOperations(docPlan.operations);
@@ -401,7 +388,7 @@ export class WordsLedger {
           type: "update" as const,
           wordId: data.id,
           fields: resetPracticeFields(Date.now()),
-        }))
+        })),
       );
 
       this.#queue.clear();

@@ -27,9 +27,7 @@ export default function GlobalError({
         <p style={{ fontSize: "14px", color: "#525252" }}>
           发生了意外错误，请重试。An unexpected error occurred, please try again.
         </p>
-        {error.digest && (
-          <p style={{ fontSize: "12px", color: "#737373" }}>{error.digest}</p>
-        )}
+        {error.digest && <p style={{ fontSize: "12px", color: "#737373" }}>{error.digest}</p>}
         <button
           onClick={reset}
           style={{

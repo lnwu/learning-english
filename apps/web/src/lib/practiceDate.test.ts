@@ -25,9 +25,7 @@ describe("getLocalPracticeDate", () => {
 
 describe("getLocalDateStartMs", () => {
   it("按本地时区解析为当日 00:00", () => {
-    expect(getLocalDateStartMs("2026-08-15")).toBe(
-      new Date(2026, 7, 15).getTime()
-    );
+    expect(getLocalDateStartMs("2026-08-15")).toBe(new Date(2026, 7, 15).getTime());
   });
 
   it("非法字符串返回 null", () => {

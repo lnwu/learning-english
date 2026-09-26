@@ -2,10 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useFirestoreWords, useLocale, useAuth, toast } from "@/hooks";
-import {
-  checkWordAddable,
-  extractWordFromSelection,
-} from "@/lib/wordSelection";
+import { checkWordAddable, extractWordFromSelection } from "@/lib/wordSelection";
 import AddWordDialog from "./AddWordDialog";
 
 const EXCLUDED_SELECTOR =
@@ -35,10 +32,7 @@ const WordPicker = () => {
       const extracted = extractWordFromSelection(selection?.toString() ?? "");
       if (!extracted) return;
 
-      const status = checkWordAddable(
-        (candidate) => words.hasWord(candidate),
-        extracted
-      );
+      const status = checkWordAddable((candidate) => words.hasWord(candidate), extracted);
       if (status === "exists") {
         toast({
           title: t("addWord.wordExists", { word: extracted }),
@@ -62,11 +56,7 @@ const WordPicker = () => {
   }, [user, words, t]);
 
   return (
-    <AddWordDialog
-      word={word}
-      onClose={() => setWord(null)}
-      onFinished={() => setWord(null)}
-    />
+    <AddWordDialog word={word} onClose={() => setWord(null)} onFinished={() => setWord(null)} />
   );
 };
 

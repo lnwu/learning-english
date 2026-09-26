@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 
-const ACCOUNTS_LOOKUP_URL =
-  "https://identitytoolkit.googleapis.com/v1/accounts:lookup";
+const ACCOUNTS_LOOKUP_URL = "https://identitytoolkit.googleapis.com/v1/accounts:lookup";
 
 const DEFAULT_TOKEN_TTL_MS = 60 * 60 * 1000;
 const CACHE_SKEW_MS = 60 * 1000;
@@ -12,9 +11,7 @@ function decodeTokenPayload(token: string): Record<string, unknown> | null {
   try {
     const parts = token.split(".");
     if (parts.length !== 3) return null;
-    return JSON.parse(
-      Buffer.from(parts[1], "base64url").toString("utf8")
-    );
+    return JSON.parse(Buffer.from(parts[1], "base64url").toString("utf8"));
   } catch {
     return null;
   }
@@ -39,7 +36,7 @@ function evictExpiredTokens() {
 }
 
 export async function verifyFirebaseIdToken(
-  request: Request
+  request: Request,
 ): Promise<{ uid: string } | NextResponse> {
   const authorization = request.headers.get("authorization");
   const idToken = authorization?.startsWith("Bearer ")
@@ -81,8 +78,7 @@ export async function verifyFirebaseIdToken(
       return NextResponse.json({ error: "登录状态无效" }, { status: 401 });
     }
 
-    const expiry =
-      decodeTokenExpiry(idToken) ?? Date.now() + DEFAULT_TOKEN_TTL_MS;
+    const expiry = decodeTokenExpiry(idToken) ?? Date.now() + DEFAULT_TOKEN_TTL_MS;
     const ttl = expiry - Date.now() - CACHE_SKEW_MS;
     if (ttl > 0) {
       if (tokenCache.size >= MAX_TOKEN_CACHE_ENTRIES) {

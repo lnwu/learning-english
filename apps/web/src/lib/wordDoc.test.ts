@@ -39,11 +39,9 @@ const makeWordData = (overrides: Partial<WordData> = {}): WordData => ({
 
 describe("translationFields", () => {
   it("把结构化义项编码为持久化字符串", () => {
-    expect(
-      translationFields([
-        { pos: "n.", chinese: "苹果", english: "a round fruit" },
-      ])
-    ).toEqual({ translation: "n. 苹果 — a round fruit" });
+    expect(translationFields([{ pos: "n.", chinese: "苹果", english: "a round fruit" }])).toEqual({
+      translation: "n. 苹果 — a round fruit",
+    });
     expect(translationFields([])).toEqual({ translation: "" });
   });
 });

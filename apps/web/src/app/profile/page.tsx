@@ -35,8 +35,7 @@ import { averageMasteryScore, masteryDistribution } from "@/lib/masteryStats";
 
 const Profile = observer(() => {
   const { user } = useAuth();
-  const { words, deleteWord, resetPracticeRecords, loading, error } =
-    useFirestoreWords();
+  const { words, deleteWord, resetPracticeRecords, loading, error } = useFirestoreWords();
   const repo = useWordsRepo();
   const [isClient, setIsClient] = useState(false);
   const { locale, setLocale, t } = useLocale();
@@ -44,9 +43,7 @@ const Profile = observer(() => {
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [wordToDelete, setWordToDelete] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const [practiceTime, setPracticeTime] = useState<Map<string, number>>(
-    new Map()
-  );
+  const [practiceTime, setPracticeTime] = useState<Map<string, number>>(new Map());
 
   useEffect(() => {
     if (!repo) return;
@@ -67,29 +64,23 @@ const Profile = observer(() => {
 
   const wordsWithStats = words.practiceStats;
 
-  const avgMasteryScore = useMemo(
-    () => averageMasteryScore(wordsWithStats),
-    [wordsWithStats]
-  );
+  const avgMasteryScore = useMemo(() => averageMasteryScore(wordsWithStats), [wordsWithStats]);
 
-  const masteryCounts = useMemo(
-    () => masteryDistribution(wordsWithStats),
-    [wordsWithStats]
-  );
+  const masteryCounts = useMemo(() => masteryDistribution(wordsWithStats), [wordsWithStats]);
 
   const handleResetRecords = async () => {
     setResetting(true);
     try {
       await resetPracticeRecords();
       toast({
-        title: t('profile.resetSuccess'),
+        title: t("profile.resetSuccess"),
         variant: "success",
       });
       setResetting(false);
     } catch (err) {
       console.error("Reset failed:", err);
       toast({
-        title: t('profile.resetError'),
+        title: t("profile.resetError"),
         variant: "destructive",
       });
       setResetting(false);
@@ -106,13 +97,13 @@ const Profile = observer(() => {
     try {
       await deleteWord(wordToDelete);
       toast({
-        title: t('profile.deleteSuccess'),
+        title: t("profile.deleteSuccess"),
         variant: "success",
       });
     } catch (err) {
       console.error("Delete word failed:", err);
       toast({
-        title: t('profile.deleteError'),
+        title: t("profile.deleteError"),
         variant: "destructive",
       });
     } finally {
@@ -128,7 +119,7 @@ const Profile = observer(() => {
   if (loading) {
     return (
       <PageContainer width="wide">
-        <LoadingState label={t('profile.loading')} />
+        <LoadingState label={t("profile.loading")} />
       </PageContainer>
     );
   }
@@ -137,7 +128,7 @@ const Profile = observer(() => {
     return (
       <PageContainer width="wide">
         <Alert variant="destructive">
-          <AlertTitle>{t('common.error')}</AlertTitle>
+          <AlertTitle>{t("common.error")}</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       </PageContainer>
@@ -149,14 +140,14 @@ const Profile = observer(() => {
       <PageContainer width="wide">
         <PageHeader
           className="mb-6"
-          title={t('profile.title')}
+          title={t("profile.title")}
           actions={
             <>
               <Button render={<Link href="/words" />} nativeButton={false}>
-                {t('profile.practiceWords')}
+                {t("profile.practiceWords")}
               </Button>
               <Button render={<Link href="/add-word" />} nativeButton={false} variant="outline">
-                {t('addWord.title')}
+                {t("addWord.title")}
               </Button>
             </>
           }
@@ -165,15 +156,16 @@ const Profile = observer(() => {
         {user && (
           <Card className="mb-6">
             <CardHeader>
-              <CardTitle>{t('profile.accountInfo')}</CardTitle>
+              <CardTitle>{t("profile.accountInfo")}</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col gap-1 text-sm">
               <p>
-                <span className="text-muted-foreground">{t('profile.email')}:</span> {user.email}
+                <span className="text-muted-foreground">{t("profile.email")}:</span> {user.email}
               </p>
               {user.displayName && (
                 <p>
-                  <span className="text-muted-foreground">{t('profile.name')}:</span> {user.displayName}
+                  <span className="text-muted-foreground">{t("profile.name")}:</span>{" "}
+                  {user.displayName}
                 </p>
               )}
             </CardContent>
@@ -182,30 +174,30 @@ const Profile = observer(() => {
 
         <Card className="mb-6 overflow-visible">
           <CardHeader>
-            <CardTitle>{t('profile.practiceTimeTitle')}</CardTitle>
-            <p className="text-sm text-muted-foreground">{t('profile.practiceTimeDesc')}</p>
+            <CardTitle>{t("profile.practiceTimeTitle")}</CardTitle>
+            <p className="text-sm text-muted-foreground">{t("profile.practiceTimeDesc")}</p>
           </CardHeader>
           <CardContent>
             {practiceTime.size > 0 ? (
               <PracticeHeatmap practiceTime={practiceTime} />
             ) : (
-              <p className="text-sm text-muted-foreground">{t('profile.noData')}</p>
+              <p className="text-sm text-muted-foreground">{t("profile.noData")}</p>
             )}
           </CardContent>
         </Card>
 
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle>{t('profile.settings')}</CardTitle>
+            <CardTitle>{t("profile.settings")}</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col divide-y">
             <div className="flex flex-col gap-2 py-6 first:pt-0 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-              <label className="text-sm font-medium">{t('profile.language')}</label>
+              <label className="text-sm font-medium">{t("profile.language")}</label>
               <ToggleGroup
                 value={[locale]}
                 onValueChange={(value) => {
                   const next = value[0];
-                  if (next === 'zh' || next === 'en') {
+                  if (next === "zh" || next === "en") {
                     handleLanguageChange(next);
                   }
                 }}
@@ -221,8 +213,8 @@ const Profile = observer(() => {
 
             <div className="flex flex-col gap-2 py-6 last:pb-0 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
               <div className="flex flex-col gap-1">
-                <h3 className="text-sm font-medium text-destructive">{t('profile.resetData')}</h3>
-                <p className="text-sm text-muted-foreground">{t('profile.resetDataDesc')}</p>
+                <h3 className="text-sm font-medium text-destructive">{t("profile.resetData")}</h3>
+                <p className="text-sm text-muted-foreground">{t("profile.resetDataDesc")}</p>
               </div>
               <Button
                 variant="destructive"
@@ -230,32 +222,36 @@ const Profile = observer(() => {
                 onClick={() => setShowResetDialog(true)}
                 disabled={resetting}
               >
-                {resetting ? t('common.loading') : t('profile.resetButton')}
+                {resetting ? t("common.loading") : t("profile.resetButton")}
               </Button>
             </div>
           </CardContent>
         </Card>
 
         <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatTile value={totalWords} label={t('profile.totalWords')} />
+          <StatTile value={totalWords} label={t("profile.totalWords")} />
           <StatTile
-            value={overallAverageTime !== null ? `${overallAverageTime.toFixed(1)}${t('profile.seconds')}` : t('profile.noData')}
-            label={t('profile.averageTime')}
+            value={
+              overallAverageTime !== null
+                ? `${overallAverageTime.toFixed(1)}${t("profile.seconds")}`
+                : t("profile.noData")
+            }
+            label={t("profile.averageTime")}
           />
           <StatTile
-            value={wordsWithStats.filter(w => w.count > 0).length}
-            label={t('profile.wordsPracticed')}
+            value={wordsWithStats.filter((w) => w.count > 0).length}
+            label={t("profile.wordsPracticed")}
           />
-          <StatTile value={`${avgMasteryScore}%`} label={t('profile.avgMastery')} />
+          <StatTile value={`${avgMasteryScore}%`} label={t("profile.avgMastery")} />
         </div>
 
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle>{t('profile.masteryDistribution')}</CardTitle>
+            <CardTitle>{t("profile.masteryDistribution")}</CardTitle>
           </CardHeader>
           <CardContent>
             {wordsWithStats.length === 0 ? (
-              <p className="text-sm text-muted-foreground">{t('profile.noPracticeData')}</p>
+              <p className="text-sm text-muted-foreground">{t("profile.noPracticeData")}</p>
             ) : (
               <div className="flex flex-col gap-3">
                 {MASTERY_LEVELS.map(({ key, labelKey }) => {
@@ -272,7 +268,9 @@ const Profile = observer(() => {
                           style={{ width: `${pct}%` }}
                         />
                       </div>
-                      <span className="w-12 text-right text-sm tabular-nums text-muted-foreground">{count}</span>
+                      <span className="w-12 text-right text-sm tabular-nums text-muted-foreground">
+                        {count}
+                      </span>
                     </div>
                   );
                 })}
@@ -281,17 +279,13 @@ const Profile = observer(() => {
           </CardContent>
         </Card>
 
-        <WordPerformanceSection
-          words={words}
-          onDelete={handleDeleteRequest}
-          t={t}
-        />
+        <WordPerformanceSection words={words} onDelete={handleDeleteRequest} t={t} />
 
         {wordsWithStats.length === 0 && (
           <Empty className="border">
             <EmptyHeader>
-              <EmptyTitle>{t('profile.noPracticeData')}</EmptyTitle>
-              <EmptyDescription>{t('profile.practiceTimeDesc')}</EmptyDescription>
+              <EmptyTitle>{t("profile.noPracticeData")}</EmptyTitle>
+              <EmptyDescription>{t("profile.practiceTimeDesc")}</EmptyDescription>
             </EmptyHeader>
           </Empty>
         )}
@@ -300,10 +294,10 @@ const Profile = observer(() => {
         <ConfirmDialog
           open={showResetDialog}
           onOpenChange={setShowResetDialog}
-          title={t('profile.resetConfirm')}
-          description={t('profile.resetConfirmDesc')}
-          confirmText={t('common.confirm')}
-          cancelText={t('common.cancel')}
+          title={t("profile.resetConfirm")}
+          description={t("profile.resetConfirmDesc")}
+          confirmText={t("common.confirm")}
+          cancelText={t("common.cancel")}
           onConfirm={handleResetRecords}
           variant="destructive"
         />
@@ -314,10 +308,10 @@ const Profile = observer(() => {
           onOpenChange={(open) => {
             if (!open) setWordToDelete(null);
           }}
-          title={t('profile.deleteConfirm', { word: wordToDelete ?? '' })}
-          description={t('profile.deleteConfirmDesc')}
-          confirmText={deleting ? t('common.loading') : t('common.confirm')}
-          cancelText={t('common.cancel')}
+          title={t("profile.deleteConfirm", { word: wordToDelete ?? "" })}
+          description={t("profile.deleteConfirmDesc")}
+          confirmText={deleting ? t("common.loading") : t("common.confirm")}
+          cancelText={t("common.cancel")}
           onConfirm={handleDeleteWord}
           variant="destructive"
         />

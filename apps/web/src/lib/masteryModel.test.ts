@@ -17,7 +17,7 @@ const MINUTE_MS = 60 * 1000;
 const memoryWith = (
   stability: number,
   state: WordMemory["state"] = "review",
-  reps = 1
+  reps = 1,
 ): WordMemory => ({
   ...initialMemory(0),
   stability,

@@ -4,7 +4,7 @@ import { getCurrentLocale, t, tNow } from "@/lib/i18n";
 export async function postJson<T>(
   url: string,
   payload: unknown,
-  fallbackError = tNow("error.requestFailed")
+  fallbackError = tNow("error.requestFailed"),
 ): Promise<T> {
   const idToken = await getAuthInstance().currentUser?.getIdToken();
   if (!idToken) {
@@ -22,8 +22,7 @@ export async function postJson<T>(
 
   const data = await response.json().catch(() => null);
   if (!response.ok) {
-    const message =
-      data && typeof data.error === "string" ? data.error : fallbackError;
+    const message = data && typeof data.error === "string" ? data.error : fallbackError;
     throw new Error(message);
   }
   return data as T;

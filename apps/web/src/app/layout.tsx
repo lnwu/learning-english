@@ -33,9 +33,7 @@ const RootLayout: FC<{ children: ReactNode }> = async ({ children }) => {
         <LocaleProvider initialLocale={locale}>
           <AuthProvider>
             <WordsProvider>
-              <AppShell>
-                {children}
-              </AppShell>
+              <AppShell>{children}</AppShell>
               <WordPickerLazy />
               <Toaster position="bottom-right" duration={5000} richColors />
             </WordsProvider>

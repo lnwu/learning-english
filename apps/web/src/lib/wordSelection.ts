@@ -15,7 +15,7 @@ export type WordAddableStatus = "ok" | "exists" | "invalid";
 
 export const checkWordAddable = (
   isKnown: (word: string) => boolean,
-  word: string
+  word: string,
 ): WordAddableStatus => {
   if (isKnown(word)) return "exists";
   if (!/^[a-zA-Z]+$/.test(word) || word.length > MAX_ADD_WORD_LENGTH) {

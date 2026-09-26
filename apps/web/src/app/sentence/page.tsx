@@ -24,7 +24,22 @@ import { useEffect, useState, type FormEvent, type KeyboardEvent } from "react";
 import { MIN_SENTENCE_WORDS } from "@/lib/sentenceWords";
 
 const Sentence = observer(() => {
-  const { loading, loadError, question, feedback, generating, checking, error, insufficientWords, generate, check, words, syncing, pendingCount, syncToFirestore } = useSentencePractice();
+  const {
+    loading,
+    loadError,
+    question,
+    feedback,
+    generating,
+    checking,
+    error,
+    insufficientWords,
+    generate,
+    check,
+    words,
+    syncing,
+    pendingCount,
+    syncToFirestore,
+  } = useSentencePractice();
   const { t } = useLocale();
   usePracticeTimeTracker();
   const [answer, setAnswer] = useState("");
@@ -125,7 +140,9 @@ const Sentence = observer(() => {
           <div className="flex flex-col gap-4">
             {!question && !generating && (error || insufficientWords) && (
               <div className="flex justify-center">
-                <Button onClick={handleNext} variant="outline">{t("sentence.next")}</Button>
+                <Button onClick={handleNext} variant="outline">
+                  {t("sentence.next")}
+                </Button>
               </div>
             )}
 
@@ -133,9 +150,7 @@ const Sentence = observer(() => {
 
             {insufficientWords ? (
               <Alert variant="destructive">
-                <AlertDescription>
-                  {t("sentence.needMoreWords")}
-                </AlertDescription>
+                <AlertDescription>{t("sentence.needMoreWords")}</AlertDescription>
               </Alert>
             ) : (
               error && (
@@ -148,9 +163,7 @@ const Sentence = observer(() => {
             {question && (
               <div className="flex flex-col gap-4">
                 <Card>
-                  <CardContent className="text-base font-medium">
-                    {question.chinese}
-                  </CardContent>
+                  <CardContent className="text-base font-medium">{question.chinese}</CardContent>
                 </Card>
 
                 <form onSubmit={handleSubmit} className="flex flex-col gap-2">
@@ -167,11 +180,24 @@ const Sentence = observer(() => {
                   <div className="flex justify-end gap-2">
                     <Button
                       type="submit"
-                      disabled={!answer.trim() || checking || (hasChecked && answer.trim() === lastCheckedAnswer)}
+                      disabled={
+                        !answer.trim() ||
+                        checking ||
+                        (hasChecked && answer.trim() === lastCheckedAnswer)
+                      }
                     >
-                      {checking ? t("sentence.checking") : hasChecked ? t("sentence.recheck") : t("sentence.submit")}
+                      {checking
+                        ? t("sentence.checking")
+                        : hasChecked
+                          ? t("sentence.recheck")
+                          : t("sentence.submit")}
                     </Button>
-                    <Button type="button" variant="outline" onClick={handleNext} disabled={generating || checking}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleNext}
+                      disabled={generating || checking}
+                    >
                       {t("sentence.next")}
                     </Button>
                   </div>
@@ -186,7 +212,10 @@ const Sentence = observer(() => {
                         ) : (
                           <XIcon className="size-4 text-destructive" />
                         )}
-                        {feedback.correct ? t("sentence.resultCorrect") : t("sentence.resultIncorrect")} · {t("sentence.score")}: {feedback.score}
+                        {feedback.correct
+                          ? t("sentence.resultCorrect")
+                          : t("sentence.resultIncorrect")}{" "}
+                        · {t("sentence.score")}: {feedback.score}
                       </div>
                       {feedback.feedback && <div className="text-sm">{feedback.feedback}</div>}
                       {feedback.issues.length > 0 && (
@@ -202,7 +231,9 @@ const Sentence = observer(() => {
                           {feedback.corrected}
                         </div>
                       )}
-                      <div className="text-sm text-muted-foreground">{t("sentence.words")}: {question.words.join(", ")}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {t("sentence.words")}: {question.words.join(", ")}
+                      </div>
                     </CardContent>
                   </Card>
                 )}

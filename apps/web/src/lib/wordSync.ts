@@ -1,8 +1,5 @@
 import type { SyncQueueItem } from "@/lib/queueStorage";
-import {
-  isQueueItemStale,
-  type MergedSnapshotResult,
-} from "@/lib/wordsStore";
+import { isQueueItemStale, type MergedSnapshotResult } from "@/lib/wordsStore";
 import { commitInChunks } from "@/lib/chunkedCommit";
 
 export interface WordSyncUpdate {
@@ -11,9 +8,7 @@ export interface WordSyncUpdate {
   queueItemIds: string[];
 }
 
-export const buildWordUpdates = (
-  queue: SyncQueueItem[]
-): Map<string, WordSyncUpdate> => {
+export const buildWordUpdates = (queue: SyncQueueItem[]): Map<string, WordSyncUpdate> => {
   const updates = new Map<string, WordSyncUpdate>();
 
   queue.forEach((item) => {
@@ -35,7 +30,7 @@ export const buildWordUpdates = (
 
 export const collectStaleQueueItemIds = (
   snapshot: MergedSnapshotResult,
-  queue: SyncQueueItem[]
+  queue: SyncQueueItem[],
 ): string[] => {
   const staleIds: string[] = [];
   queue.forEach((item) => {
@@ -53,8 +48,7 @@ export const classifySyncBatchFailure = (input: {
   updates: Array<{ word: string; queueItemIds: string[] }>;
   wordExists: (word: string) => boolean;
 }): { goneQueueItemIds: string[]; retryQueueItemIds: string[] } => {
-  const wordWasDeleted =
-    input.errorCode === "not-found" && input.wordsLoaded;
+  const wordWasDeleted = input.errorCode === "not-found" && input.wordsLoaded;
   const goneQueueItemIds: string[] = [];
   const retryQueueItemIds: string[] = [];
 
@@ -90,9 +84,7 @@ export interface RunWordSyncInput {
   queue: WordSyncQueuePort;
 }
 
-export const runWordSync = async (
-  input: RunWordSyncInput
-): Promise<WordSyncResult> => {
+export const runWordSync = async (input: RunWordSyncInput): Promise<WordSyncResult> => {
   const result: WordSyncResult = {
     committed: [],
     gone: [],
@@ -112,16 +104,15 @@ export const runWordSync = async (
     onChunkFailed: (chunk, error) => {
       console.error("Failed to sync batch:", error);
 
-      const { goneQueueItemIds, retryQueueItemIds } =
-        classifySyncBatchFailure({
-          errorCode: (error as { code?: string }).code,
-          wordsLoaded: input.isWordsLoaded(),
-          updates: chunk.map(([, update]) => ({
-            word: update.word,
-            queueItemIds: update.queueItemIds,
-          })),
-          wordExists: input.wordExists,
-        });
+      const { goneQueueItemIds, retryQueueItemIds } = classifySyncBatchFailure({
+        errorCode: (error as { code?: string }).code,
+        wordsLoaded: input.isWordsLoaded(),
+        updates: chunk.map(([, update]) => ({
+          word: update.word,
+          queueItemIds: update.queueItemIds,
+        })),
+        wordExists: input.wordExists,
+      });
 
       if (goneQueueItemIds.length > 0) {
         input.queue.remove(goneQueueItemIds);
@@ -131,9 +122,7 @@ export const runWordSync = async (
       const discardedIds = input.queue.incrementRetries(retryQueueItemIds);
       const discardedSet = new Set(discardedIds);
       result.discarded.push(...discardedIds);
-      result.retried.push(
-        ...retryQueueItemIds.filter((id) => !discardedSet.has(id))
-      );
+      result.retried.push(...retryQueueItemIds.filter((id) => !discardedSet.has(id)));
     },
   });
 

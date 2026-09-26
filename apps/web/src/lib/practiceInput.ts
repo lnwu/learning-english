@@ -20,7 +20,7 @@ export const evaluatePracticeInput = (
   state: PracticeInputState,
   word: string,
   value: string,
-  now: number
+  now: number,
 ): PracticeInputDecision => {
   if (state.completed) {
     return {

@@ -24,11 +24,8 @@ describe("chatCompletionJson", () => {
   });
 
   it("解析 JSON 返回内容", async () => {
-    globalThis.fetch = (async () =>
-      completionResponse('{"ok":true}')) as unknown as typeof fetch;
-    const result = await chatCompletionJson<{ ok: boolean }>([
-      { role: "user", content: "hi" },
-    ]);
+    globalThis.fetch = (async () => completionResponse('{"ok":true}')) as unknown as typeof fetch;
+    const result = await chatCompletionJson<{ ok: boolean }>([{ role: "user", content: "hi" }]);
     expect(result.ok).toBe(true);
   });
 
@@ -37,9 +34,9 @@ describe("chatCompletionJson", () => {
       new Response("<html>bad gateway</html>", {
         status: 200,
       })) as unknown as typeof fetch;
-    const error = await chatCompletionJson([
-      { role: "user", content: "hi" },
-    ]).catch((caught) => caught);
+    const error = await chatCompletionJson([{ role: "user", content: "hi" }]).catch(
+      (caught) => caught,
+    );
     expect(error).toBeInstanceOf(DeepSeekError);
     expect((error as DeepSeekError).status).toBe(502);
   });
@@ -52,9 +49,7 @@ describe("chatCompletionJson", () => {
       return completionResponse('{"ok":1}');
     }) as unknown as typeof fetch;
 
-    const result = await chatCompletionJson<{ ok: number }>([
-      { role: "user", content: "hi" },
-    ]);
+    const result = await chatCompletionJson<{ ok: number }>([{ role: "user", content: "hi" }]);
     expect(result.ok).toBe(1);
     expect(calls).toBe(2);
   });
@@ -67,9 +62,7 @@ describe("chatCompletionJson", () => {
       return completionResponse('{"ok":2}');
     }) as unknown as typeof fetch;
 
-    const result = await chatCompletionJson<{ ok: number }>([
-      { role: "user", content: "hi" },
-    ]);
+    const result = await chatCompletionJson<{ ok: number }>([{ role: "user", content: "hi" }]);
     expect(result.ok).toBe(2);
     expect(calls).toBe(2);
   });
@@ -82,9 +75,7 @@ describe("chatCompletionJson", () => {
       return completionResponse('{"ok":3}');
     }) as unknown as typeof fetch;
 
-    const result = await chatCompletionJson<{ ok: number }>([
-      { role: "user", content: "hi" },
-    ]);
+    const result = await chatCompletionJson<{ ok: number }>([{ role: "user", content: "hi" }]);
     expect(result.ok).toBe(3);
     expect(calls).toBe(2);
   });
@@ -95,15 +86,13 @@ describe("chatCompletionJson", () => {
     globalThis.fetch = ((_url: string, init: RequestInit) => {
       calls += 1;
       return new Promise((_resolve, reject) => {
-        init.signal?.addEventListener("abort", () =>
-          reject(new Error("aborted"))
-        );
+        init.signal?.addEventListener("abort", () => reject(new Error("aborted")));
       });
     }) as unknown as typeof fetch;
 
     try {
       const pending = chatCompletionJson([{ role: "user", content: "hi" }]).catch(
-        (caught) => caught
+        (caught) => caught,
       );
       jest.advanceTimersByTime(31_000);
       const error = await pending;
@@ -122,18 +111,18 @@ describe("chatCompletionJson", () => {
       return new Response("{}", { status: 400 });
     }) as unknown as typeof fetch;
 
-    const error = await chatCompletionJson([
-      { role: "user", content: "hi" },
-    ]).catch((caught) => caught);
+    const error = await chatCompletionJson([{ role: "user", content: "hi" }]).catch(
+      (caught) => caught,
+    );
     expect(error).toBeInstanceOf(DeepSeekError);
     expect(calls).toBe(1);
   });
 
   it("未配置 API key 抛出 500", async () => {
     delete process.env.DEEPSEEK_API_KEY;
-    const error = await chatCompletionJson([
-      { role: "user", content: "hi" },
-    ]).catch((caught) => caught);
+    const error = await chatCompletionJson([{ role: "user", content: "hi" }]).catch(
+      (caught) => caught,
+    );
     expect(error).toBeInstanceOf(DeepSeekError);
     expect((error as DeepSeekError).status).toBe(500);
   });

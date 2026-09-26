@@ -4,11 +4,7 @@ import { useCallback, useState } from "react";
 import { useFirestoreWords, useSyncStatus } from "@/hooks/useFirestoreWords";
 import { postJson } from "@/lib/apiClient";
 import { tNow } from "@/lib/i18n";
-import {
-  MIN_SENTENCE_WORDS,
-  pickSentenceWords,
-  pickWordCount,
-} from "@/lib/sentenceWords";
+import { MIN_SENTENCE_WORDS, pickSentenceWords, pickWordCount } from "@/lib/sentenceWords";
 
 export interface SentenceQuestion {
   chinese: string;
@@ -64,13 +60,11 @@ export const useSentencePractice = () => {
             translation: words.getTranslation(word) ?? "",
           })),
         },
-        tNow("sentence.generateFailed")
+        tNow("sentence.generateFailed"),
       );
       setQuestion(result);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : tNow("sentence.generateFailed")
-      );
+      setError(err instanceof Error ? err.message : tNow("sentence.generateFailed"));
     } finally {
       setGenerating(false);
     }
@@ -91,7 +85,7 @@ export const useSentencePractice = () => {
             reference: question.english,
             userAnswer,
           },
-          tNow("sentence.checkFailed")
+          tNow("sentence.checkFailed"),
         );
         setFeedback(result);
         return result;
@@ -102,7 +96,7 @@ export const useSentencePractice = () => {
         setChecking(false);
       }
     },
-    [question]
+    [question],
   );
 
   return {

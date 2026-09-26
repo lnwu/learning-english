@@ -26,10 +26,7 @@ const stats = (overrides: Partial<WordStats> = {}): WordStats => ({
   ...overrides,
 });
 
-const makeWordData = (
-  word: string,
-  overrides: Partial<WordData> = {}
-): WordData => ({
+const makeWordData = (word: string, overrides: Partial<WordData> = {}): WordData => ({
   word,
   translation: `${word}-中文`,
   memory: memory(),
@@ -355,15 +352,15 @@ describe("isQueueItemStale", () => {
     expect(
       isQueueItemStale(
         { ...syncable, memory: memory({ lastReviewAt: 2000, state: "review" }) },
-        syncable
-      )
+        syncable,
+      ),
     ).toBe(true);
     expect(isQueueItemStale(syncable, syncable)).toBe(true);
     expect(
       isQueueItemStale(
         { ...syncable, memory: memory({ lastReviewAt: 500, state: "review" }) },
-        syncable
-      )
+        syncable,
+      ),
     ).toBe(false);
   });
 });
@@ -381,16 +378,21 @@ describe("mergeSnapshotIntoStore", () => {
         memory: memory({ lastReviewAt: 2000, state: "review", stability: 5 }),
         stats: stats({ reviewDays: 2 }),
         inputTimes: [1],
-        reviews: [
-          { id: "r2", at: 2000, g: 3 as const, h: false, r: 0.9, s: 5, d: 5 },
-        ],
+        reviews: [{ id: "r2", at: 2000, g: 3 as const, h: false, r: 0.9, s: 5, d: 5 }],
       },
     };
 
     mergeSnapshotIntoStore(
       store,
-      { docs: [{ id: remote.id, data: () => ({ ...remote, createdAt: { toDate: () => remote.createdAt } }) }] },
-      [pending]
+      {
+        docs: [
+          {
+            id: remote.id,
+            data: () => ({ ...remote, createdAt: { toDate: () => remote.createdAt } }),
+          },
+        ],
+      },
+      [pending],
     );
 
     const data = store.getWordData("apple")!;

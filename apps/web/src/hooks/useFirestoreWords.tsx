@@ -15,10 +15,7 @@ import { getEffectiveUserId } from "@/lib/firebase";
 import { createWordsRepo, type WordsRepo } from "@/lib/wordsRepo";
 import { Words } from "@/lib/wordsStore";
 import { WordsLedger } from "@/lib/wordsLedger";
-import {
-  createLocalStorageQueueStorage,
-  createNoopQueueStorage,
-} from "@/lib/queueStorage";
+import { createLocalStorageQueueStorage, createNoopQueueStorage } from "@/lib/queueStorage";
 import { tNow } from "@/lib/i18n";
 import { toast } from "@/hooks/useToast";
 import type { WordSense } from "@/lib/wordSenses";
@@ -34,15 +31,13 @@ interface WordsContextValue {
   recordReview: (
     word: string,
     rating: Rating,
-    options?: { hint?: boolean; inputTimeSeconds?: number }
+    options?: { hint?: boolean; inputTimeSeconds?: number },
   ) => void;
   syncToFirestore: () => Promise<void>;
   resetPracticeRecords: () => Promise<void>;
-  updateTranslations: (
-    updates: Array<{ word: string; senses: WordSense[] }>
-  ) => Promise<void>;
+  updateTranslations: (updates: Array<{ word: string; senses: WordSense[] }>) => Promise<void>;
   normalizeWordForms: (
-    renames: Array<{ from: string; to: string }>
+    renames: Array<{ from: string; to: string }>,
   ) => Promise<{ renamed: number; merged: number }>;
   loading: boolean;
   error: string | null;
@@ -59,27 +54,18 @@ const WordsRepoContext = createContext<WordsRepo | null>(null);
 
 export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const { user } = useAuth();
-  const repo = useMemo(
-    () => (user ? createWordsRepo(getEffectiveUserId(user)) : null),
-    [user]
-  );
+  const repo = useMemo(() => (user ? createWordsRepo(getEffectiveUserId(user)) : null), [user]);
   const ledger = useMemo(
     () =>
       new WordsLedger({
         words,
         repo,
-        queue: repo
-          ? createLocalStorageQueueStorage(repo.userId)
-          : createNoopQueueStorage(),
+        queue: repo ? createLocalStorageQueueStorage(repo.userId) : createNoopQueueStorage(),
       }),
-    [repo]
+    [repo],
   );
 
-  const status = useSyncExternalStore(
-    ledger.subscribe,
-    ledger.getStatus,
-    ledger.getServerStatus
-  );
+  const status = useSyncExternalStore(ledger.subscribe, ledger.getStatus, ledger.getServerStatus);
 
   useEffect(() => ledger.start(), [ledger]);
 
@@ -101,8 +87,7 @@ export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
     };
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () =>
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, [ledger]);
 
   useEffect(() => {
@@ -141,20 +126,18 @@ export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
       loading: status.loading,
       error: status.error,
     }),
-    [ledger, status.loading, status.error]
+    [ledger, status.loading, status.error],
   );
 
   const syncStatus = useMemo<SyncStatusValue>(
     () => ({ syncing: status.syncing, pendingCount: status.pendingCount }),
-    [status.syncing, status.pendingCount]
+    [status.syncing, status.pendingCount],
   );
 
   return (
     <WordsContext.Provider value={value}>
       <SyncStatusContext.Provider value={syncStatus}>
-        <WordsRepoContext.Provider value={repo}>
-          {children}
-        </WordsRepoContext.Provider>
+        <WordsRepoContext.Provider value={repo}>{children}</WordsRepoContext.Provider>
       </SyncStatusContext.Provider>
     </WordsContext.Provider>
   );
@@ -176,5 +159,4 @@ export const useSyncStatus = (): SyncStatusValue => {
   return context;
 };
 
-export const useWordsRepo = (): WordsRepo | null =>
-  useContext(WordsRepoContext);
+export const useWordsRepo = (): WordsRepo | null => useContext(WordsRepoContext);

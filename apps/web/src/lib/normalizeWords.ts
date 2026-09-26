@@ -25,12 +25,10 @@ export const buildNormalizeMessages = (words: string[]): ChatMessage[] => [
 
 export const parseNormalizeResults = (
   raw: unknown,
-  requestedWords: string[]
+  requestedWords: string[],
 ): NormalizeResult[] => {
   const results =
-    typeof raw === "object" &&
-    raw !== null &&
-    Array.isArray((raw as { results?: unknown }).results)
+    typeof raw === "object" && raw !== null && Array.isArray((raw as { results?: unknown }).results)
       ? (raw as { results: unknown[] }).results
       : [];
 
@@ -38,8 +36,7 @@ export const parseNormalizeResults = (
   for (const item of results) {
     if (typeof item !== "object" || item === null) continue;
     const record = item as Record<string, unknown>;
-    const word =
-      typeof record.word === "string" ? record.word.trim().toLowerCase() : "";
+    const word = typeof record.word === "string" ? record.word.trim().toLowerCase() : "";
     if (!word) continue;
     byWord.set(word, sanitizeLemma(record.lemma, word));
   }

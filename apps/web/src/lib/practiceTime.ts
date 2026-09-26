@@ -79,13 +79,9 @@ export const PRACTICE_TIME_HEATMAP_WEEKS = 53;
 export const buildPracticeTimeWeeks = (
   secondsByDate: ReadonlyMap<string, number>,
   endDate: Date,
-  weekCount: number = PRACTICE_TIME_HEATMAP_WEEKS
+  weekCount: number = PRACTICE_TIME_HEATMAP_WEEKS,
 ): Array<Array<PracticeTimeDayCell | null>> => {
-  const end = new Date(
-    endDate.getFullYear(),
-    endDate.getMonth(),
-    endDate.getDate()
-  );
+  const end = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
   const start = new Date(end);
   start.setDate(start.getDate() - (weekCount - 1) * 7 - end.getDay());
 
@@ -109,7 +105,7 @@ export const buildPracticeTimeWeeks = (
 };
 
 export const getPracticeTimeMonthLabels = (
-  weeks: Array<Array<PracticeTimeDayCell | null>>
+  weeks: Array<Array<PracticeTimeDayCell | null>>,
 ): Array<{ weekIndex: number; month: number }> => {
   const labels: Array<{ weekIndex: number; month: number }> = [];
   weeks.forEach((week, weekIndex) => {
@@ -123,18 +119,12 @@ export const getPracticeTimeMonthLabels = (
   return labels;
 };
 
-export const formatPracticeMonthLabel = (
-  month: number,
-  locale: Locale
-): string =>
+export const formatPracticeMonthLabel = (month: number, locale: Locale): string =>
   locale === "zh"
     ? `${month}月`
     : new Date(2000, month - 1, 1).toLocaleString("en", { month: "short" });
 
-export const formatPracticeDuration = (
-  totalSeconds: number,
-  locale: Locale
-): string => {
+export const formatPracticeDuration = (totalSeconds: number, locale: Locale): string => {
   const seconds = Math.max(0, Math.floor(totalSeconds));
   const totalMinutes = Math.floor(seconds / 60);
   const hours = Math.floor(totalMinutes / 60);

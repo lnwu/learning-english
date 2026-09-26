@@ -1,8 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import {
-  buildRegenerateMessages,
-  parseRegenerateResults,
-} from "./regenerateDefinitions";
+import { buildRegenerateMessages, parseRegenerateResults } from "./regenerateDefinitions";
 import { MAX_SENSES } from "./wordSenses";
 
 describe("buildRegenerateMessages", () => {
@@ -24,14 +21,12 @@ describe("parseRegenerateResults", () => {
         results: [
           {
             word: "apple",
-            senses: [
-              { pos: "n.", chinese: "苹果", english: "a round fruit" },
-            ],
+            senses: [{ pos: "n.", chinese: "苹果", english: "a round fruit" }],
           },
           { word: "banana", senses: null },
         ],
       },
-      requested
+      requested,
     );
     expect(result).toEqual([
       { word: "apple", senses: [{ pos: "n.", chinese: "苹果", english: "a round fruit" }] },
@@ -48,7 +43,7 @@ describe("parseRegenerateResults", () => {
           { word: "  APPLE  ", senses: [{ pos: "n.", chinese: "苹果", english: "a round fruit" }] },
         ],
       },
-      ["apple"]
+      ["apple"],
     );
     expect(result).toEqual([
       { word: "apple", senses: [{ pos: "n.", chinese: "苹果", english: "a round fruit" }] },
@@ -66,7 +61,7 @@ describe("parseRegenerateResults", () => {
           },
         ],
       },
-      ["apple", "banana"]
+      ["apple", "banana"],
     );
     expect(result).toEqual([
       { word: "apple", senses: null },
@@ -86,6 +81,8 @@ describe("parseRegenerateResults", () => {
 
   it("非对象或缺失 results 时全部为 null", () => {
     expect(parseRegenerateResults(null, requested).every((r) => r.senses === null)).toBe(true);
-    expect(parseRegenerateResults({ foo: 1 }, requested).every((r) => r.senses === null)).toBe(true);
+    expect(parseRegenerateResults({ foo: 1 }, requested).every((r) => r.senses === null)).toBe(
+      true,
+    );
   });
 });

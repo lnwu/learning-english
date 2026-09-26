@@ -27,9 +27,7 @@ export const newWordDocFields = (word: string, senses: WordSense[]) => ({
   createdAt: new Date(),
 });
 
-export const practiceFields = (
-  data: Readonly<WordData>
-): SyncableWordData => ({
+export const practiceFields = (data: Readonly<WordData>): SyncableWordData => ({
   memory: { ...data.memory },
   stats: { ...data.stats },
   inputTimes: [...data.inputTimes],
@@ -54,9 +52,7 @@ const numberOr = (value: unknown, fallback: number): number =>
   typeof value === "number" && Number.isFinite(value) ? value : fallback;
 
 const parseState = (value: unknown): WordMemory["state"] =>
-  value === "learning" || value === "review" || value === "relearning"
-    ? value
-    : "new";
+  value === "learning" || value === "review" || value === "relearning" ? value : "new";
 
 const parseRating = (value: unknown): Rating | null =>
   value === 1 || value === 2 || value === 3 ? value : null;
@@ -72,13 +68,11 @@ const parseMemory = (value: unknown, fallbackNow: number): WordMemory => {
     state: parseState(raw.state),
     learningSteps: numberOr(raw.learningSteps, 0),
     due: numberOr(raw.due, fallbackNow),
-    lastReviewAt:
-      typeof raw.lastReviewAt === "number" ? raw.lastReviewAt : null,
+    lastReviewAt: typeof raw.lastReviewAt === "number" ? raw.lastReviewAt : null,
     lastGrade: parseRating(raw.lastGrade),
     reps: numberOr(raw.reps, 0),
     lapses: numberOr(raw.lapses, 0),
-    modelVersion:
-      typeof raw.modelVersion === "string" ? raw.modelVersion : MODEL_VERSION,
+    modelVersion: typeof raw.modelVersion === "string" ? raw.modelVersion : MODEL_VERSION,
   };
 };
 
@@ -89,8 +83,7 @@ const parseStats = (value: unknown): WordStats => {
   const raw = value as Record<string, unknown>;
   return {
     reviewDays: numberOr(raw.reviewDays, 0),
-    lastReviewDay:
-      typeof raw.lastReviewDay === "string" ? raw.lastReviewDay : null,
+    lastReviewDay: typeof raw.lastReviewDay === "string" ? raw.lastReviewDay : null,
     dailyReviews: numberOr(raw.dailyReviews, 0),
     hints: numberOr(raw.hints, 0),
   };
@@ -118,10 +111,7 @@ export const parseWordDoc = (id: string, data: DocumentData): WordData => {
   const createdAt = data.createdAt?.toDate() ?? new Date();
   const inputTimes = Array.isArray(data.inputTimes)
     ? data.inputTimes
-        .filter(
-          (time): time is number =>
-            typeof time === "number" && Number.isFinite(time)
-        )
+        .filter((time): time is number => typeof time === "number" && Number.isFinite(time))
         .slice(-MAX_INPUT_TIMES)
     : [];
   const reviews = Array.isArray(data.reviews)

@@ -50,9 +50,7 @@ export const AppShell: FC<{ children: ReactNode }> = ({ children }) => {
           </div>
         </header>
       )}
-      <div className="flex flex-1 flex-col items-center justify-center">
-        {children}
-      </div>
+      <div className="flex flex-1 flex-col items-center justify-center">{children}</div>
     </>
   );
 };

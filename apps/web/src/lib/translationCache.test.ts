@@ -52,8 +52,6 @@ describe("translationCache", () => {
   });
 
   it("未命中返回 undefined", async () => {
-    expect(
-      await getCachedTranslation(`missing-${Math.random()}`)
-    ).toBeUndefined();
+    expect(await getCachedTranslation(`missing-${Math.random()}`)).toBeUndefined();
   });
 });

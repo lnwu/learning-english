@@ -1,11 +1,6 @@
 import { NextResponse } from "next/server";
 import { API_RATE_LIMITS, withApiPost } from "@/lib/apiRoute";
-import {
-  badRequest,
-  parseBody,
-  sentenceWordList,
-  type SentenceWordInput,
-} from "@/lib/apiInput";
+import { badRequest, parseBody, sentenceWordList, type SentenceWordInput } from "@/lib/apiInput";
 import { chatCompletionJson } from "@/lib/deepseek";
 import { MAX_LEMMA_LENGTH } from "@/lib/lemma";
 import {
@@ -44,14 +39,11 @@ export async function POST(request: Request) {
     parse,
     async ({ words }) => {
       const result = parseGenerateResult(
-        await chatCompletionJson<unknown>(buildGenerateMessages(words))
+        await chatCompletionJson<unknown>(buildGenerateMessages(words)),
       );
 
       if (!result) {
-        return NextResponse.json(
-          { error: "生成失败，请稍后重试" },
-          { status: 502 }
-        );
+        return NextResponse.json({ error: "生成失败，请稍后重试" }, { status: 502 });
       }
 
       return NextResponse.json({
@@ -59,6 +51,6 @@ export async function POST(request: Request) {
         english: result.english,
         words: words.map((item) => item.word),
       });
-    }
+    },
   );
 }

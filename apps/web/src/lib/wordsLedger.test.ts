@@ -72,10 +72,7 @@ const reviewMemoryAt = (at: number, id: string) => ({
   d: 2.1181,
 });
 
-const makeDoc = (
-  word: string,
-  overrides: Record<string, unknown> = {}
-): WordDocSnapshot => ({
+const makeDoc = (word: string, overrides: Record<string, unknown> = {}): WordDocSnapshot => ({
   id: `id-${word}`,
   data: () => ({
     word,
@@ -104,7 +101,7 @@ const makeWordData = (overrides: Partial<WordData> = {}): WordData => ({
 const makeQueueItem = (
   wordId: string,
   word: string,
-  overrides: Partial<SyncQueueItem> = {}
+  overrides: Partial<SyncQueueItem> = {},
 ): SyncQueueItem => ({
   id: `q-${wordId}`,
   type: "attempt",
@@ -430,17 +427,12 @@ describe("WordsLedger 词库命令", () => {
       }),
     ]);
 
-    const result = await ledger.normalizeWordForms([
-      { from: "apples", to: "apple" },
-    ]);
+    const result = await ledger.normalizeWordForms([{ from: "apples", to: "apple" }]);
 
     expect(result).toEqual({ renamed: 0, merged: 1 });
     expect(words.hasWord("apples")).toBe(false);
     expect(words.getWordData("apple")!.reviews).toHaveLength(2);
-    expect(repo.operations.flat().map((operation) => operation.type)).toEqual([
-      "update",
-      "delete",
-    ]);
+    expect(repo.operations.flat().map((operation) => operation.type)).toEqual(["update", "delete"]);
   });
 
   it("重置练习记录时清空队列并回到 new", async () => {
@@ -468,9 +460,7 @@ describe("WordsLedger 词库命令", () => {
     });
 
     await expect(
-      ledger.addWord("apple", [
-        { pos: "n.", chinese: "苹果", english: "a round fruit" },
-      ])
+      ledger.addWord("apple", [{ pos: "n.", chinese: "苹果", english: "a round fruit" }]),
     ).rejects.toThrow();
     await expect(ledger.deleteWord("apple")).rejects.toThrow();
     await expect(ledger.resetPracticeRecords()).rejects.toThrow();

@@ -1,9 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import {
-  extractWordFromSelection,
-  checkWordAddable,
-  MAX_ADD_WORD_LENGTH,
-} from "./wordSelection";
+import { extractWordFromSelection, checkWordAddable, MAX_ADD_WORD_LENGTH } from "./wordSelection";
 
 describe("extractWordFromSelection", () => {
   it("提取普通英文单词并转小写", () => {

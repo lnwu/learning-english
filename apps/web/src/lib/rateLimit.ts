@@ -19,7 +19,7 @@ function evictExpiredBuckets(now: number) {
 export function checkInMemoryRateLimit(
   key: string,
   limit: number,
-  windowMs: number
+  windowMs: number,
 ): NextResponse | null {
   const now = Date.now();
   const bucket = buckets.get(key);
@@ -38,10 +38,7 @@ export function checkInMemoryRateLimit(
 }
 
 function tooManyRequests(): NextResponse {
-  return NextResponse.json(
-    { error: "请求过于频繁，请稍后再试" },
-    { status: 429 }
-  );
+  return NextResponse.json({ error: "请求过于频繁，请稍后再试" }, { status: 429 });
 }
 
 const limiters = new Map<string, Ratelimit>();
@@ -66,7 +63,7 @@ function getLimiter(limit: number, windowMs: number): Ratelimit | null {
 export async function checkRateLimit(
   key: string,
   limit: number,
-  windowMs: number
+  windowMs: number,
 ): Promise<NextResponse | null> {
   const limiter = getLimiter(limit, windowMs);
   if (!limiter) {

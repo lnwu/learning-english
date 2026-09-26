@@ -14,7 +14,7 @@ describe("sanitizeWordSenses", () => {
         pos: "n.",
         chinese: `语文${index}`,
         english: `english ${index}`,
-      }))
+      })),
     );
 
     expect(senses).toHaveLength(MAX_SENSES);
@@ -31,9 +31,7 @@ describe("sanitizeWordSenses", () => {
       null,
     ]);
 
-    expect(senses).toEqual([
-      { pos: "n.", chinese: "苹果", english: "a round fruit" },
-    ]);
+    expect(senses).toEqual([{ pos: "n.", chinese: "苹果", english: "a round fruit" }]);
   });
 
   it("非数组输入返回空数组", () => {
@@ -51,8 +49,8 @@ describe("decodeSenses", () => {
   it("新格式：每行一个义项，解析词性/中文/英文", () => {
     expect(
       decodeSenses(
-        "v. 吐（口水）；喷出 — to force liquid from the mouth\nn. 口水；唾沫 — liquid in the mouth"
-      )
+        "v. 吐（口水）；喷出 — to force liquid from the mouth\nn. 口水；唾沫 — liquid in the mouth",
+      ),
     ).toEqual([
       { pos: "v.", chinese: "吐（口水）；喷出", english: "to force liquid from the mouth" },
       { pos: "n.", chinese: "口水；唾沫", english: "liquid in the mouth" },
@@ -72,9 +70,7 @@ describe("decodeSenses", () => {
   });
 
   it("单行中文作为中文翻译", () => {
-    expect(decodeSenses("苹果")).toEqual([
-      { pos: "", chinese: "苹果", english: "" },
-    ]);
+    expect(decodeSenses("苹果")).toEqual([{ pos: "", chinese: "苹果", english: "" }]);
   });
 
   it("单行英文作为英文释义", () => {
@@ -97,16 +93,20 @@ describe("encodeSenses", () => {
       encodeSenses([
         { pos: "v.", chinese: "吐（口水）；喷出", english: "to force liquid from the mouth" },
         { pos: "n.", chinese: "口水；唾沫", english: "liquid in the mouth" },
-      ])
+      ]),
     ).toBe(
-      "v. 吐（口水）；喷出 — to force liquid from the mouth\nn. 口水；唾沫 — liquid in the mouth"
+      "v. 吐（口水）；喷出 — to force liquid from the mouth\nn. 口水；唾沫 — liquid in the mouth",
     );
   });
 
   it("空词性/空英文时省略对应部分", () => {
-    expect(encodeSenses([{ pos: "", chinese: "苹果", english: "a round fruit" }])).toBe("苹果 — a round fruit");
+    expect(encodeSenses([{ pos: "", chinese: "苹果", english: "a round fruit" }])).toBe(
+      "苹果 — a round fruit",
+    );
     expect(encodeSenses([{ pos: "", chinese: "苹果", english: "" }])).toBe("苹果");
-    expect(encodeSenses([{ pos: "", chinese: "", english: "a round fruit" }])).toBe("a round fruit");
+    expect(encodeSenses([{ pos: "", chinese: "", english: "a round fruit" }])).toBe(
+      "a round fruit",
+    );
   });
 
   it("空数组返回空字符串", () => {

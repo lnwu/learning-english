@@ -39,7 +39,7 @@ const writeMemory = (word: string, entry: TranslationCacheEntry): void => {
 };
 
 export const getCachedTranslation = async (
-  word: string
+  word: string,
 ): Promise<TranslationCacheEntry | undefined> => {
   const memory = readMemory(word);
   if (memory) return memory;
@@ -48,9 +48,7 @@ export const getCachedTranslation = async (
   if (!redis) return undefined;
 
   try {
-    const value = await redis.get<TranslationCacheEntry>(
-      `${CACHE_KEY_PREFIX}:${word}`
-    );
+    const value = await redis.get<TranslationCacheEntry>(`${CACHE_KEY_PREFIX}:${word}`);
     if (!isCacheEntry(value)) return undefined;
     writeMemory(word, value);
     return value;
@@ -60,10 +58,7 @@ export const getCachedTranslation = async (
   }
 };
 
-export const setCachedTranslation = (
-  word: string,
-  entry: TranslationCacheEntry
-): void => {
+export const setCachedTranslation = (word: string, entry: TranslationCacheEntry): void => {
   writeMemory(word, entry);
 
   if (!entry.senses || entry.senses.length === 0) return;
@@ -71,9 +66,7 @@ export const setCachedTranslation = (
   const redis = getRedis();
   if (!redis) return;
 
-  redis
-    .set(`${CACHE_KEY_PREFIX}:${word}`, entry, { ex: CACHE_TTL_SECONDS })
-    .catch((error) => {
-      console.error("Failed to write translation cache:", error);
-    });
+  redis.set(`${CACHE_KEY_PREFIX}:${word}`, entry, { ex: CACHE_TTL_SECONDS }).catch((error) => {
+    console.error("Failed to write translation cache:", error);
+  });
 };

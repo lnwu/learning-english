@@ -1,6 +1,16 @@
 "use client";
 
-import { Button, Empty, EmptyDescription, EmptyHeader, EmptyTitle, Input, LoadingState, PageContainer, PageHeader } from "@/components/ui";
+import {
+  Button,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+  Input,
+  LoadingState,
+  PageContainer,
+  PageHeader,
+} from "@/components/ui";
 import { AddWordDialog } from "@/components/word-picker";
 import { useRef, useState } from "react";
 import Link from "next/link";
@@ -22,17 +32,14 @@ const Home = () => {
   const handleAddWord = () => {
     if (!word) return;
 
-    const status = checkWordAddable(
-      (candidate) => words.hasWord(candidate),
-      word
-    );
+    const status = checkWordAddable((candidate) => words.hasWord(candidate), word);
     if (status === "exists") {
-      toast({ title: t('addWord.wordExists', { word }), variant: "destructive" });
+      toast({ title: t("addWord.wordExists", { word }), variant: "destructive" });
       clear();
       return;
     }
     if (status === "invalid") {
-      toast({ title: t('addWord.invalidChars', { word }), variant: "destructive" });
+      toast({ title: t("addWord.invalidChars", { word }), variant: "destructive" });
       clear();
       return;
     }
@@ -43,7 +50,7 @@ const Home = () => {
   if (wordsLoading) {
     return (
       <PageContainer width="narrow">
-        <LoadingState label={t('common.loading')} />
+        <LoadingState label={t("common.loading")} />
       </PageContainer>
     );
   }
@@ -53,11 +60,11 @@ const Home = () => {
       <PageContainer width="narrow">
         <Empty className="border">
           <EmptyHeader>
-            <EmptyTitle>{t('common.error')}</EmptyTitle>
+            <EmptyTitle>{t("common.error")}</EmptyTitle>
             <EmptyDescription>{wordsError}</EmptyDescription>
           </EmptyHeader>
           <Button render={<Link href="/home" />} nativeButton={false} variant="outline">
-            {t('practiceHub.back')}
+            {t("practiceHub.back")}
           </Button>
         </Empty>
       </PageContainer>
@@ -68,14 +75,14 @@ const Home = () => {
     <PageContainer width="narrow">
       <PageHeader
         className="mb-6"
-        title={t('addWord.title')}
+        title={t("addWord.title")}
         actions={
           <>
             <Button render={<Link href="/profile" />} nativeButton={false} variant="outline">
-              {t('menu.profile')}
+              {t("menu.profile")}
             </Button>
             <Button render={<Link href="/home" />} nativeButton={false} variant="ghost">
-              {t('practiceHub.back')}
+              {t("practiceHub.back")}
             </Button>
           </>
         }
@@ -89,14 +96,12 @@ const Home = () => {
       >
         <Input
           className="flex-1"
-          placeholder={t('addWord.word')}
+          placeholder={t("addWord.word")}
           value={word}
           onChange={(e) => setWord(e.target.value.toLowerCase())}
           ref={inputRef}
         />
-        <Button onClick={handleAddWord}>
-          {t('addWord.add')}
-        </Button>
+        <Button onClick={handleAddWord}>{t("addWord.add")}</Button>
       </form>
       <AddWordDialog
         word={pendingWord}

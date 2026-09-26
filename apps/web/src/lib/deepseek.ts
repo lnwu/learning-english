@@ -42,7 +42,7 @@ async function requestCompletion(
   baseUrl: string,
   model: string,
   messages: ChatMessage[],
-  temperature: number
+  temperature: number,
 ): Promise<Response> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
@@ -74,7 +74,7 @@ async function requestCompletion(
 
 export async function chatCompletionJson<T>(
   messages: ChatMessage[],
-  options?: ChatCompletionOptions
+  options?: ChatCompletionOptions,
 ): Promise<T> {
   const { apiKey, baseUrl, model } = getConfig();
   const temperature = options?.temperature ?? 0.7;
@@ -89,13 +89,7 @@ export async function chatCompletionJson<T>(
 
     let candidate: Response;
     try {
-      candidate = await requestCompletion(
-        apiKey,
-        baseUrl,
-        model,
-        messages,
-        temperature
-      );
+      candidate = await requestCompletion(apiKey, baseUrl, model, messages, temperature);
     } catch (error) {
       lastError =
         error instanceof DeepSeekError

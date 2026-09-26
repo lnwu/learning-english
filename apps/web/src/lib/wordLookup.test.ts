@@ -1,9 +1,6 @@
 import { describe, it, expect } from "bun:test";
 import { DeepSeekError } from "./deepseek";
-import {
-  buildWordLookupMessages,
-  parseWordLookupResult,
-} from "./wordLookup";
+import { buildWordLookupMessages, parseWordLookupResult } from "./wordLookup";
 
 describe("buildWordLookupMessages", () => {
   it("system 提示词包含 JSON 契约，user 消息是单词本身", () => {
@@ -25,7 +22,7 @@ describe("parseWordLookupResult", () => {
         lemma: "Run",
         senses: [{ pos: "v.", chinese: "跑", english: "to move quickly" }],
       },
-      "running"
+      "running",
     );
 
     expect(result).toEqual({
@@ -35,9 +32,10 @@ describe("parseWordLookupResult", () => {
   });
 
   it("非单词返回 senses: null 并回退 lemma", () => {
-    expect(
-      parseWordLookupResult({ isWord: false, lemma: "asdf" }, "asdf")
-    ).toEqual({ lemma: "asdf", senses: null });
+    expect(parseWordLookupResult({ isWord: false, lemma: "asdf" }, "asdf")).toEqual({
+      lemma: "asdf",
+      senses: null,
+    });
   });
 
   it("lemma 非法时回退原词", () => {
@@ -47,7 +45,7 @@ describe("parseWordLookupResult", () => {
         lemma: "not a word!",
         senses: [{ pos: "n.", chinese: "词", english: "a word" }],
       },
-      "word"
+      "word",
     );
 
     expect(result.lemma).toBe("word");
@@ -57,8 +55,8 @@ describe("parseWordLookupResult", () => {
     expect(() =>
       parseWordLookupResult(
         { isWord: true, lemma: "word", senses: [{ pos: "", chinese: "" }] },
-        "word"
-      )
+        "word",
+      ),
     ).toThrow(DeepSeekError);
   });
 });

@@ -1,11 +1,6 @@
 import { describe, it, expect } from "bun:test";
 import { buildNormalizeDocPlan, resolveRenamePlan } from "./wordNormalization";
-import {
-  initialMemory,
-  initialStats,
-  type ReviewLogEntry,
-  type WordMemory,
-} from "./masteryModel";
+import { initialMemory, initialStats, type ReviewLogEntry, type WordMemory } from "./masteryModel";
 import type { WordData } from "./wordsStore";
 
 const makeMap = (entries: Array<[string, string]>) => new Map(entries);
@@ -56,7 +51,7 @@ describe("resolveRenamePlan", () => {
         ["attackers", "attacker"],
         ["existed", "exist"],
         ["apple", "apple"],
-      ])
+      ]),
     );
     expect(plan).toEqual([
       { from: "attackers", to: "attacker" },
@@ -70,7 +65,7 @@ describe("resolveRenamePlan", () => {
       makeMap([
         ["axes", "axis"],
         ["axis", "axe"],
-      ])
+      ]),
     );
     expect(plan).toEqual([
       { from: "axes", to: "axe" },
@@ -84,16 +79,13 @@ describe("resolveRenamePlan", () => {
       makeMap([
         ["a", "b"],
         ["b", "a"],
-      ])
+      ]),
     );
     expect(plan).toEqual([]);
   });
 
   it("缺少映射或原形相同的单词跳过", () => {
-    const plan = resolveRenamePlan(
-      ["apple", "banana"],
-      makeMap([["apple", "apple"]])
-    );
+    const plan = resolveRenamePlan(["apple", "banana"], makeMap([["apple", "apple"]]));
     expect(plan).toEqual([]);
   });
 
@@ -106,16 +98,13 @@ describe("resolveRenamePlan", () => {
 describe("buildNormalizeDocPlan", () => {
   it("原形不存在时只重命名单词文档", () => {
     const source = makeWord();
-    const plan = buildNormalizeDocPlan(
-      [{ from: "attackers", to: "attacker" }],
-      (word) => (word === "attackers" ? source : undefined)
+    const plan = buildNormalizeDocPlan([{ from: "attackers", to: "attacker" }], (word) =>
+      word === "attackers" ? source : undefined,
     );
 
     expect(plan.renamed).toBe(1);
     expect(plan.merged).toBe(0);
-    expect(plan.operations).toEqual([
-      { type: "rename", wordId: "id-1", word: "attacker" },
-    ]);
+    expect(plan.operations).toEqual([{ type: "rename", wordId: "id-1", word: "attacker" }]);
     expect(plan.storeUpdates).toEqual([
       { from: "attackers", to: "attacker", data: { ...source, word: "attacker" } },
     ]);
@@ -136,10 +125,8 @@ describe("buildNormalizeDocPlan", () => {
       inputTimes: [3],
       reviews: [reviewAt("r2", 2000)],
     });
-    const plan = buildNormalizeDocPlan(
-      [{ from: "attackers", to: "attacker" }],
-      (word) =>
-        word === "attackers" ? source : word === "attacker" ? target : undefined
+    const plan = buildNormalizeDocPlan([{ from: "attackers", to: "attacker" }], (word) =>
+      word === "attackers" ? source : word === "attacker" ? target : undefined,
     );
 
     expect(plan.renamed).toBe(0);
@@ -168,10 +155,7 @@ describe("buildNormalizeDocPlan", () => {
   });
 
   it("源词不在词库时不生成操作", () => {
-    const plan = buildNormalizeDocPlan(
-      [{ from: "missing", to: "lemma" }],
-      () => undefined
-    );
+    const plan = buildNormalizeDocPlan([{ from: "missing", to: "lemma" }], () => undefined);
 
     expect(plan.operations).toEqual([]);
     expect(plan.renamed).toBe(0);
@@ -180,10 +164,7 @@ describe("buildNormalizeDocPlan", () => {
 
   it("目标与源是同一文档时跳过", () => {
     const same = makeWord();
-    const plan = buildNormalizeDocPlan(
-      [{ from: "attackers", to: "attacker" }],
-      () => same
-    );
+    const plan = buildNormalizeDocPlan([{ from: "attackers", to: "attacker" }], () => same);
 
     expect(plan.operations).toEqual([]);
     expect(plan.renamed).toBe(0);
@@ -197,7 +178,7 @@ describe("buildNormalizeDocPlan", () => {
         { from: "attackers", to: "attacking" },
         { from: "attacking", to: "attacker" },
       ],
-      (word) => (word === "attackers" ? source : undefined)
+      (word) => (word === "attackers" ? source : undefined),
     );
 
     expect(plan.renamed).toBe(2);

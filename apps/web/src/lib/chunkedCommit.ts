@@ -17,7 +17,7 @@ export const commitInChunks = async <T>({
     const chunk = items.slice(i, i + chunkSize);
     const outcome = await commitChunk(chunk).then(
       () => ({ ok: true as const }),
-      (error) => ({ ok: false as const, error })
+      (error) => ({ ok: false as const, error }),
     );
 
     if (outcome.ok) {

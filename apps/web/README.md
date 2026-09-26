@@ -24,11 +24,11 @@ bun run build   # 生产构建
 
 参考 `.env.example` 创建 `.env.local`：
 
-| 变量 | 说明 |
-| --- | --- |
-| `NEXT_PUBLIC_FIREBASE_API_KEY` / `AUTH_DOMAIN` / `PROJECT_ID` / `STORAGE_BUCKET` / `MESSAGING_SENDER_ID` / `APP_ID` / `MEASUREMENT_ID` | Firebase Web App 配置，缺任一项应用启动即报错 |
-| `DEEPSEEK_API_KEY` / `DEEPSEEK_BASE_URL` / `DEEPSEEK_MODEL` | 服务端 DeepSeek（BASE_URL / MODEL 可选）；API Key 禁止加 `NEXT_PUBLIC_` 前缀 |
-| `KV_REST_API_URL` / `KV_REST_API_TOKEN`（或 `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN`） | 限流与翻译缓存；未配置时本地开发回退进程内实现 |
+| 变量                                                                                                                                   | 说明                                                                         |
+| -------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_FIREBASE_API_KEY` / `AUTH_DOMAIN` / `PROJECT_ID` / `STORAGE_BUCKET` / `MESSAGING_SENDER_ID` / `APP_ID` / `MEASUREMENT_ID` | Firebase Web App 配置，缺任一项应用启动即报错                                |
+| `DEEPSEEK_API_KEY` / `DEEPSEEK_BASE_URL` / `DEEPSEEK_MODEL`                                                                            | 服务端 DeepSeek（BASE_URL / MODEL 可选）；API Key 禁止加 `NEXT_PUBLIC_` 前缀 |
+| `KV_REST_API_URL` / `KV_REST_API_TOKEN`（或 `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN`）                                    | 限流与翻译缓存；未配置时本地开发回退进程内实现                               |
 
 ## 深入文档
 

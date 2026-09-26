@@ -45,8 +45,8 @@ describe("pickSentenceWords", () => {
   it("所有候选词都有机会被抽中", () => {
     const counts = new Map<string, number>();
     for (let i = 0; i < 200; i++) {
-      pickSentenceWords(["a", "b", "c"], { count: 1, rng: Math.random }).forEach(
-        (word) => counts.set(word, (counts.get(word) ?? 0) + 1)
+      pickSentenceWords(["a", "b", "c"], { count: 1, rng: Math.random }).forEach((word) =>
+        counts.set(word, (counts.get(word) ?? 0) + 1),
       );
     }
 

@@ -27,10 +27,7 @@ export const buildWordLookupMessages = (word: string): ChatMessage[] => [
   { role: "user", content: word },
 ];
 
-export const parseWordLookupResult = (
-  raw: unknown,
-  word: string
-): TranslationCacheEntry => {
+export const parseWordLookupResult = (raw: unknown, word: string): TranslationCacheEntry => {
   const result = (raw ?? {}) as Partial<WordLookupResult>;
   const lemma = sanitizeLemma(result.lemma, word);
 
@@ -46,12 +43,10 @@ export const parseWordLookupResult = (
   return { lemma, senses };
 };
 
-export const lookupWord = async (
-  word: string
-): Promise<TranslationCacheEntry> =>
+export const lookupWord = async (word: string): Promise<TranslationCacheEntry> =>
   parseWordLookupResult(
     await chatCompletionJson<unknown>(buildWordLookupMessages(word), {
       temperature: 0.2,
     }),
-    word
+    word,
   );
