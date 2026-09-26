@@ -6,6 +6,10 @@
     "node": true,
     "es2026": true
   },
+  "rules": {
+    "react/rules-of-hooks": "error",
+    "react/unsupported-syntax": "warn"
+  },
   "settings": {
     "next": {
       "rootDir": "."
