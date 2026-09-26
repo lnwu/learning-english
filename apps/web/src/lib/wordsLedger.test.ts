@@ -7,7 +7,7 @@ import {
   type QueueStorage,
   type SyncQueueItem,
 } from "./queueStorage";
-import { formatLocalPracticeDate } from "./practiceDate";
+import { initialMemory, initialStats, type WordMemory } from "./masteryModel";
 import type { WordSense } from "./wordSenses";
 import type { WordDocSnapshot, WordOperation, WordsRepo } from "./wordsRepo";
 
@@ -57,6 +57,21 @@ class FakeRepo implements WordsRepo {
   }
 }
 
+const memory = (overrides: Partial<WordMemory> = {}): WordMemory => ({
+  ...initialMemory(0),
+  ...overrides,
+});
+
+const reviewMemoryAt = (at: number, id: string) => ({
+  id,
+  at,
+  g: 3 as const,
+  h: false,
+  r: null,
+  s: 2.3065,
+  d: 2.1181,
+});
+
 const makeDoc = (
   word: string,
   overrides: Record<string, unknown> = {}
@@ -65,12 +80,10 @@ const makeDoc = (
   data: () => ({
     word,
     translation: `${word}译`,
-    correctCount: 0,
-    totalAttempts: 0,
+    memory: initialMemory(0),
+    stats: initialStats(),
     inputTimes: [],
-    lastPracticedAt: null,
-    correctPracticeDates: [],
-    attemptHistory: [],
+    reviews: [],
     createdAt: { toDate: () => new Date("2026-01-01T00:00:00") },
     ...overrides,
   }),
@@ -79,12 +92,10 @@ const makeDoc = (
 const makeWordData = (overrides: Partial<WordData> = {}): WordData => ({
   word: "apple",
   translation: "苹果",
-  correctCount: 0,
-  totalAttempts: 0,
+  memory: initialMemory(0),
+  stats: initialStats(),
   inputTimes: [],
-  lastPracticedAt: null,
-  correctPracticeDates: [],
-  attemptHistory: [],
+  reviews: [],
   createdAt: new Date("2026-01-01T00:00:00"),
   id: "id-apple",
   ...overrides,
@@ -99,7 +110,12 @@ const makeQueueItem = (
   type: "attempt",
   word,
   wordId,
-  data: { correctCount: 1, totalAttempts: 1, inputTimes: [1] },
+  data: {
+    memory: memory({ state: "review", stability: 2.3065, lastReviewAt: 1000 }),
+    stats: { ...initialStats(), reviewDays: 1 },
+    inputTimes: [1],
+    reviews: [reviewMemoryAt(1000, "r1")],
+  },
   timestamp: 1000,
   retryCount: 0,
   ...overrides,
@@ -130,61 +146,66 @@ describe("WordsLedger 记分与快照", () => {
     repo.emit([makeDoc("apple")]);
     expect(ledger.getStatus().loading).toBe(false);
 
-    ledger.recordCorrectAttempt("apple", 2.5);
+    ledger.recordReview("apple", 3, { inputTimeSeconds: 2.5 });
 
     expect(ledger.getStatus().pendingCount).toBe(1);
-    expect(queue.get("id-apple")!.data).toEqual({
-      correctCount: 1,
-      totalAttempts: 1,
-      inputTimes: [2.5],
-      correctPracticeDates: [formatLocalPracticeDate(new Date())],
-      attemptHistory: [true],
-    });
+    const queued = queue.get("id-apple")!;
+    expect(queued.data.memory.state).toBe("learning");
+    expect(queued.data.stats.reviewDays).toBe(1);
+    expect(queued.data.stats.dailyReviews).toBe(1);
+    expect(queued.data.inputTimes).toEqual([2.5]);
+    expect(queued.data.reviews).toHaveLength(1);
+    expect(queued.data.reviews[0]).toMatchObject({ g: 3, h: false, r: null });
   });
 
-  it("答错只累计总次数的队列数据", () => {
+  it("答错写入答错评级并累计复习日", () => {
     const { repo, queue, ledger } = setup();
     repo.emit([makeDoc("apple")]);
 
-    ledger.recordIncorrectAttempt("apple");
+    ledger.recordReview("apple", 1);
 
-    expect(queue.get("id-apple")!.data).toEqual({
-      correctCount: 0,
-      totalAttempts: 1,
-      inputTimes: [],
-      correctPracticeDates: [],
-      attemptHistory: [false],
-    });
+    const queued = queue.get("id-apple")!;
+    expect(queued.data.memory.state).toBe("learning");
+    expect(queued.data.memory.lastGrade).toBe(1);
+    expect(queued.data.inputTimes).toEqual([]);
+    expect(queued.data.reviews[0]).toMatchObject({ g: 1, h: false });
   });
 
   it("快照落后于本地队列时保留本地练习数据", () => {
     const { repo, words, ledger } = setup();
     repo.emit([makeDoc("apple")]);
-    ledger.recordCorrectAttempt("apple", 1);
-    ledger.recordCorrectAttempt("apple", 1);
+    ledger.recordReview("apple", 3, { inputTimeSeconds: 1 });
+    const localReviewAt = words.getWordData("apple")!.memory.lastReviewAt;
 
-    repo.emit([makeDoc("apple", { correctCount: 0, totalAttempts: 0 })]);
+    repo.emit([makeDoc("apple")]);
 
-    expect(words.getWordData("apple")!.totalAttempts).toBe(2);
+    expect(words.getWordData("apple")!.memory.lastReviewAt).toBe(localReviewAt);
+    expect(words.getWordData("apple")!.memory.reps).toBe(1);
     expect(ledger.getStatus().pendingCount).toBe(1);
   });
 
-  it("远端已包含练习时清理过期队列条目", () => {
+  it("远端已包含复习时清理过期队列条目", () => {
     const { repo, queue, words, ledger } = setup();
     repo.emit([makeDoc("apple")]);
-    ledger.recordCorrectAttempt("apple", 1);
+    ledger.recordReview("apple", 3, { inputTimeSeconds: 1 });
 
     repo.emit([
       makeDoc("apple", {
-        correctCount: 3,
-        totalAttempts: 3,
-        inputTimes: [1, 1, 1],
+        memory: memory({
+          state: "review",
+          stability: 10,
+          difficulty: 5,
+          lastReviewAt: Date.now() + 60_000,
+          due: Date.now(),
+          reps: 5,
+        }),
+        stats: { ...initialStats(), reviewDays: 5 },
       }),
     ]);
 
     expect(queue.load()).toHaveLength(0);
     expect(ledger.getStatus().pendingCount).toBe(0);
-    expect(words.getWordData("apple")!.totalAttempts).toBe(3);
+    expect(words.getWordData("apple")!.memory.reps).toBe(5);
   });
 
   it("订阅者在状态变化时收到通知，取消订阅后不再收到", () => {
@@ -199,7 +220,7 @@ describe("WordsLedger 记分与快照", () => {
 
     unsubscribe();
     const before = notifications;
-    ledger.recordCorrectAttempt("apple", 1);
+    ledger.recordReview("apple", 3, { inputTimeSeconds: 1 });
     expect(notifications).toBe(before);
   });
 
@@ -231,10 +252,10 @@ describe("WordsLedger 同步", () => {
     warnSpy.mockRestore();
   });
 
-  it("提交练习字段后出队，lastPracticedAt 取队列时间戳", async () => {
+  it("提交记忆状态与复习日志后出队", async () => {
     const { repo, queue, ledger } = setup();
     repo.emit([makeDoc("apple")]);
-    ledger.recordCorrectAttempt("apple", 2);
+    ledger.recordReview("apple", 3, { inputTimeSeconds: 2 });
     const queued = queue.get("id-apple")!;
 
     await ledger.sync();
@@ -244,10 +265,16 @@ describe("WordsLedger 同步", () => {
     expect(operation.type).toBe("update");
     if (operation.type !== "update") throw new Error("expected update");
     expect(operation.wordId).toBe("id-apple");
-    expect(operation.fields.correctCount).toBe(1);
-    expect(
-      (operation.fields.lastPracticedAt as Date).getTime()
-    ).toBe(queued.timestamp);
+    const fields = operation.fields as {
+      memory: WordMemory;
+      stats: { reviewDays: number };
+      inputTimes: number[];
+      reviews: unknown[];
+    };
+    expect(fields.memory.lastReviewAt).toBe(queued.data.memory.lastReviewAt);
+    expect(fields.stats.reviewDays).toBe(1);
+    expect(fields.inputTimes).toEqual([2]);
+    expect(fields.reviews).toHaveLength(1);
     expect(queue.load()).toHaveLength(0);
     expect(ledger.getStatus().pendingCount).toBe(0);
   });
@@ -255,7 +282,7 @@ describe("WordsLedger 同步", () => {
   it("并发触发时只执行一次同步", async () => {
     const { repo, queue, ledger } = setup();
     repo.emit([makeDoc("apple")]);
-    ledger.recordCorrectAttempt("apple", 1);
+    ledger.recordReview("apple", 3, { inputTimeSeconds: 1 });
 
     let release!: () => void;
     const gate = new Promise<void>((resolve) => {
@@ -279,7 +306,7 @@ describe("WordsLedger 同步", () => {
   it("同一批持续失败时重试到上限后丢弃并计数一次", async () => {
     const { repo, queue, ledger } = setup();
     repo.emit([makeDoc("apple")]);
-    ledger.recordCorrectAttempt("apple", 1);
+    ledger.recordReview("apple", 3, { inputTimeSeconds: 1 });
     repo.failure = { code: "unavailable" };
 
     await ledger.sync();
@@ -348,7 +375,7 @@ describe("WordsLedger 存储回退", () => {
     ledger.start();
     repo.emit([makeDoc("apple")]);
 
-    ledger.recordCorrectAttempt("apple", 1);
+    ledger.recordReview("apple", 3, { inputTimeSeconds: 1 });
 
     expect(ledger.getStatus().storageFailed).toBe(true);
   });
@@ -358,7 +385,7 @@ describe("WordsLedger 词库命令", () => {
   it("删除单词时清理其队列条目并刷新计数", async () => {
     const { repo, queue, ledger } = setup();
     repo.emit([makeDoc("apple")]);
-    ledger.recordCorrectAttempt("apple", 1);
+    ledger.recordReview("apple", 3, { inputTimeSeconds: 1 });
 
     await ledger.deleteWord("apple");
 
@@ -391,11 +418,15 @@ describe("WordsLedger 词库命令", () => {
   it("归一化时把屈折形式合并进已有原形", async () => {
     const { repo, words, ledger } = setup();
     repo.emit([
-      makeDoc("apple", { correctCount: 1, totalAttempts: 1, inputTimes: [1] }),
+      makeDoc("apple", {
+        memory: memory({ state: "review", stability: 2.3065, lastReviewAt: 1000 }),
+        stats: { ...initialStats(), reviewDays: 1 },
+        reviews: [reviewMemoryAt(1000, "r1")],
+      }),
       makeDoc("apples", {
-        correctCount: 2,
-        totalAttempts: 3,
-        inputTimes: [1, 2, 3],
+        memory: memory({ state: "review", stability: 2.3065, lastReviewAt: 2000 }),
+        stats: { ...initialStats(), reviewDays: 2 },
+        reviews: [reviewMemoryAt(2000, "r2")],
       }),
     ]);
 
@@ -405,21 +436,22 @@ describe("WordsLedger 词库命令", () => {
 
     expect(result).toEqual({ renamed: 0, merged: 1 });
     expect(words.hasWord("apples")).toBe(false);
-    expect(words.getWordData("apple")!.totalAttempts).toBe(4);
+    expect(words.getWordData("apple")!.reviews).toHaveLength(2);
     expect(repo.operations.flat().map((operation) => operation.type)).toEqual([
       "update",
       "delete",
     ]);
   });
 
-  it("重置练习记录时清空队列并归零计数", async () => {
+  it("重置练习记录时清空队列并回到 new", async () => {
     const { repo, queue, words, ledger } = setup();
     repo.emit([makeDoc("apple")]);
-    ledger.recordCorrectAttempt("apple", 2);
+    ledger.recordReview("apple", 3, { inputTimeSeconds: 2 });
 
     await ledger.resetPracticeRecords();
 
-    expect(words.getWordData("apple")!.totalAttempts).toBe(0);
+    expect(words.getWordData("apple")!.memory.state).toBe("new");
+    expect(words.getWordData("apple")!.memory.reps).toBe(0);
     expect(queue.load()).toHaveLength(0);
     expect(ledger.getStatus().pendingCount).toBe(0);
     expect(repo.operations[0][0]).toMatchObject({

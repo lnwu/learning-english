@@ -7,18 +7,32 @@ import {
   resetPracticeFields,
   translationFields,
 } from "./wordDoc";
+import { MODEL_VERSION, initialMemory, initialStats } from "./masteryModel";
 import type { WordData } from "./wordsStore";
 
 const makeWordData = (overrides: Partial<WordData> = {}): WordData => ({
   word: "apple",
   translation: "苹果",
-  correctCount: 2,
-  totalAttempts: 3,
-  inputTimes: [1, 2],
-  lastPracticedAt: new Date("2026-01-01T00:00:00"),
-  correctPracticeDates: ["2026-01-01"],
-  attemptHistory: [true, false, true],
-  createdAt: new Date("2025-12-31T00:00:00"),
+  memory: {
+    ...initialMemory(1000),
+    stability: 2.3065,
+    difficulty: 2.1181,
+    state: "learning",
+    learningSteps: 1,
+    due: 2000,
+    lastReviewAt: 1000,
+    lastGrade: 3,
+    reps: 1,
+  },
+  stats: {
+    reviewDays: 1,
+    lastReviewDay: "2026-01-01",
+    dailyReviews: 1,
+    hints: 0,
+  },
+  inputTimes: [1.5],
+  reviews: [{ id: "r1", at: 1000, g: 3, h: false, r: null, s: 2.3065, d: 2.1181 }],
+  createdAt: new Date("2025-12-31T00:00:00Z"),
   id: "id-apple",
   ...overrides,
 });
@@ -35,112 +49,125 @@ describe("translationFields", () => {
 });
 
 describe("newWordDocFields", () => {
-  it("新词文档带零值练习字段与创建时间", () => {
+  it("新词文档带初始记忆状态与创建时间", () => {
     const fields = newWordDocFields("apple", [
       { pos: "n.", chinese: "苹果", english: "a round fruit" },
     ]);
 
     expect(fields.word).toBe("apple");
     expect(fields.translation).toBe("n. 苹果 — a round fruit");
-    expect(fields.correctCount).toBe(0);
-    expect(fields.totalAttempts).toBe(0);
+    expect(fields.memory.state).toBe("new");
+    expect(fields.memory.reps).toBe(0);
+    expect(fields.memory.modelVersion).toBe(MODEL_VERSION);
+    expect(fields.stats).toEqual(initialStats());
     expect(fields.inputTimes).toEqual([]);
-    expect(fields.lastPracticedAt).toBeNull();
-    expect(fields.correctPracticeDates).toEqual([]);
-    expect(fields.attemptHistory).toEqual([]);
+    expect(fields.reviews).toEqual([]);
     expect(fields.createdAt).toBeInstanceOf(Date);
   });
 });
 
 describe("practiceFields", () => {
-  it("只保留需要同步的字段", () => {
-    expect(practiceFields(makeWordData())).toEqual({
-      correctCount: 2,
-      totalAttempts: 3,
-      inputTimes: [1, 2],
-      correctPracticeDates: ["2026-01-01"],
-      attemptHistory: [true, false, true],
+  it("同步载荷只包含新模型字段", () => {
+    const data = makeWordData();
+
+    expect(practiceFields(data)).toEqual({
+      memory: data.memory,
+      stats: data.stats,
+      inputTimes: [1.5],
+      reviews: data.reviews,
     });
   });
 });
 
 describe("attemptUpdateFields", () => {
-  it("可选字段存在时写入，lastPracticedAt 取队列时间戳", () => {
-    const fields = attemptUpdateFields(
-      {
-        correctCount: 2,
-        totalAttempts: 3,
-        inputTimes: [1, 2],
-        correctPracticeDates: ["2026-01-01"],
-        attemptHistory: [true, false],
-      },
-      1767225600000
-    );
+  it("写入完整记忆状态与复习日志", () => {
+    const data = makeWordData();
+    const fields = attemptUpdateFields(practiceFields(data));
 
-    expect(fields.correctCount).toBe(2);
-    expect(fields.totalAttempts).toBe(3);
-    expect(fields.inputTimes).toEqual([1, 2]);
-    expect(fields.correctPracticeDates).toEqual(["2026-01-01"]);
-    expect(fields.attemptHistory).toEqual([true, false]);
-    expect(fields.lastPracticedAt).toBeInstanceOf(Date);
-    expect(fields.lastPracticedAt.getTime()).toBe(1767225600000);
-  });
-
-  it("可选字段缺失时不写入对应键", () => {
-    const fields = attemptUpdateFields(
-      { correctCount: 0, totalAttempts: 1, inputTimes: [] },
-      1000
-    );
-
-    expect("correctPracticeDates" in fields).toBe(false);
-    expect("attemptHistory" in fields).toBe(false);
-    expect(fields.lastPracticedAt.getTime()).toBe(1000);
+    expect(fields.memory).toEqual(data.memory);
+    expect(fields.stats).toEqual(data.stats);
+    expect(fields.inputTimes).toEqual([1.5]);
+    expect(fields.reviews).toEqual(data.reviews);
   });
 });
 
 describe("resetPracticeFields", () => {
-  it("返回清空后的练习字段", () => {
-    expect(resetPracticeFields()).toEqual({
-      correctCount: 0,
-      totalAttempts: 0,
-      inputTimes: [],
-      lastPracticedAt: null,
-      correctPracticeDates: [],
-      attemptHistory: [],
-    });
+  it("返回重置后的字段", () => {
+    const fields = resetPracticeFields(1234);
+
+    expect(fields.memory.state).toBe("new");
+    expect(fields.memory.due).toBe(1234);
+    expect(fields.stats).toEqual(initialStats());
+    expect(fields.inputTimes).toEqual([]);
+    expect(fields.reviews).toEqual([]);
   });
 });
 
 describe("parseWordDoc", () => {
-  it("缺失字段使用默认值", () => {
+  it("缺失字段使用初始状态", () => {
     const data = parseWordDoc("id-1", { word: "apple", translation: "苹果" });
-    expect(data.correctCount).toBe(0);
-    expect(data.totalAttempts).toBe(0);
+
+    expect(data.memory.state).toBe("new");
+    expect(data.memory.reps).toBe(0);
+    expect(data.stats).toEqual(initialStats());
     expect(data.inputTimes).toEqual([]);
-    expect(data.lastPracticedAt).toBeNull();
-    expect(data.correctPracticeDates).toEqual([]);
-    expect(data.attemptHistory).toEqual([]);
+    expect(data.reviews).toEqual([]);
     expect(data.id).toBe("id-1");
   });
 
-  it("时间戳字段调用 toDate 转换", () => {
-    const practiced = new Date("2026-02-01T10:00:00");
+  it("解析完整记忆状态、统计与复习日志", () => {
     const data = parseWordDoc("id-1", {
       word: "apple",
       translation: "苹果",
-      lastPracticedAt: { toDate: () => practiced },
+      memory: {
+        stability: 10.971,
+        difficulty: 2.1043,
+        state: "review",
+        learningSteps: 0,
+        due: 5000,
+        lastReviewAt: 4000,
+        lastGrade: 3,
+        reps: 3,
+        lapses: 1,
+        modelVersion: MODEL_VERSION,
+      },
+      stats: {
+        reviewDays: 2,
+        lastReviewDay: "2026-01-02",
+        dailyReviews: 1,
+        hints: 2,
+      },
+      inputTimes: [2, 3],
+      reviews: [
+        { id: "r1", at: 1000, g: 3, h: false, r: null, s: 2.3, d: 2.1 },
+        { id: "r2", at: 4000, g: 2, h: true, r: 0.9, s: 10.9, d: 2.1 },
+      ],
       createdAt: { toDate: () => new Date("2026-01-01") },
     });
-    expect(data.lastPracticedAt).toBe(practiced);
+
+    expect(data.memory.stability).toBe(10.971);
+    expect(data.memory.state).toBe("review");
+    expect(data.stats.reviewDays).toBe(2);
+    expect(data.stats.hints).toBe(2);
+    expect(data.inputTimes).toEqual([2, 3]);
+    expect(data.reviews).toHaveLength(2);
+    expect(data.reviews[1]).toMatchObject({ id: "r2", g: 2, h: true, r: 0.9 });
   });
 
-  it("correctPracticeDates 统一归一化为本地日期", () => {
+  it("过滤非法复习日志并截断超限数组", () => {
     const data = parseWordDoc("id-1", {
       word: "apple",
       translation: "苹果",
-      correctPracticeDates: ["2026-01-02", "2026-01-03T12:00:00.000Z"],
+      inputTimes: [1, "bad", Number.NaN, 2],
+      reviews: [
+        { id: "ok", at: 5, g: 3, h: false, r: null, s: 1, d: 1 },
+        { id: "bad", at: 6, g: 9, h: false, r: null, s: 1, d: 1 },
+        { nope: true },
+      ],
     });
-    expect(data.correctPracticeDates[0]).toBe("2026-01-02");
-    expect(data.correctPracticeDates[1]).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+
+    expect(data.inputTimes).toEqual([1, 2]);
+    expect(data.reviews).toHaveLength(1);
+    expect(data.reviews[0].id).toBe("ok");
   });
 });

@@ -5,6 +5,31 @@ import {
   createNoopQueueStorage,
   type SyncQueueItem,
 } from "./queueStorage";
+import { initialMemory, initialStats, type WordMemory } from "./masteryModel";
+import type { SyncableWordData } from "./wordsStore";
+
+const memoryAt = (at: number | null): WordMemory => ({
+  ...initialMemory(0),
+  stability: at === null ? 0 : 2.3065,
+  difficulty: at === null ? 0 : 2.1181,
+  state: at === null ? "new" : "review",
+  due: at ?? 0,
+  lastReviewAt: at,
+  lastGrade: at === null ? null : 3,
+  reps: at === null ? 0 : 1,
+});
+
+const makeSyncable = (at: number | null): SyncableWordData => ({
+  memory: memoryAt(at),
+  stats: {
+    ...initialStats(),
+    reviewDays: at === null ? 0 : 1,
+    lastReviewDay: at === null ? null : "2026-01-01",
+    dailyReviews: at === null ? 0 : 1,
+  },
+  inputTimes: at === null ? [] : [1],
+  reviews: [],
+});
 
 class LocalStorageMock {
   private store = new Map<string, string>();
@@ -46,7 +71,7 @@ const makeItem = (
   type: "attempt",
   word,
   wordId,
-  data: { correctCount: 1, totalAttempts: 1, inputTimes: [1] },
+  data: makeSyncable(1000),
   timestamp: 1,
   retryCount: 0,
   ...overrides,
@@ -57,7 +82,7 @@ const legacyItem = (wordId: string, word: string) => ({
   type: "attempt",
   word,
   wordId,
-  data: { correctCount: 1, totalAttempts: 1, inputTimes: [1] },
+  data: makeSyncable(1000),
   timestamp: 1,
   retryCount: 0,
 });
@@ -120,12 +145,12 @@ describe("createLocalStorageQueueStorage", () => {
     storage.save(
       makeItem("id-apple", "apple", {
         id: "q-newer",
-        data: { correctCount: 2, totalAttempts: 2, inputTimes: [1, 2] },
+        data: makeSyncable(2000),
       })
     );
 
     expect(storage.load()).toHaveLength(1);
-    expect(storage.get("id-apple")?.data.totalAttempts).toBe(2);
+    expect(storage.get("id-apple")?.data.memory.lastReviewAt).toBe(2000);
   });
 
   it("removeByIds 只移除指定条目", () => {

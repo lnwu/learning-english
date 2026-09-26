@@ -26,6 +26,11 @@ interface WordRowProps {
   t: (key: TranslationKey) => string;
 }
 
+interface RoundAttempt {
+  reviewed: boolean;
+  hintUsed: boolean;
+}
+
 const WordRow = observer(({ word, translation, words, onInputChange, onHintReveal, inputRefs, t }: WordRowProps) => {
   const inputValue = words.getUserInput(word);
   const senses = useMemo(() => decodeSenses(translation), [translation]);
@@ -122,7 +127,7 @@ const SubmitButton = observer(({ randomWords, words, label }: { randomWords: [st
 });
 
 const WordsPractice = observer(() => {
-  const { words, recordCorrectAttempt, recordIncorrectAttempt, syncToFirestore, loading, error } = useFirestoreWords();
+  const { words, recordReview, syncToFirestore, loading, error } = useFirestoreWords();
   const { syncing, pendingCount } = useSyncStatus();
   const { t } = useLocale();
   usePracticeTimeTracker();
@@ -130,8 +135,8 @@ const WordsPractice = observer(() => {
   const [shouldFocusFirst, setShouldFocusFirst] = useState(false);
   const [randomWords, setRandomWords] = useState<[string, string][]>([]);
   const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
-  const hintRecordedRef = useRef<Set<string>>(new Set());
   const inputStatesRef = useRef<Map<string, PracticeInputState>>(new Map());
+  const attemptStatesRef = useRef<Map<string, RoundAttempt>>(new Map());
 
   useEffect(() => {
     setIsClient(true);
@@ -160,11 +165,21 @@ const WordsPractice = observer(() => {
 
   const refreshWords = () => {
     words.clearUserInputs();
-    hintRecordedRef.current.clear();
+    attemptStatesRef.current.clear();
     inputStatesRef.current.clear();
     setRandomWords(words.getRandomWords());
     setShouldFocusFirst(true);
   };
+
+  const getAttemptState = useCallback((word: string): RoundAttempt => {
+    const existing = attemptStatesRef.current.get(word);
+    if (existing) {
+      return existing;
+    }
+    const attempt: RoundAttempt = { reviewed: false, hintUsed: false };
+    attemptStatesRef.current.set(word, attempt);
+    return attempt;
+  }, []);
 
   const handleInputChange = useCallback((word: string, value: string) => {
     const previous =
@@ -174,21 +189,27 @@ const WordsPractice = observer(() => {
 
     words.setUserInput(word, value);
 
+    const attempt = getAttemptState(word);
+    if (attempt.reviewed) {
+      return;
+    }
     if (decision.recordIncorrect) {
-      recordIncorrectAttempt(word);
+      attempt.reviewed = true;
+      recordReview(word, 1, { hint: attempt.hintUsed });
+      return;
     }
-    if (decision.recordCorrect) {
-      recordCorrectAttempt(word, decision.inputTimeSeconds);
+    if (decision.completed) {
+      attempt.reviewed = true;
+      recordReview(word, attempt.hintUsed ? 2 : 3, {
+        hint: attempt.hintUsed,
+        inputTimeSeconds: decision.inputTimeSeconds,
+      });
     }
-  }, [words, recordCorrectAttempt, recordIncorrectAttempt]);
+  }, [words, getAttemptState, recordReview]);
 
   const handleHintReveal = useCallback((word: string) => {
-    // 看提示每轮每个词只记一次错误，避免 hover/focus 连发重复计数
-    if (!hintRecordedRef.current.has(word)) {
-      hintRecordedRef.current.add(word);
-      recordIncorrectAttempt(word);
-    }
-  }, [recordIncorrectAttempt]);
+    getAttemptState(word).hintUsed = true;
+  }, [getAttemptState]);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();

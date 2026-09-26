@@ -32,7 +32,10 @@ const parseItem = (raw: string | null): SyncQueueItem | null => {
       typeof item.id !== "string" ||
       typeof item.wordId !== "string" ||
       !item.data ||
-      typeof item.data.totalAttempts !== "number"
+      !item.data.memory ||
+      !item.data.stats ||
+      !Array.isArray(item.data.inputTimes) ||
+      !Array.isArray(item.data.reviews)
     ) {
       return null;
     }

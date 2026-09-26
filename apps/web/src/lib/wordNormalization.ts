@@ -71,7 +71,6 @@ export const buildNormalizeDocPlan = (
         wordId: target.id,
         fields: {
           ...practiceFields(data),
-          lastPracticedAt: data.lastPracticedAt,
           createdAt: data.createdAt,
         },
       });

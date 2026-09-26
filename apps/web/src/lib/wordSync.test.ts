@@ -8,14 +8,47 @@ import {
   type WordSyncUpdate,
 } from "./wordSync";
 import type { SyncQueueItem } from "./queueStorage";
-import type { WordData } from "./wordsStore";
+import {
+  initialMemory,
+  initialStats,
+  type WordMemory,
+} from "./masteryModel";
+import type { SyncableWordData, WordData } from "./wordsStore";
+
+const memoryAt = (at: number | null): WordMemory => ({
+  ...initialMemory(0),
+  stability: at === null ? 0 : 2.3065,
+  difficulty: at === null ? 0 : 2.1181,
+  state: at === null ? "new" : "review",
+  due: at ?? 0,
+  lastReviewAt: at,
+  lastGrade: at === null ? null : 3,
+  reps: at === null ? 0 : 1,
+});
+
+const makeSyncable = (
+  overrides: Partial<SyncableWordData> = {}
+): SyncableWordData => ({
+  memory: memoryAt(1000),
+  stats: {
+    ...initialStats(),
+    reviewDays: 1,
+    lastReviewDay: "2026-01-01",
+    dailyReviews: 1,
+  },
+  inputTimes: [1],
+  reviews: [
+    { id: "r1", at: 1000, g: 3, h: false, r: null, s: 2.3065, d: 2.1181 },
+  ],
+  ...overrides,
+});
 
 const makeItem = (overrides: Partial<SyncQueueItem> = {}): SyncQueueItem => ({
   id: "q1",
   type: "attempt",
   word: "apple",
   wordId: "id-apple",
-  data: { correctCount: 1, totalAttempts: 1, inputTimes: [1] },
+  data: makeSyncable(),
   timestamp: 1000,
   retryCount: 0,
   ...overrides,
@@ -24,43 +57,45 @@ const makeItem = (overrides: Partial<SyncQueueItem> = {}): SyncQueueItem => ({
 const makeWordData = (overrides: Partial<WordData> = {}): WordData => ({
   word: "apple",
   translation: "苹果",
-  correctCount: 2,
-  totalAttempts: 3,
+  memory: memoryAt(2000),
+  stats: {
+    ...initialStats(),
+    reviewDays: 2,
+    lastReviewDay: "2026-01-02",
+    dailyReviews: 1,
+  },
   inputTimes: [1, 2],
-  lastPracticedAt: new Date("2026-01-01T00:00:00"),
-  correctPracticeDates: ["2026-01-01"],
-  attemptHistory: [true, false, true],
+  reviews: [
+    { id: "r1", at: 1000, g: 3, h: false, r: null, s: 2.3, d: 2.1 },
+    { id: "r2", at: 2000, g: 3, h: false, r: 0.9, s: 10.9, d: 2.1 },
+  ],
   createdAt: new Date("2025-12-31T00:00:00"),
   id: "id-apple",
   ...overrides,
 });
 
 describe("buildWordUpdates", () => {
-  it("按 wordId 取最后一条并保留时间戳与条目 id", () => {
+  it("按 wordId 取最后一条并保留条目 id", () => {
     const updates = buildWordUpdates([
       makeItem({
         id: "q1",
-        timestamp: 1000,
-        data: { correctCount: 1, totalAttempts: 1, inputTimes: [1] },
+        data: makeSyncable({ memory: memoryAt(1000) }),
       }),
       makeItem({
         id: "q2",
-        timestamp: 2000,
-        data: { correctCount: 2, totalAttempts: 2, inputTimes: [1, 2] },
+        data: makeSyncable({ memory: memoryAt(2000) }),
       }),
       makeItem({
         id: "q3",
         word: "banana",
         wordId: "id-banana",
-        timestamp: 1500,
       }),
     ]);
 
     expect(updates.size).toBe(2);
     const apple = updates.get("id-apple")!;
     expect(apple.word).toBe("apple");
-    expect(apple.data.totalAttempts).toBe(2);
-    expect(apple.lastPracticedAt).toBe(2000);
+    expect(apple.data.memory.lastReviewAt).toBe(2000);
     expect(apple.queueItemIds).toEqual(["q1", "q2"]);
     expect(updates.get("id-banana")!.queueItemIds).toEqual(["q3"]);
   });
@@ -71,7 +106,7 @@ describe("buildWordUpdates", () => {
 });
 
 describe("collectStaleQueueItemIds", () => {
-  it("远端计数支配本地时判定为 stale", () => {
+  it("远端复习更晚时判定为 stale", () => {
     const byId = new Map([["id-apple", makeWordData()]]);
     const staleIds = collectStaleQueueItemIds({ byId, byWord: byId }, [
       makeItem(),
@@ -81,15 +116,15 @@ describe("collectStaleQueueItemIds", () => {
   });
 
   it("远端与队列完全一致时判定为 stale", () => {
-    const byId = new Map([["id-apple", makeWordData()]]);
+    const firestore = makeWordData();
+    const byId = new Map([["id-apple", firestore]]);
     const staleIds = collectStaleQueueItemIds({ byId, byWord: byId }, [
       makeItem({
         data: {
-          correctCount: 2,
-          totalAttempts: 3,
-          inputTimes: [1, 2],
-          correctPracticeDates: ["2026-01-01"],
-          attemptHistory: [true, false, true],
+          memory: firestore.memory,
+          stats: firestore.stats,
+          inputTimes: firestore.inputTimes,
+          reviews: firestore.reviews,
         },
       }),
     ]);
@@ -97,17 +132,12 @@ describe("collectStaleQueueItemIds", () => {
     expect(staleIds).toEqual(["q1"]);
   });
 
-  it("队列计数更高或远端无该词时不判定为 stale", () => {
+  it("队列复习更晚或远端无该词时不判定为 stale", () => {
     const byId = new Map([
-      [
-        "id-apple",
-        makeWordData({ correctCount: 1, totalAttempts: 1, inputTimes: [1] }),
-      ],
+      ["id-apple", makeWordData({ memory: memoryAt(1000) })],
     ]);
     const staleIds = collectStaleQueueItemIds({ byId, byWord: byId }, [
-      makeItem({
-        data: { correctCount: 5, totalAttempts: 9, inputTimes: [1] },
-      }),
+      makeItem({ data: makeSyncable({ memory: memoryAt(5000) }) }),
       makeItem({ id: "q2", wordId: "id-missing" }),
     ]);
 
@@ -162,8 +192,7 @@ const makeUpdate = (
   overrides: Partial<WordSyncUpdate> = {}
 ): WordSyncUpdate => ({
   word: "apple",
-  data: { correctCount: 1, totalAttempts: 1, inputTimes: [1] },
-  lastPracticedAt: 1000,
+  data: makeSyncable(),
   queueItemIds: ["q1"],
   ...overrides,
 });

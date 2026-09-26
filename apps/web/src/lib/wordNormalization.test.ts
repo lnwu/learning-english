@@ -1,18 +1,48 @@
 import { describe, it, expect } from "bun:test";
 import { buildNormalizeDocPlan, resolveRenamePlan } from "./wordNormalization";
+import {
+  initialMemory,
+  initialStats,
+  type ReviewLogEntry,
+  type WordMemory,
+} from "./masteryModel";
 import type { WordData } from "./wordsStore";
 
 const makeMap = (entries: Array<[string, string]>) => new Map(entries);
 
+const memoryAt = (at: number): WordMemory => ({
+  ...initialMemory(0),
+  stability: 2.3065,
+  difficulty: 2.1181,
+  state: "review",
+  due: at,
+  lastReviewAt: at,
+  lastGrade: 3,
+  reps: 1,
+});
+
+const reviewAt = (id: string, at: number): ReviewLogEntry => ({
+  id,
+  at,
+  g: 3,
+  h: false,
+  r: null,
+  s: 2.3065,
+  d: 2.1181,
+});
+
 const makeWord = (overrides: Partial<WordData> = {}): WordData => ({
   word: "attackers",
   translation: "攻击者",
-  correctCount: 2,
-  totalAttempts: 4,
+  memory: memoryAt(1000),
+  stats: {
+    ...initialStats(),
+    reviewDays: 1,
+    lastReviewDay: "2026-01-02",
+    dailyReviews: 1,
+  },
   inputTimes: [1, 2],
-  lastPracticedAt: new Date("2026-01-02T00:00:00"),
-  correctPracticeDates: ["2026-01-02"],
-  attemptHistory: [true, false, true, false],
+  reviews: [reviewAt("r1", 1000)],
   createdAt: new Date("2025-12-01T00:00:00"),
   id: "id-1",
   ...overrides,
@@ -91,17 +121,20 @@ describe("buildNormalizeDocPlan", () => {
     ]);
   });
 
-  it("原形已存在时合并计数并删除源文档", () => {
+  it("原形已存在时合并记忆状态并删除源文档", () => {
     const source = makeWord();
     const target = makeWord({
       word: "attacker",
       id: "id-2",
-      correctCount: 1,
-      totalAttempts: 2,
+      memory: memoryAt(2000),
+      stats: {
+        reviewDays: 2,
+        lastReviewDay: "2026-01-03",
+        dailyReviews: 1,
+        hints: 1,
+      },
       inputTimes: [3],
-      correctPracticeDates: ["2026-01-03"],
-      attemptHistory: [true],
-      lastPracticedAt: new Date("2026-01-03T00:00:00"),
+      reviews: [reviewAt("r2", 2000)],
     });
     const plan = buildNormalizeDocPlan(
       [{ from: "attackers", to: "attacker" }],
@@ -116,12 +149,15 @@ describe("buildNormalizeDocPlan", () => {
         type: "update",
         wordId: "id-2",
         fields: {
-          correctCount: 3,
-          totalAttempts: 6,
+          memory: memoryAt(2000),
+          stats: {
+            reviewDays: 2,
+            lastReviewDay: "2026-01-03",
+            dailyReviews: 1,
+            hints: 1,
+          },
           inputTimes: [3, 1, 2],
-          correctPracticeDates: ["2026-01-02", "2026-01-03"],
-          attemptHistory: [true, true, false, true, false],
-          lastPracticedAt: new Date("2026-01-03T00:00:00"),
+          reviews: [reviewAt("r1", 1000), reviewAt("r2", 2000)],
           createdAt: new Date("2025-12-01T00:00:00"),
         },
       },

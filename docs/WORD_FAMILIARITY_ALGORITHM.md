@@ -127,7 +127,7 @@ new 显示为未练习、不计分。分数只用于展示；调度只由 S、R 
   4. 补位：以上不足时，先补已练过的词（按 R 升序）；仍不足时用其余新词按 `createdAt` 升序填满轮次——已练词充足时新词不超过配额，不足时允许填满。
 - **排除规则**：同一轮不重复；当天复习次数已达 3 的词跳过；补位不选当天已复习过的词。
 - **并列排序**：R 与 `due` 相同时按 `hash(词 id + 本地日期)` 排序，同一天内结果稳定、跨天自动轮换。
-- 造句练习不读写本章数据；其抽词规则不在本文档范围内。
+- 造句练习从词库中均匀随机选词，不读写本章的记忆状态与复习日志（规则见 `docs/architecture/sentence-deepseek.md`）。
 
 ## 拼写流畅度（展示项）
 
@@ -223,24 +223,15 @@ new 显示为未练习、不计分。分数只用于展示；调度只由 S、R 
 - **权重更新**：当前保留的复习日志中累计 ≥500 条可校准样本后，用官方 `fsrs-optimizer` 离线拟合该用户权重，发布新的 `modelVersion`；既有 S / D 保留，之后的更新与间隔按新权重计算。
 - 校准结果同时用于检验评级映射：若用过提示的复习与独立答对的后续回忆率无差异，应把提示调整为更低评级或单独统计。
 
-## 存量数据初始化
+## 存量数据迁移
 
-无复习记录（`totalAttempts = 0`）的词保持 new。其余词按下表一次性初始化，之后完全按新模型运行：
+存量单词文档由 `scripts/migrate-words-v2.mjs` 一次性批处理迁移到本文档的字段结构：
 
-| 新字段 | 初始化 |
-| --- | --- |
-| memory.stability | `clamp(3 × 答对日数, 0.5, 30)` |
-| memory.difficulty | 5 |
-| memory.state | review |
-| memory.due | `lastPracticedAt + stability 天`（过期即可抽） |
-| memory.lastReviewAt / lastGrade | `lastPracticedAt` / null |
-| memory.reps / lapses | `totalAttempts` / `attemptHistory` 中错误条数 |
-| stats.reviewDays | 答对日数 |
-| stats.lastReviewDay / dailyReviews | 最近练习的本地日期 / 0 |
-| stats.hints | 0 |
-| inputTimes | 原计时样本（最近 20 条） |
-| reviews | 空数组 |
-| memory.learningSteps / modelVersion | 0 / `fsrs-6` |
+- 删除 `correctCount`、`totalAttempts`、`lastPracticedAt`、`correctPracticeDates`、`attemptHistory`，已有的熟练度、练习次数与计时样本全部清除。
+- `memory` 重置为 new、`stats` 置零、`inputTimes` 与 `reviews` 置空；保留 `word`、`translation`、`createdAt`。
+- 迁移幂等：已有 `memory` 的文档只清理旧字段，不覆盖迁移上线后产生的练习数据。
+
+脚本默认 dry-run，`--apply` 才写入；运行方式与顺序见 `docs/DEPLOYMENT.md`。
 
 ## 附录：算例
 

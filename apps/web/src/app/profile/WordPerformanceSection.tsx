@@ -27,8 +27,9 @@ interface WordPerformanceRowProps {
   avgTime: number;
   count: number;
   masteryScore: number;
-  correctCount: number;
-  totalAttempts: number;
+  reviews: number;
+  hints: number;
+  fluencyScore: number | null;
   onDelete: (word: string) => void;
   t: (key: TranslationKey) => string;
 }
@@ -39,8 +40,9 @@ const WordPerformanceRow = memo(
     avgTime,
     count,
     masteryScore,
-    correctCount,
-    totalAttempts,
+    reviews,
+    hints,
+    fluencyScore,
     onDelete,
     t,
   }: WordPerformanceRowProps) => (
@@ -48,12 +50,16 @@ const WordPerformanceRow = memo(
       <div className="min-w-0 flex-1">
         <span className="font-medium">{word}</span>
         <span className="ml-2 text-sm text-muted-foreground">
-          ({correctCount}/{totalAttempts} {t("profile.correct")})
+          ({reviews} {t("profile.reviews")} · {hints} {t("profile.hints")})
         </span>
       </div>
       <div className="flex shrink-0 items-center gap-4">
         <div className="text-right font-medium tabular-nums">
-          {count > 0 ? `${avgTime.toFixed(1)}${t("profile.seconds")}` : "-"}
+          {fluencyScore !== null
+            ? `${fluencyScore}${t("profile.points")}`
+            : count > 0
+              ? `${avgTime.toFixed(1)}${t("profile.seconds")}`
+              : "-"}
         </div>
         <MasteryBar score={masteryScore} showLabel={false} />
         <div className="w-10 text-right text-xs tabular-nums text-muted-foreground">
@@ -158,8 +164,9 @@ export const WordPerformanceSection = observer(
                           avgTime: wordAvgTime,
                           count,
                           masteryScore,
-                          correctCount,
-                          totalAttempts,
+                          reviews,
+                          hints,
+                          fluencyScore,
                         }) => (
                           <WordPerformanceRow
                             key={word}
@@ -167,8 +174,9 @@ export const WordPerformanceSection = observer(
                             avgTime={wordAvgTime}
                             count={count}
                             masteryScore={masteryScore}
-                            correctCount={correctCount}
-                            totalAttempts={totalAttempts}
+                            reviews={reviews}
+                            hints={hints}
+                            fluencyScore={fluencyScore}
                             onDelete={onDelete}
                             t={t}
                           />

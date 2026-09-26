@@ -13,6 +13,7 @@ import {
 } from "@/lib/wordDoc";
 import type { WordsRepo } from "@/lib/wordsRepo";
 import type { WordSense } from "@/lib/wordSenses";
+import type { Rating } from "@/lib/masteryModel";
 import type {
   NewQueueItem,
   QueueStorage,
@@ -102,7 +103,11 @@ export class WordsLedger {
     };
 
     const existing = this.#queue.get(queued.wordId);
-    if (existing && existing.data.totalAttempts > queued.data.totalAttempts) {
+    if (
+      existing &&
+      (existing.data.memory.lastReviewAt ?? 0) >
+        (queued.data.memory.lastReviewAt ?? 0)
+    ) {
       return;
     }
     this.#queue.save(queued);
@@ -174,7 +179,6 @@ export class WordsLedger {
             queue.map((item) => ({
               wordId: item.wordId,
               data: item.data,
-              practicedAt: item.timestamp,
             }))
           );
 
@@ -205,13 +209,12 @@ export class WordsLedger {
     }
   };
 
-  recordCorrectAttempt = (word: string, inputTimeSeconds?: number): void => {
-    this.#words.recordCorrectAttempt(word, inputTimeSeconds);
-    this.#enqueueAttempt(word);
-  };
-
-  recordIncorrectAttempt = (word: string): void => {
-    this.#words.recordIncorrectAttempt(word);
+  recordReview = (
+    word: string,
+    rating: Rating,
+    options: { hint?: boolean; inputTimeSeconds?: number } = {}
+  ): void => {
+    this.#words.recordReview(word, rating, options);
     this.#enqueueAttempt(word);
   };
 
@@ -239,10 +242,10 @@ export class WordsLedger {
         wordExists: (word) => this.#words.hasWord(word),
         writeChunk: async (chunk) => {
           await repo.commitWordOperations(
-            chunk.map(([wordId, { data, lastPracticedAt }]) => ({
+            chunk.map(([wordId, { data }]) => ({
               type: "update" as const,
               wordId,
-              fields: attemptUpdateFields(data, lastPracticedAt),
+              fields: attemptUpdateFields(data),
             }))
           );
         },
@@ -397,7 +400,7 @@ export class WordsLedger {
         resetDocs.map((data) => ({
           type: "update" as const,
           wordId: data.id,
-          fields: resetPracticeFields(),
+          fields: resetPracticeFields(Date.now()),
         }))
       );
 

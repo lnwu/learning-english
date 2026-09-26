@@ -36,6 +36,15 @@ bun run sync:preview      # 手动同步 preview 数据（需 ADC + PROD_USER_UI
 - `apps/web/.env.local` 提供 Firebase 变量（不入库）；`DEEPSEEK_API_KEY` 可选，无 key 时翻译/造句接口返回 500。
 - 本机没有 terraform/firebase CLI，infra 变更只能靠 CI 的 plan/apply 验证。
 
+## 单词数据迁移（v2）
+
+把 `users/*/words` 迁移到 `docs/WORD_FAMILIARITY_ALGORITHM.md` 的字段结构，并清除旧的熟练度、练习次数与计时样本：
+
+1. 先合并并部署新版 `apps/web`：新客户端对旧文档按 new 状态兜底，提前上线不会丢练习。
+2. Actions 手动触发 `migrate-words-v2`（不勾选 `apply` 为演练），确认 dry-run 输出中的目标用户与文档数量。
+3. 再触发一次并勾选 `apply` 执行；脚本幂等，已迁移的文档只清理遗留旧字段，不覆盖上线后产生的练习数据。
+4. 本地执行（需 ADC 与 `PROD_USER_UID`）：`bun run migrate:words-v2`；`--apply` 写入，`--uid preview` 只迁移 preview。
+
 ## 事故处理
 
 - **生产词库没有 PITR，删除不可恢复**：删 `users/{uid}` 子集合前先导出；Firestore 库级删除有保护（`DELETE_PROTECTION_ENABLED` + `prevent_destroy`）。
