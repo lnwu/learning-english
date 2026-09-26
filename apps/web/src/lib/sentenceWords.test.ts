@@ -1,19 +1,15 @@
 import { describe, it, expect } from "bun:test";
 import {
-  MIN_SENTENCE_WORDS,
   MAX_SENTENCE_WORDS,
+  MIN_SENTENCE_WORDS,
+  SENTENCE_WORD_POOL_SIZE,
   pickSentenceWords,
-  pickWordCount,
 } from "./sentenceWords";
 
-describe("pickWordCount", () => {
-  it("在 min-max 之间取值", () => {
-    expect(pickWordCount(() => 0)).toBe(MIN_SENTENCE_WORDS);
-    expect(pickWordCount(() => 0.999)).toBe(MAX_SENTENCE_WORDS);
-  });
-
-  it("支持自定义范围", () => {
-    expect(pickWordCount(() => 0, { min: 1, max: 1 })).toBe(1);
+describe("造句词汇常量", () => {
+  it("候选池不小于单题目标词数量", () => {
+    expect(SENTENCE_WORD_POOL_SIZE).toBeGreaterThanOrEqual(MAX_SENTENCE_WORDS);
+    expect(SENTENCE_WORD_POOL_SIZE).toBeGreaterThanOrEqual(MIN_SENTENCE_WORDS);
   });
 });
 

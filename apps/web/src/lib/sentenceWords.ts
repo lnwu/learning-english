@@ -1,10 +1,6 @@
 export const MIN_SENTENCE_WORDS = 2;
 export const MAX_SENTENCE_WORDS = 3;
-
-export const pickWordCount = (
-  rng: () => number,
-  { min = MIN_SENTENCE_WORDS, max = MAX_SENTENCE_WORDS }: { min?: number; max?: number } = {},
-): number => Math.floor(rng() * (max - min + 1)) + min;
+export const SENTENCE_WORD_POOL_SIZE = 6;
 
 const shuffle = <T>(items: readonly T[], rng: () => number): T[] => {
   const result = [...items];

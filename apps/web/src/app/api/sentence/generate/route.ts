@@ -8,13 +8,11 @@ import {
   parseGenerateResult,
   MAX_TRANSLATION_LENGTH,
 } from "@/lib/sentenceMessages";
-import { MAX_SENTENCE_WORDS } from "@/lib/sentenceWords";
-
-const MIN_WORDS = 1;
+import { MIN_SENTENCE_WORDS, SENTENCE_WORD_POOL_SIZE } from "@/lib/sentenceWords";
 
 const parseWords = parseBody<{ words: SentenceWordInput[] }>({
   words: sentenceWordList({
-    maxItems: MAX_SENTENCE_WORDS,
+    maxItems: SENTENCE_WORD_POOL_SIZE,
     maxWordLength: MAX_LEMMA_LENGTH,
     maxTranslationLength: MAX_TRANSLATION_LENGTH,
   }),
@@ -23,7 +21,7 @@ const parseWords = parseBody<{ words: SentenceWordInput[] }>({
 const parse = (raw: unknown) => {
   const parsed = parseWords(raw);
   if (!parsed.ok) return parsed;
-  if (parsed.body.words.length < MIN_WORDS) {
+  if (parsed.body.words.length < MIN_SENTENCE_WORDS) {
     return { ok: false as const, response: badRequest("缺少单词") };
   }
   return parsed;
@@ -40,6 +38,7 @@ export async function POST(request: Request) {
     async ({ words }) => {
       const result = parseGenerateResult(
         await chatCompletionJson<unknown>(buildGenerateMessages(words)),
+        words.map((item) => item.word),
       );
 
       if (!result) {
@@ -49,7 +48,7 @@ export async function POST(request: Request) {
       return NextResponse.json({
         chinese: result.chinese,
         english: result.english,
-        words: words.map((item) => item.word),
+        words: result.words,
       });
     },
   );

@@ -1,5 +1,6 @@
 import type { ChatMessage } from "@/lib/deepseek";
 import { normalizeForComparison, resolveUsedWords, sanitizeUsedWords } from "@/lib/sentenceCompare";
+import { MAX_SENTENCE_WORDS, MIN_SENTENCE_WORDS } from "@/lib/sentenceWords";
 
 export const MAX_SENTENCE_LENGTH = 500;
 export const MAX_TRANSLATION_LENGTH = 2000;
@@ -16,6 +17,7 @@ export interface SentenceWord {
 export interface GenerateResult {
   chinese: string;
   english: string;
+  words: string[];
 }
 
 export interface CheckInput {
@@ -34,34 +36,59 @@ export interface CheckResult {
   usedWords: string[];
 }
 
-export const buildGenerateMessages = (words: SentenceWord[]): ChatMessage[] => [
+export const buildGenerateMessages = (candidates: SentenceWord[]): ChatMessage[] => [
   {
     role: "system",
     content: [
-      "你是一位英语母语者。请根据用户提供的英文目标单词，造一个自然、地道、像 native speaker 日常会说的英文句子，用于让用户看中文译回英文的练习。",
+      "你是一位英语母语者。请根据用户提供的候选英文单词设计一道造句练习题：先从中挑选 2-3 个能自然地出现在同一个真实生活场景里的词，再造一个自然、地道、像 native speaker 日常会说的英文句子，用于让用户看中文译回英文的练习。",
       "要求：",
-      "1. 目标单词必须自然地使用，允许自然的语法变形（如时态、单复数变化）。",
-      "2. 句子长度控制在 10-20 个单词。不要为了练习某个语法点而刻意使用复杂或不自然的时态、语态或句式。",
-      "3. 除目标单词外，其余词汇使用常见基础词汇，避免生僻词和专有名词。",
-      "4. chinese 必须是自然地道的现代中文，同时与 english 语义一一对应；不要逐字硬译（翻译腔），也不要意译或添加原文没有的信息。目标词在 chinese 中应使用给定的参考译法，确保学生只看中文（看不到目标单词列表）就能想到并使用这些目标词译回英文。",
-      "5. 即使目标词是书面或学术词汇，句子其余部分的表达也要简单日常。",
-      '只返回 JSON，格式如下，不要添加其它字段或解释：{"english": "...", "chinese": "..."}',
+      "1. 先在心里想一个真实生活中会同时用到所选词的具体场景，再写句子：内容必须符合常识，句子读起来像真人随口说出的话。",
+      "2. 不得为了让某个词出现而编造离奇、荒诞、牵强的情节、因果、对比或比喻；如果候选词很难共现，就选择最容易自然搭配的词，写一句平实的日常陈述，宁可句子朴素也不要硬凑。",
+      "3. 在同样自然的前提下，优先选择更值得练习的词（抽象名词、动词、形容词、固定搭配优先于最容易使用的具体名词）。",
+      "4. 所选单词必须自然地使用，允许自然的语法变形（如时态、单复数变化）；搭配应是英语母语者最常用的说法。",
+      "5. 句子长度控制在 10-20 个单词。不要为了练习某个语法点而刻意使用复杂或不自然的时态、语态或句式。",
+      "6. 除所选单词外，其余词汇使用常见基础词汇，避免生僻词和专有名词。",
+      "7. chinese 必须是自然地道的现代中文，同时与 english 语义一一对应；不要逐字硬译（翻译腔），也不要意译或添加原文没有的信息。所选词在 chinese 中应使用给定的参考译法，确保学生只看中文（看不到所选单词列表）就能想到并使用这些词译回英文。",
+      '只返回 JSON，格式如下，不要添加其它字段或解释：{"words": ["所选单词，2-3 个，使用候选词原文"], "english": "...", "chinese": "..."}',
     ].join("\n"),
   },
   {
     role: "user",
-    content: `请使用以下单词造句（括号内为该词的参考中文译法）：${words
+    content: `候选词（括号内为该词的参考中文译法）：${candidates
       .map((item) => (item.translation ? `${item.word}（${item.translation}）` : item.word))
       .join(", ")}`,
   },
 ];
 
-export const parseGenerateResult = (raw: unknown): GenerateResult | null => {
+const sanitizeGeneratedWords = (raw: unknown, candidates: readonly string[]): string[] => {
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set<string>();
+  const words: string[] = [];
+  for (const item of raw) {
+    if (typeof item !== "string") continue;
+    const normalized = item.trim().toLowerCase();
+    if (!normalized || seen.has(normalized)) continue;
+    const candidate = candidates.find((word) => word.toLowerCase() === normalized);
+    if (!candidate) continue;
+    seen.add(normalized);
+    words.push(candidate);
+    if (words.length >= MAX_SENTENCE_WORDS) break;
+  }
+  return words;
+};
+
+export const parseGenerateResult = (
+  raw: unknown,
+  candidates: readonly string[],
+): GenerateResult | null => {
   const result = (raw ?? {}) as Partial<GenerateResult>;
   const chinese = typeof result.chinese === "string" ? result.chinese.trim() : "";
   const english = typeof result.english === "string" ? result.english.trim() : "";
-  if (!chinese || !english) return null;
-  return { chinese, english };
+  const words = sanitizeGeneratedWords(result.words, candidates);
+  if (!chinese || !english || words.length < MIN_SENTENCE_WORDS) {
+    return null;
+  }
+  return { chinese, english, words };
 };
 
 export const buildCheckMessages = (input: CheckInput): ChatMessage[] => [
