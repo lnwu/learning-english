@@ -7,6 +7,10 @@
 - **preview 数据**：`sync-preview-words.yml` 每 6 小时把 `PROD_USER_UID` 的 `words`/`practiceTime` 镜像覆盖到 `users/preview`（diff 增量写、preview 多出的删除），因此 preview 数据可丢、规则可以偏宽松。
 - PR 功能验收流程、Preview 浏览器验证与合并门禁见根 `AGENTS.md`「交付与验收」。
 
+## Vercel 运行时
+
+`apps/web/vercel.json` 的 `bunVersion` 固定 `1.4.x`：Vercel Functions（API 路由与 SSR）在 Bun 上运行，Next 的 build/dev 也经 `bun run --bun` 执行；版本与本机 `packageManager`、CI 的 bun 1.4.2 对齐。
+
 ## Vercel 环境变量（apps/web 项目）
 
 | 变量 | 用途 |
@@ -16,7 +20,6 @@
 | `DEEPSEEK_API_KEY` / `DEEPSEEK_BASE_URL` / `DEEPSEEK_MODEL` | 服务端 DeepSeek（BASE_URL/MODEL 可选，缺省走内置） |
 | `KV_REST_API_URL` / `KV_REST_API_TOKEN` 或 `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Vercel Marketplace 装 Upstash Redis 后自动注入，用于全局限流与翻译缓存 L2；未配置时回退进程内（仅本地开发可接受） |
 
-- 只有 `NEXT_PUBLIC_*` 参与 turbo 构建缓存 hash（`turbo.json`），运行时变量（DeepSeek/Upstash）改了不需要清构建缓存。
 - **API Key 禁止加 `NEXT_PUBLIC_` 前缀下发前端。**
 
 ## GitHub Secrets
@@ -27,12 +30,13 @@
 
 ```bash
 bun install               # 根目录
-bun run dev               # 自动 vercel link（缺失时）+ turbo dev
-bun run check             # lint + typecheck + test（turbo）
+bun run dev               # 自动 vercel link（缺失时）+ 启动 Next dev
+bun run check             # lint + typecheck + test
 bun run build             # 构建
 bun run sync:preview      # 手动同步 preview 数据（需 ADC + PROD_USER_UID）
 ```
 
+- 根脚本通过 `bun run --filter '*' <script>` 转发到各 workspace。
 - `apps/web/.env.local` 提供 Firebase 变量（不入库）；`DEEPSEEK_API_KEY` 可选，无 key 时翻译/造句接口返回 500。
 - 本机没有 terraform/firebase CLI，infra 变更只能靠 CI 的 plan/apply 验证。
 

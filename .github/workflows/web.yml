@@ -8,7 +8,6 @@ on:
       - apps/web/**
       - package.json
       - bun.lock
-      - turbo.json
       - .github/workflows/web.yml
   push:
     branches:
@@ -17,7 +16,6 @@ on:
       - apps/web/**
       - package.json
       - bun.lock
-      - turbo.json
       - .github/workflows/web.yml
 
 jobs:

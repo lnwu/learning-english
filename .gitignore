@@ -17,9 +17,6 @@ npm-shrinkwrap.json
 # Testing
 coverage
 
-# Turbo
-.turbo
-
 # Vercel
 .vercel
 .agent-browser/
