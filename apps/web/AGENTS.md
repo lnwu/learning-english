@@ -11,7 +11,7 @@
 - 新增 `/api/*` 统一走 `lib/apiRoute.ts` 的 `withApiPost`（内部依次完成 `serverAuth`、`await checkRateLimit`、JSON 解析与 DeepSeek 错误映射），限额加进 `API_RATE_LIMITS`；输入校验用 `lib/apiInput.ts` 的 `parseBody` + 字段解析器（`requiredText`/`optionalText`/`wordToken`/`wordTokenList`/`wordList`/`sentenceWordList`）声明式描述形状与上限，缺省文案由 `badRequest` 统一生成；不要手写守卫三段、取字段/过滤/限长或错误尾巴。
 - 带登录态调用 `/api/*` 统一使用 `lib/apiClient.ts` 的 `postJson<T>(url, payload, fallbackError)`，不要手写 token 与 fetch。
 - Firestore 客户端访问统一经 `lib/wordsRepo.ts`（`WordsProvider` 按 effective uid 构造并注入），页面与组件不直接 import `firebase/firestore`；订阅仍只在 `WordsProvider` 中发生一次。
-- 练习计时不能伪造：只有拼写练习写入记忆模型；造句不写入熟练度数据。统计用的本地日期按客户端时区生成 `YYYY-MM-DD`，不存 ISO 时间戳。
+- 练习计时不能伪造：只有拼写练习写入记忆模型，粘贴或联想补全等整段插入的输入因计时失效不产生复习；造句不写入熟练度数据。统计用的本地日期按客户端时区生成 `YYYY-MM-DD`，不存 ISO 时间戳。
 - 造句重新批改只更新反馈，不写任何持久化数据。
 - i18n 插值使用 `t(key, params)` 的 `{name}` 占位符，不要手写 `.replace`；英文表保持 `Record<TranslationKey, string>`，key 一致性由 `lib/i18n.test.ts` 守护。
 - 中文不要通过 `next/font` 引入 Noto Sans SC，使用 `app/index.css` 中维护的系统字体栈。
@@ -57,7 +57,7 @@
 - 复习时间取客户端真实时刻写入 `memory.lastReviewAt`，不得改用同步时刻。
 - 分片提交使用 `commitInChunks`（纯执行器，`chunkSize` 取自 `WordsRepo.batchLimit`），Firestore 写入统一走 `lib/wordsRepo.ts` 的 `commitWordOperations`（按 `batchLimit` 分片、一次调用一个批次序列，保住归一化的原子性）；同步载荷、失败分类、过期队列和队列处置集中在 `lib/wordSync.ts` 的 `runWordSync`，由 `WordsLedger.sync()` 调用，不要内联回 hook。队列超过重试上限必须跨片汇总后只提示一次 `sync.dataLost`（ledger 递增 `dataLostCount`，provider 提示），localStorage 写失败回退内存必须提示 `sync.storageFailed`（存储适配器暴露 `usingMemoryFallback`，ledger 置 `storageFailed`）。
 - `normalizeWordForms` 先 `syncToFirestore()` 并按计划落库，Firestore 成功后才更新 store；调整合并或上限语义时同步 `Words.MAX_*`。`updateTranslations` 先即时更新 store，再 batch 写 `translation`，由 `onSnapshot` 幂等合并兜底。
-- 练习页输入判定使用 `lib/practiceInput.ts` 与单个 `inputStatesRef`；`WordRow` 保持独立 observer，父组件渲染路径不读 `words.userInputs`。
+- 练习页输入判定使用 `lib/practiceInput.ts` 与单个 `inputStatesRef`：只有计时有效的逐字输入由 `resolveReview` 写入复习，粘贴/联想补全不产生复习；`WordRow` 保持独立 observer，父组件渲染路径不读 `words.userInputs`。
 - `PracticeHeatmap` 保持 `memo`、只接收 `practiceTime`，网格构建使用 `useMemo`；纯网格、分档与记账逻辑（`PracticeTimeRecorder`）都位于 `lib/practiceTime.ts`。
 - 练习时间由 `lib/practiceTime.ts` 的 `PracticeTimeRecorder` 记账（注入 `writeSeconds` 与时钟）：只在 visible + focus 时累计，每 60 秒把整秒用 `increment` 写入 `practiceTime/{YYYY-MM-DD}` 的 `seconds`，失败时把秒数放回池中重试，不足一秒的结余留到下次；`usePracticeTimeTracker` 只接线事件与定时器。
 - `lib/firebase.ts` 惰性创建实例（首次 `getDb()`/`getAuthInstance()` 时才校验 env 并初始化），Firestore 使用 `initializeFirestore`、`persistentLocalCache` 与 `persistentMultipleTabManager`；不要在服务端组件直接读写 `db`。

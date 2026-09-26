@@ -30,6 +30,7 @@ import { decodeSenses } from "@/lib/wordSenses";
 import {
   createPracticeInputState,
   evaluatePracticeInput,
+  resolveReview,
   type PracticeInputState,
 } from "@/lib/practiceInput";
 import type { Words } from "@/lib/wordsStore";
@@ -233,18 +234,15 @@ const WordsPractice = observer(() => {
       if (attempt.reviewed) {
         return;
       }
-      if (decision.recordIncorrect) {
-        attempt.reviewed = true;
-        recordReview(word, 1, { hint: attempt.hintUsed });
+      const review = resolveReview(decision, attempt.hintUsed);
+      if (!review) {
         return;
       }
-      if (decision.completed) {
-        attempt.reviewed = true;
-        recordReview(word, attempt.hintUsed ? 2 : 3, {
-          hint: attempt.hintUsed,
-          inputTimeSeconds: decision.inputTimeSeconds,
-        });
-      }
+      attempt.reviewed = true;
+      recordReview(word, review.rating, {
+        hint: review.hint,
+        inputTimeSeconds: review.inputTimeSeconds,
+      });
     },
     [words, getAttemptState, recordReview],
   );
