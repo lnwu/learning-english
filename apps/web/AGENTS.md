@@ -51,7 +51,7 @@
 ### 必须保持的行为
 
 - `useFirestoreWords()` 只返回稳定 context；高频变化的 `syncing` 与 `pendingCount` 只通过 `useSyncStatus()` 暴露。`Words` 的 `wordData` / `userInputs` 是私有字段，外部一律走 `wordCount`、`knownWords()`、`hasWord()`、`wordEntries()`、`getWordData()`（只读 `WordData`）以及 `getUserInput()`、`setUserInput()`、`clearUserInputs()`；字段使用 TypeScript `private`，不要使用 `#private`，否则 MobX observer 可能无法响应变化。
-- 派生数据使用 `Words` computed getter；新增写入口必须同步失效 `#masteryCache`。练习数据重置走 `resetPracticeRecords()`，由 store 完成重置、缓存失效并返回待落库清单，不要在调用方原地修改 `WordData` 或手动调用 `invalidateCaches()`。
+- 派生数据使用 `Words` computed getter；写入口只通过 `Words` 的具名命令修改数据。练习数据重置走 `resetPracticeRecords()`，由 store 完成重置并返回待落库清单，不要在调用方原地修改 `WordData`。
 - `mergeSnapshotIntoStore` 必须保持增量合并及现有支配判定，不得改成全量替换 store 内容；支配判定按 `memory.lastReviewAt`，stale 判定统一使用 `collectStaleQueueItemIds(merged, queue)`，不要混用快照与 `byId` 视图。
 - 复习时间取客户端真实时刻写入 `memory.lastReviewAt`，不得改用同步时刻。
 - 分片提交使用 `commitInChunks`（纯执行器，`chunkSize` 取自 `WordsRepo.batchLimit`），Firestore 写入统一走 `lib/wordsRepo.ts` 的 `commitWordOperations`（按 `batchLimit` 分片、一次调用一个批次序列，保住归一化的原子性）；同步载荷、失败分类、过期队列和队列处置集中在 `lib/wordSync.ts` 的 `runWordSync`，由 `WordsLedger.sync()` 调用，不要内联回 hook。队列超过重试上限必须跨片汇总后只提示一次 `sync.dataLost`（ledger 递增 `dataLostCount`，provider 提示），localStorage 写失败回退内存必须提示 `sync.storageFailed`（存储适配器暴露 `usingMemoryFallback`，ledger 置 `storageFailed`）。

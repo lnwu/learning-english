@@ -21,7 +21,7 @@
 ## 翻译与释义
 
 - `/api/translate` 一次调用同时返回 `lemma`（词典原形）与结构化 `senses`（2~4 个义项，最常用在前）。不再回退 Google Translate/Datamuse 等免费源：质量与可用性不稳定，`lib/dictionary.ts` 已删除，不要复活回退词典。模型判定非有效单词时 `senses: null`（前端提示、不落库）；调用失败返回错误且前端不落库。
-- 义项校验统一 `sanitizeWordSenses`（`lib/wordSenses.ts`），`/api/translate` 与 `regenerate-definitions` 共用，防止模型输出超长字段撑大文档（也是 rules 字段上限的第一道闸）。`WordSense` 类型与 `translation` 字符串的编解码（`encodeSenses`/`decodeSenses`）同在 `lib/wordSenses.ts`；写路径由 `lib/wordDoc.ts` 的 `translationFields` 统一编码，调用方与组件只传结构化义项。
+- 义项校验统一 `sanitizeWordSenses`（`lib/wordSenses.ts`），`/api/translate` 与 `regenerate-definitions` 共用，防止模型输出超长字段撑大文档（写入前的第一道清洗）。`WordSense` 类型与 `translation` 字符串的编解码（`encodeSenses`/`decodeSenses`）同在 `lib/wordSenses.ts`；写路径由 `lib/wordDoc.ts` 的 `translationFields` 统一编码，调用方与组件只传结构化义项。
 - translate 的 prompt 与解析在 `lib/wordLookup.ts`：`parseWordLookupResult` 负责 lemma 清洗、义项清洗与非单词判定（`senses: null`），`isWord` 为真但义项全非法时抛 502；路由只做取参与缓存读写。
 - 翻译缓存（`translationCache.ts`）：L1 进程内 LRU + L2 Redis（30 天，key 前缀 `translation:v2`），只存 `senses` 非空的成功结果。**改 translate 的 prompt 或默认模型必须 bump 前缀**，否则旧释义会在缓存里长期复用。
 - 前端 `encodeSenses` 把 `senses` 拼成「词性+中文 — 英文」逐行存入 `translation`（写路径经 `translationFields`）；`decodeSenses` 兼容旧格式（首行英文、其余中文），旧数据无需迁移。
@@ -30,7 +30,7 @@
 
 - **题面不显示目标词**：学生凭中文句子推断用词。因此生成请求会把词库存的中文译法随目标词一并传给模型，prompt 要求中文译文自然、使用参考译法、且能让学生反推出目标词；批改时同义表达不判错、仅提示。
 - **每题一考**：同一道题首次提交后可以「重新批改」，但批改只更新反馈，不写任何持久化数据。
-- 页面提交后**不锁定答案**：输入框保持可编辑，首次批改后显示「重新批改」；重新批改只更新反馈、不改变计分。首次批改满分自动下一题，重新批改满分停留本题（让用户看反馈）。
+- 页面提交后**不锁定答案**：输入框保持可编辑，首次批改后显示「重新批改」；重新批改只更新反馈。首次批改满分自动下一题，重新批改满分停留本题（让用户看反馈）。
 - `usedWords` 语义：批改接口只返回用户实际用到的目标词（同义替代也算）；模型没返回该字段时回退全部目标词。
 - 造句练习不写入熟练度数据：不产生记忆状态、复习日志与计时样本（见 `docs/WORD_FAMILIARITY_ALGORITHM.md`）。
 - 提交前先 `normalizeForComparison` 规范化判等：与参考译文完全一致时用 `isExactMatchAnswer` + `buildExactMatchResult` 直接构造满分结果，**省一次模型调用**；`resolveUsedWords`/`sanitizeUsedWords` 在 `lib/sentenceCompare.ts` 维护，快路径与模型路径都产出同一份 `CheckResult`，字段集与「`usedWords` 缺失回退全部目标词」的语义只有 `lib/sentenceMessages.ts` 一处，客户端不再自带回退。
