@@ -46,9 +46,8 @@
     "@types/node": "^26.0.0",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
-    "@typescript/native": "npm:typescript@^7.0.2",
     "oxfmt": "^0.70.0",
     "oxlint": "^1.85.0",
-    "typescript": "npm:@typescript/typescript6@^6.0.2"
+    "typescript": "^7.0.2"
   }
 }

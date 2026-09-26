@@ -19,9 +19,9 @@
 - 修改翻译 prompt 或默认模型时，必须同步提升 `lib/translationCache.ts` 的缓存 key 前缀，避免长期复用旧释义。
 - 修改 `lib/masteryModel.ts` 的 FSRS 权重时必须提升 `MODEL_VERSION`，并按 `docs/DEPLOYMENT.md`「熟练度校准」的流程评估与发布。
 
-## TypeScript 6/7 并排
+## TypeScript 7
 
-- `typescript` 别名指向 `@typescript/typescript6`，向 Next 提供 JS API；`@typescript/native` 别名指向 TypeScript 7，提供 `bun x tsc`。不要移除别名或将 `typescript` 直接改为 `^7`。
+- `typescript` 使用原生 TypeScript 7，`bun x tsc` 与 `tsc --noEmit`（`bun run typecheck`）都是它；`next build` 的构建期类型检查走 Next 的 TypeScript CLI 模式（`experimental.useTypeScriptCli` 默认启用）。不要关闭该选项：TS7 不提供 JS API，关闭后会报 E1467。
 - `apps/web/tsconfig.json` 必须保留 `"types": ["bun", "node"]`，否则测试文件无法解析 `bun:test`。
 
 ## UI 组件与性能
