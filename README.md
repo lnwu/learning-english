@@ -34,3 +34,7 @@ Vercel preview 环境使用匿名登录，所有用户共享 `users/preview` 词
 - API 限流与翻译缓存在未配置 Upstash Redis 时回退到单实例内存实现，多实例下不生效。生产环境请通过 Vercel Marketplace 安装 Upstash for Redis（自动注入 `KV_REST_API_*` 环境变量）。
 - 熟练度校准：`Export Review Logs` 工作流每周检查可校准样本，达标时自动创建 Issue；导出、拟合与权重发布流程见 `docs/DEPLOYMENT.md`「熟练度校准」。
 
+## 预览验收
+
+使用 `agent-browser --profile ~/.agent-browser/profiles/vercel-preview` 打开 Preview URL 进行验收。
+
