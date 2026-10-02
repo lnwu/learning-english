@@ -1,30 +1,10 @@
 import { describe, it, expect } from "bun:test";
 import { buildNormalizeDocPlan, resolveRenamePlan } from "./wordNormalization";
-import { initialMemory, initialStats, type ReviewLogEntry, type WordMemory } from "./masteryModel";
+import { initialStats } from "./masteryModel";
+import { memoryAt, reviewEntry } from "./testSupport";
 import type { WordData } from "./wordsStore";
 
 const makeMap = (entries: Array<[string, string]>) => new Map(entries);
-
-const memoryAt = (at: number): WordMemory => ({
-  ...initialMemory(0),
-  stability: 2.3065,
-  difficulty: 2.1181,
-  state: "review",
-  due: at,
-  lastReviewAt: at,
-  lastGrade: 3,
-  reps: 1,
-});
-
-const reviewAt = (id: string, at: number): ReviewLogEntry => ({
-  id,
-  at,
-  g: 3,
-  h: false,
-  r: null,
-  s: 2.3065,
-  d: 2.1181,
-});
 
 const makeWord = (overrides: Partial<WordData> = {}): WordData => ({
   word: "attackers",
@@ -37,7 +17,7 @@ const makeWord = (overrides: Partial<WordData> = {}): WordData => ({
     dailyReviews: 1,
   },
   inputTimes: [1, 2],
-  reviews: [reviewAt("r1", 1000)],
+  reviews: [reviewEntry("r1", 1000)],
   createdAt: new Date("2025-12-01T00:00:00"),
   id: "id-1",
   ...overrides,
@@ -123,7 +103,7 @@ describe("buildNormalizeDocPlan", () => {
         hints: 1,
       },
       inputTimes: [3],
-      reviews: [reviewAt("r2", 2000)],
+      reviews: [reviewEntry("r2", 2000)],
     });
     const plan = buildNormalizeDocPlan([{ from: "attackers", to: "attacker" }], (word) =>
       word === "attackers" ? source : word === "attacker" ? target : undefined,
@@ -144,7 +124,7 @@ describe("buildNormalizeDocPlan", () => {
             hints: 1,
           },
           inputTimes: [3, 1, 2],
-          reviews: [reviewAt("r1", 1000), reviewAt("r2", 2000)],
+          reviews: [reviewEntry("r1", 1000), reviewEntry("r2", 2000)],
           createdAt: new Date("2025-12-01T00:00:00"),
         },
       },

@@ -1,29 +1,8 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, spyOn } from "bun:test";
+import { describe, it, expect, beforeEach, afterEach, spyOn } from "bun:test";
 import { NextResponse } from "next/server";
 import { DeepSeekError } from "./deepseek";
 import { mapApiError, withApiPost } from "./apiRoute";
-
-const REDIS_ENV_KEYS = [
-  "KV_REST_API_URL",
-  "KV_REST_API_TOKEN",
-  "UPSTASH_REDIS_REST_URL",
-  "UPSTASH_REDIS_REST_TOKEN",
-] as const;
-
-let tokenNonce = 0;
-
-const makeToken = (uid: string) => {
-  tokenNonce += 1;
-  const header = Buffer.from(JSON.stringify({ alg: "none", typ: "JWT" })).toString("base64url");
-  const payload = Buffer.from(
-    JSON.stringify({
-      user_id: uid,
-      exp: Math.floor(Date.now() / 1000) + 3600,
-      jti: tokenNonce,
-    }),
-  ).toString("base64url");
-  return `${header}.${payload}.signature`;
-};
+import { makeToken, useEnvVar, useNoRedisEnv, useRestoredFetch } from "./testSupport";
 
 const makeRequest = (body: string, token?: string) =>
   new Request("http://localhost/api/test", {
@@ -56,28 +35,10 @@ describe("mapApiError", () => {
 });
 
 describe("withApiPost", () => {
-  const originalFetch = globalThis.fetch;
-  const originalKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
-  const savedRedisEnv = new Map<string, string | undefined>();
+  useNoRedisEnv();
+  useEnvVar("NEXT_PUBLIC_FIREBASE_API_KEY", "test-key");
+  useRestoredFetch();
   let errorSpy: ReturnType<typeof spyOn>;
-
-  beforeAll(() => {
-    for (const key of REDIS_ENV_KEYS) {
-      savedRedisEnv.set(key, process.env[key]);
-      delete process.env[key];
-    }
-  });
-
-  afterAll(() => {
-    for (const key of REDIS_ENV_KEYS) {
-      const value = savedRedisEnv.get(key);
-      if (value === undefined) {
-        delete process.env[key];
-      } else {
-        process.env[key] = value;
-      }
-    }
-  });
 
   const mockFetch = (ok: boolean, localId = "uid-1") => {
     globalThis.fetch = (async () =>
@@ -88,18 +49,11 @@ describe("withApiPost", () => {
   };
 
   beforeEach(() => {
-    process.env.NEXT_PUBLIC_FIREBASE_API_KEY = "test-key";
     errorSpy = spyOn(console, "error").mockImplementation(() => {});
   });
 
   afterEach(() => {
-    globalThis.fetch = originalFetch;
     errorSpy.mockRestore();
-    if (originalKey === undefined) {
-      delete process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
-    } else {
-      process.env.NEXT_PUBLIC_FIREBASE_API_KEY = originalKey;
-    }
   });
 
   it("缺少 token 时返回 401 且不调用 parse/handle", async () => {

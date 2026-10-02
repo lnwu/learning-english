@@ -8,6 +8,7 @@ import {
   type SyncQueueItem,
 } from "./queueStorage";
 import { initialMemory, initialStats, type WordMemory } from "./masteryModel";
+import { makeMemory as memory, reviewEntry } from "./testSupport";
 import type { WordSense } from "./wordSenses";
 import type { WordDocSnapshot, WordOperation, WordsRepo } from "./wordsRepo";
 
@@ -57,21 +58,6 @@ class FakeRepo implements WordsRepo {
   }
 }
 
-const memory = (overrides: Partial<WordMemory> = {}): WordMemory => ({
-  ...initialMemory(0),
-  ...overrides,
-});
-
-const reviewMemoryAt = (at: number, id: string) => ({
-  id,
-  at,
-  g: 3 as const,
-  h: false,
-  r: null,
-  s: 2.3065,
-  d: 2.1181,
-});
-
 const makeDoc = (word: string, overrides: Record<string, unknown> = {}): WordDocSnapshot => ({
   id: `id-${word}`,
   data: () => ({
@@ -111,7 +97,7 @@ const makeQueueItem = (
     memory: memory({ state: "review", stability: 2.3065, lastReviewAt: 1000 }),
     stats: { ...initialStats(), reviewDays: 1 },
     inputTimes: [1],
-    reviews: [reviewMemoryAt(1000, "r1")],
+    reviews: [reviewEntry("r1", 1000)],
   },
   timestamp: 1000,
   retryCount: 0,
@@ -418,12 +404,12 @@ describe("WordsLedger 词库命令", () => {
       makeDoc("apple", {
         memory: memory({ state: "review", stability: 2.3065, lastReviewAt: 1000 }),
         stats: { ...initialStats(), reviewDays: 1 },
-        reviews: [reviewMemoryAt(1000, "r1")],
+        reviews: [reviewEntry("r1", 1000)],
       }),
       makeDoc("apples", {
         memory: memory({ state: "review", stability: 2.3065, lastReviewAt: 2000 }),
         stats: { ...initialStats(), reviewDays: 2 },
-        reviews: [reviewMemoryAt(2000, "r2")],
+        reviews: [reviewEntry("r2", 2000)],
       }),
     ]);
 

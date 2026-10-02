@@ -8,19 +8,9 @@ import {
   type WordSyncUpdate,
 } from "./wordSync";
 import type { SyncQueueItem } from "./queueStorage";
-import { initialMemory, initialStats, type WordMemory } from "./masteryModel";
+import { initialStats } from "./masteryModel";
+import { memoryAt } from "./testSupport";
 import type { SyncableWordData, WordData } from "./wordsStore";
-
-const memoryAt = (at: number | null): WordMemory => ({
-  ...initialMemory(0),
-  stability: at === null ? 0 : 2.3065,
-  difficulty: at === null ? 0 : 2.1181,
-  state: at === null ? "new" : "review",
-  due: at ?? 0,
-  lastReviewAt: at,
-  lastGrade: at === null ? null : 3,
-  reps: at === null ? 0 : 1,
-});
 
 const makeSyncable = (overrides: Partial<SyncableWordData> = {}): SyncableWordData => ({
   memory: memoryAt(1000),
