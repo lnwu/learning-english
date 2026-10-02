@@ -5,7 +5,6 @@ import { DEFAULT_AI_MODEL_ID } from "@/lib/aiProviders";
 const AI_MODEL_CHANGE_EVENT = "aimodelchange";
 
 let current = DEFAULT_AI_MODEL_ID;
-let loadedFor: string | null = null;
 
 const notify = () => {
   window.dispatchEvent(new Event(AI_MODEL_CHANGE_EVENT));
@@ -21,9 +20,6 @@ export const subscribeAiModel = (listener: () => void): (() => void) => {
 };
 
 export const loadAiModelPreference = async (userId: string): Promise<void> => {
-  if (loadedFor === userId) return;
-  loadedFor = userId;
-
   try {
     const snapshot = await getDoc(doc(getDb(), "users", userId));
     const value = snapshot.data()?.aiModel;
@@ -38,7 +34,6 @@ export const loadAiModelPreference = async (userId: string): Promise<void> => {
 };
 
 export const resetAiModelPreference = (): void => {
-  loadedFor = null;
   if (current !== DEFAULT_AI_MODEL_ID) {
     current = DEFAULT_AI_MODEL_ID;
     notify();

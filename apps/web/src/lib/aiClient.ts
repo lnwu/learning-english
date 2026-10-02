@@ -67,6 +67,22 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const isRetryableStatus = (status: number) => status === 429 || status >= 500;
 
+const toServiceError = (error: unknown): AiServiceError => {
+  if (error instanceof AiServiceError) return error;
+  if (error instanceof APICallError) {
+    return new AiServiceError("AI 服务返回错误，请稍后重试", 502);
+  }
+  return new AiServiceError("调用 AI 服务失败，请稍后重试", 502);
+};
+
+const isRetryableError = (error: unknown): boolean => {
+  if (error instanceof AiServiceError) return false;
+  if (error instanceof APICallError) {
+    return error.statusCode === undefined || isRetryableStatus(error.statusCode);
+  }
+  return true;
+};
+
 const splitSystemMessages = (
   messages: ChatMessage[],
 ): { instructions: string | undefined; conversation: ChatMessage[] } => ({
@@ -92,7 +108,25 @@ export interface ChatCompletionOptions {
   maxOutputTokens?: number;
 }
 
-async function requestCompletion(
+async function requestWithRetry(
+  spec: AiModelSpec,
+  messages: ChatMessage[],
+  temperature: number,
+  maxOutputTokens: number,
+): Promise<string> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await requestOnce(spec, messages, temperature, maxOutputTokens);
+    } catch (error) {
+      if (!isRetryableError(error) || attempt >= MAX_ATTEMPTS - 1) {
+        throw toServiceError(error);
+      }
+    }
+    await sleep(RETRY_DELAY_MS);
+  }
+}
+
+async function requestOnce(
   spec: AiModelSpec,
   messages: ChatMessage[],
   temperature: number,
@@ -131,38 +165,13 @@ export async function chatCompletionJson<T>(
   if (!spec) {
     throw new AiServiceError("未知模型", 400);
   }
-  const temperature = options?.temperature ?? 0.7;
-  const maxOutputTokens = options?.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS;
 
-  let text: string | null = null;
-  let lastError: AiServiceError | null = null;
-
-  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-    if (attempt > 0) {
-      await sleep(RETRY_DELAY_MS);
-    }
-
-    try {
-      text = await requestCompletion(spec, messages, temperature, maxOutputTokens);
-      break;
-    } catch (error) {
-      if (error instanceof AiServiceError) {
-        throw error;
-      }
-      if (error instanceof APICallError && error.statusCode !== undefined) {
-        if (!isRetryableStatus(error.statusCode)) {
-          throw new AiServiceError("AI 服务返回错误，请稍后重试", 502);
-        }
-        lastError = new AiServiceError("AI 服务返回错误，请稍后重试", 502);
-        continue;
-      }
-      lastError = new AiServiceError("调用 AI 服务失败，请稍后重试", 502);
-    }
-  }
-
-  if (text === null) {
-    throw lastError ?? new AiServiceError("AI 服务返回错误，请稍后重试", 502);
-  }
+  const text = await requestWithRetry(
+    spec,
+    messages,
+    options?.temperature ?? 0.7,
+    options?.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS,
+  );
 
   if (!text.trim()) {
     throw new AiServiceError("AI 服务返回内容为空", 502);

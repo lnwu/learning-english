@@ -19,6 +19,7 @@
 - 三个服务商都是 OpenAI / Anthropic / Google 协议中的一个，因此用 Vercel AI SDK 统一调用：`@ai-sdk/openai-compatible`（DeepSeek、MiMo 的 chat/completions）、`@ai-sdk/anthropic`（OpenCode Zen 的 Claude）、`@ai-sdk/google`（OpenCode Zen 的 Gemini）。上层只看到 `generateText`，路由不知道底层协议差异。
 - `chatCompletionJson`（`lib/aiClient.ts`）：按模型 ID 解析 provider、读 Key、缓存 provider 实例；网络错误与 429/5xx 自动重试一次；**504 不重试**（超时本身已耗掉预算，重试让总时长翻倍且大概率再超时）；SDK 自己的重试关闭（`maxRetries: 0`），重试语义只由这一层决定。非 JSON 响应与 AI 服务错误统一归类 `AiServiceError(502)`，超时 504，未配置 Key 500，未知模型 400。
 - JSON 输出的鲁棒性由 `extractJson` 统一兜住：OpenAI 系的 `response_format: json_object` 在 Anthropic/Google 协议没有对应参数，因此不依赖该参数，而是从返回值里取 markdown fence 或首尾大括号之间的对象再解析；prompt 里「只返回 JSON」的约定保持不变。
+- `ChatMessage[]` 里的 system 消息在调用前抽成 SDK 的顶层 `instructions`：AI SDK 默认不接受 `messages` 数组里的 system 消息（会报 `AI_InvalidPromptError`），而各路由的 prompt 都是 system + user 形态。
 - Claude 5.5 不支持 `temperature`，注册表用 `supportsTemperature` 标注，调用时不传该参数（否则 SDK 每次都会打告警）。
 
 ## 翻译与释义

@@ -1,4 +1,4 @@
-export type AiSdkKind = "openai-compatible" | "anthropic" | "google";
+type AiSdkKind = "openai-compatible" | "anthropic" | "google";
 
 export interface AiModelSpec {
   id: string;

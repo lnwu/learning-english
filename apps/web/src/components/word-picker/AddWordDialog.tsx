@@ -175,11 +175,7 @@ const AddWordDialog = ({ word, onClose, onFinished }: AddWordDialogProps) => {
 
   const toggleCompareModel = (id: string) => {
     setCompareSelection((prev) =>
-      prev.includes(id)
-        ? prev.filter((item) => item !== id)
-        : prev.length >= MAX_COMPARE_MODELS
-          ? prev
-          : [...prev, id],
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
     );
   };
 
@@ -282,16 +278,20 @@ const AddWordDialog = ({ word, onClose, onFinished }: AddWordDialogProps) => {
             ) : (
               <div className="space-y-2 rounded-md border p-3">
                 <div className="flex flex-wrap gap-2">
-                  {models.map((model) => (
-                    <Button
-                      key={model.id}
-                      size="sm"
-                      variant={compareSelection.includes(model.id) ? "default" : "outline"}
-                      onClick={() => toggleCompareModel(model.id)}
-                    >
-                      {model.label}
-                    </Button>
-                  ))}
+                  {models.map((model) => {
+                    const selected = compareSelection.includes(model.id);
+                    return (
+                      <Button
+                        key={model.id}
+                        size="sm"
+                        variant={selected ? "default" : "outline"}
+                        disabled={!selected && compareSelection.length >= MAX_COMPARE_MODELS}
+                        onClick={() => toggleCompareModel(model.id)}
+                      >
+                        {model.label}
+                      </Button>
+                    );
+                  })}
                 </div>
                 <Button
                   size="sm"
