@@ -4,25 +4,15 @@ import { useCallback, useState } from "react";
 import { useFirestoreWords } from "@/hooks/useFirestoreWords";
 import { postJson } from "@/lib/apiClient";
 import { tNow } from "@/lib/i18n";
+import type { CheckResult, GenerateResult } from "@/lib/sentenceMessages";
 import {
   MIN_SENTENCE_WORDS,
   SENTENCE_WORD_POOL_SIZE,
   pickSentenceWords,
 } from "@/lib/sentenceWords";
 
-export interface SentenceQuestion {
-  chinese: string;
-  english: string;
-  words: string[];
-}
-
-export interface SentenceFeedback {
-  correct: boolean;
-  score: number;
-  feedback: string;
-  corrected: string;
-  issues: string[];
-}
+type SentenceQuestion = GenerateResult;
+type SentenceFeedback = CheckResult;
 
 export const useSentencePractice = () => {
   const firestore = useFirestoreWords();

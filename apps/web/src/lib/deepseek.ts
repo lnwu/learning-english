@@ -91,10 +91,7 @@ export async function chatCompletionJson<T>(
     try {
       candidate = await requestCompletion(apiKey, baseUrl, model, messages, temperature);
     } catch (error) {
-      lastError =
-        error instanceof DeepSeekError
-          ? error
-          : new DeepSeekError("调用 AI 服务失败，请稍后重试", 502);
+      lastError = error as DeepSeekError;
       if (lastError.status === 504) {
         break;
       }

@@ -1,3 +1,4 @@
+import type { SentenceWordInput } from "@/lib/apiInput";
 import type { ChatMessage } from "@/lib/deepseek";
 import { normalizeForComparison } from "@/lib/sentenceCompare";
 import { MAX_SENTENCE_WORDS, MIN_SENTENCE_WORDS } from "@/lib/sentenceWords";
@@ -8,11 +9,6 @@ export const MAX_TRANSLATION_LENGTH = 2000;
 const MAX_FEEDBACK_LENGTH = 2000;
 const MAX_CORRECTED_LENGTH = 500;
 const MAX_ISSUES = 10;
-
-export interface SentenceWord {
-  word: string;
-  translation: string;
-}
 
 export interface GenerateResult {
   chinese: string;
@@ -35,7 +31,7 @@ export interface CheckResult {
   issues: string[];
 }
 
-export const buildGenerateMessages = (candidates: SentenceWord[]): ChatMessage[] => [
+export const buildGenerateMessages = (candidates: SentenceWordInput[]): ChatMessage[] => [
   {
     role: "system",
     content: [

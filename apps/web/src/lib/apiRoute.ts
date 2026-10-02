@@ -6,7 +6,6 @@ import { DeepSeekError } from "@/lib/deepseek";
 export interface ApiPolicy {
   name: string;
   limit: number;
-  windowMs?: number;
   fallbackError: string;
 }
 
@@ -20,7 +19,7 @@ export const API_RATE_LIMITS = {
   sentenceCheck: { name: "sentence/check", limit: 20 },
 } as const;
 
-const DEFAULT_RATE_LIMIT_WINDOW_MS = 60 * 1000;
+const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 
 export const mapApiError = (
   error: unknown,
@@ -42,7 +41,7 @@ export const withApiPost = async <T>(
   const rateLimitError = await checkRateLimit(
     `${auth.uid}:${policy.name}`,
     policy.limit,
-    policy.windowMs ?? DEFAULT_RATE_LIMIT_WINDOW_MS,
+    RATE_LIMIT_WINDOW_MS,
   );
   if (rateLimitError) return rateLimitError;
 

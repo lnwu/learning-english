@@ -10,7 +10,6 @@ import {
   computeBaselineForWord,
   computeBaselinesByLengthCategory,
   getLastReviewAt,
-  getWordLengthCategory,
   initialMemory,
   initialStats,
   isDailyLimitReached,
@@ -144,6 +143,13 @@ const mergeReviews = (
 const mergeInputTimes = (a: readonly number[], b: readonly number[]): number[] =>
   [...a, ...b].slice(-MAX_INPUT_TIMES);
 
+const mergePractice = (a: SyncableWordData, b: SyncableWordData): SyncableWordData => ({
+  memory: mergeMemory(a.memory, b.memory),
+  stats: mergeStats(a.stats, b.stats),
+  inputTimes: mergeInputTimes(a.inputTimes, b.inputTimes),
+  reviews: mergeReviews(a.reviews, b.reviews),
+});
+
 export class Words {
   private wordData: Map<string, WordData> = new Map();
   private userInputs: Map<string, string> = new Map();
@@ -256,10 +262,6 @@ export class Words {
       allTimes.push(...data.inputTimes);
     });
     return allTimes.length === 0 ? null : average(allTimes);
-  }
-
-  getWordLengthCategory(word: string): number {
-    return getWordLengthCategory(word);
   }
 
   get inputTimeBaselineByLengthCategory(): (number | null)[] {
@@ -383,10 +385,7 @@ export const mergeWordData = (
   source: Readonly<WordData>,
 ): WordData => ({
   ...target,
-  memory: mergeMemory(target.memory, source.memory),
-  stats: mergeStats(target.stats, source.stats),
-  inputTimes: mergeInputTimes(target.inputTimes, source.inputTimes),
-  reviews: mergeReviews(target.reviews, source.reviews),
+  ...mergePractice(target, source),
   createdAt:
     target.createdAt.getTime() <= source.createdAt.getTime() ? target.createdAt : source.createdAt,
 });
@@ -442,10 +441,7 @@ export const mergeSnapshotIntoStore = (
 
     const merged: WordData = {
       ...firestoreWord,
-      memory: mergeMemory(firestoreWord.memory, item.data.memory),
-      stats: mergeStats(firestoreWord.stats, item.data.stats),
-      inputTimes: mergeInputTimes(firestoreWord.inputTimes, item.data.inputTimes),
-      reviews: mergeReviews(firestoreWord.reviews, item.data.reviews),
+      ...mergePractice(firestoreWord, item.data),
     };
     byWord.set(merged.word, merged);
   }

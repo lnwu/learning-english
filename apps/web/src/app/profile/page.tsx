@@ -10,10 +10,6 @@ import {
   CardHeader,
   CardTitle,
   ConfirmDialog,
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyTitle,
   LoadingState,
   MASTERY_BAR_COLORS,
   PageContainer,
@@ -26,9 +22,9 @@ import { useFirestoreWords, useLocale, toast, useAuth, useWordsRepo } from "@/ho
 import { observer } from "mobx-react-lite";
 import Link from "next/link";
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { type Locale } from "@/lib/i18n";
 import PracticeHeatmap from "./PracticeHeatmap";
 import { ProfileAiSection } from "./ProfileAiSection";
+import { SettingRow } from "./SettingRow";
 import { WordPerformanceSection } from "./WordPerformanceSection";
 import { MASTERY_LEVELS } from "@/lib/masteryLevels";
 import { averageMasteryScore, masteryDistribution } from "@/lib/masteryStats";
@@ -42,7 +38,6 @@ const Profile = observer(() => {
   const [resetting, setResetting] = useState(false);
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [wordToDelete, setWordToDelete] = useState<string | null>(null);
-  const [deleting, setDeleting] = useState(false);
   const [practiceTime, setPracticeTime] = useState<Map<string, number>>(new Map());
 
   useEffect(() => {
@@ -87,13 +82,8 @@ const Profile = observer(() => {
     }
   };
 
-  const handleLanguageChange = (newLocale: Locale) => {
-    setLocale(newLocale);
-  };
-
   const handleDeleteWord = async () => {
     if (!wordToDelete) return;
-    setDeleting(true);
     try {
       await deleteWord(wordToDelete);
       toast({
@@ -107,7 +97,6 @@ const Profile = observer(() => {
         variant: "destructive",
       });
     } finally {
-      setDeleting(false);
       setWordToDelete(null);
     }
   };
@@ -198,7 +187,7 @@ const Profile = observer(() => {
                 onValueChange={(value) => {
                   const next = value[0];
                   if (next === "zh" || next === "en") {
-                    handleLanguageChange(next);
+                    setLocale(next);
                   }
                 }}
                 variant="outline"
@@ -211,20 +200,20 @@ const Profile = observer(() => {
 
             <ProfileAiSection />
 
-            <div className="flex flex-col gap-2 py-6 last:pb-0 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-              <div className="flex flex-col gap-1">
-                <h3 className="text-sm font-medium text-destructive">{t("profile.resetData")}</h3>
-                <p className="text-sm text-muted-foreground">{t("profile.resetDataDesc")}</p>
-              </div>
+            <SettingRow
+              title={t("profile.resetData")}
+              description={t("profile.resetDataDesc")}
+              destructive
+              className="last:pb-0"
+            >
               <Button
                 variant="destructive"
-                className="shrink-0 self-start sm:self-auto"
                 onClick={() => setShowResetDialog(true)}
                 disabled={resetting}
               >
                 {resetting ? t("common.loading") : t("profile.resetButton")}
               </Button>
-            </div>
+            </SettingRow>
           </CardContent>
         </Card>
 
@@ -281,16 +270,6 @@ const Profile = observer(() => {
 
         <WordPerformanceSection words={words} onDelete={handleDeleteRequest} t={t} />
 
-        {wordsWithStats.length === 0 && (
-          <Empty className="border">
-            <EmptyHeader>
-              <EmptyTitle>{t("profile.noPracticeData")}</EmptyTitle>
-              <EmptyDescription>{t("profile.practiceTimeDesc")}</EmptyDescription>
-            </EmptyHeader>
-          </Empty>
-        )}
-
-        {/* Reset Confirmation Dialog */}
         <ConfirmDialog
           open={showResetDialog}
           onOpenChange={setShowResetDialog}
@@ -302,7 +281,6 @@ const Profile = observer(() => {
           variant="destructive"
         />
 
-        {/* Delete Word Confirmation Dialog */}
         <ConfirmDialog
           open={wordToDelete !== null}
           onOpenChange={(open) => {
@@ -310,7 +288,7 @@ const Profile = observer(() => {
           }}
           title={t("profile.deleteConfirm", { word: wordToDelete ?? "" })}
           description={t("profile.deleteConfirmDesc")}
-          confirmText={deleting ? t("common.loading") : t("common.confirm")}
+          confirmText={t("common.confirm")}
           cancelText={t("common.cancel")}
           onConfirm={handleDeleteWord}
           variant="destructive"

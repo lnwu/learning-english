@@ -1,11 +1,10 @@
 "use client";
 
-import { FC, ReactNode } from "react";
-import { useAuth } from "@/hooks";
-import { UserMenu } from "@/components/auth";
+import { useEffect, type FC, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { useEffect } from "react";
+import { useAuth } from "@/hooks";
+import { UserMenu } from "@/components/auth";
 import { Spinner } from "@/components/ui";
 
 export const AppShell: FC<{ children: ReactNode }> = ({ children }) => {
