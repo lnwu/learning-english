@@ -132,7 +132,7 @@ export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
       const updates = results ?? [];
       const updatedWords = new Set(updates.map((item) => item.word));
-      const stale = focus
+      const cleared = focus
         ? []
         : list
             .filter(
@@ -145,7 +145,7 @@ export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
               senses: senses.map(({ pos, chinese, english }) => ({ pos, chinese, english })),
               confusables: [],
             }));
-      await ledger.updateConfusables([...updates, ...stale]);
+      await ledger.updateConfusables([...updates, ...cleared]);
       return updates.length;
     },
     [ledger],

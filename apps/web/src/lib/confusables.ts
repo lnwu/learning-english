@@ -35,16 +35,14 @@ const taskLine = (focus?: string): string =>
     ? `任务：在词库中找出与目标单词 ${focus} 易混的词——中文译名相同或相近、含义接近，根据中文释义回忆英文时容易张冠李戴（${GROUP_EXAMPLES}）。没有时 results 返回空数组；找到时 results 必须同时包含 ${focus} 和它的每个易混词。`
     : `任务：找出其中所有易混词组——中文译名相同或相近、含义接近，根据中文释义回忆英文时容易张冠李戴的词（${GROUP_EXAMPLES}）。没有易混关系的词不要出现在结果中。`;
 
-const stripParenthetical = (chinese: string): string => {
-  const stripped = chinese.replace(/[（(][^）)]*[）)]/g, "").trim();
-  return stripped || chinese;
-};
+const stripTrailingQualifier = (chinese: string): string =>
+  chinese.replace(/(?:[（(][^）)]*[）)]\s*)+$/, "").trim();
 
 const compactWords = (words: ConfusableWordInput[]): string =>
   JSON.stringify(
     words.map(({ word, senses }) => ({
       word,
-      senses: senses.map(({ pos, chinese }) => ({ pos, chinese: stripParenthetical(chinese) })),
+      senses: senses.map(({ pos, chinese }) => ({ pos, chinese: stripTrailingQualifier(chinese) })),
     })),
   );
 
