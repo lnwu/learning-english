@@ -4,21 +4,7 @@ import {
   createNoopQueueStorage,
   type SyncQueueItem,
 } from "./queueStorage";
-import { initialStats } from "./masteryModel";
-import { memoryAt } from "./testSupport";
-import type { SyncableWordData } from "./wordsStore";
-
-const makeSyncable = (at: number | null): SyncableWordData => ({
-  memory: memoryAt(at),
-  stats: {
-    ...initialStats(),
-    reviewDays: at === null ? 0 : 1,
-    lastReviewDay: at === null ? null : "2026-01-01",
-    dailyReviews: at === null ? 0 : 1,
-  },
-  inputTimes: at === null ? [] : [1],
-  reviews: [],
-});
+import { makeSyncable } from "./testSupport";
 
 class LocalStorageMock {
   private store = new Map<string, string>();
@@ -60,7 +46,7 @@ const makeItem = (
   type: "attempt",
   word,
   wordId,
-  data: makeSyncable(1000),
+  data: makeSyncable(),
   timestamp: 1,
   retryCount: 0,
   ...overrides,

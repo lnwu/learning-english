@@ -9,21 +9,8 @@ import {
 } from "./wordSync";
 import type { SyncQueueItem } from "./queueStorage";
 import { initialStats } from "./masteryModel";
-import { memoryAt } from "./testSupport";
-import type { SyncableWordData, WordData } from "./wordsStore";
-
-const makeSyncable = (overrides: Partial<SyncableWordData> = {}): SyncableWordData => ({
-  memory: memoryAt(1000),
-  stats: {
-    ...initialStats(),
-    reviewDays: 1,
-    lastReviewDay: "2026-01-01",
-    dailyReviews: 1,
-  },
-  inputTimes: [1],
-  reviews: [{ id: "r1", at: 1000, g: 3, h: false, r: null, s: 2.3065, d: 2.1181 }],
-  ...overrides,
-});
+import { memoryAt, makeSyncable } from "./testSupport";
+import type { WordData } from "./wordsStore";
 
 const makeItem = (overrides: Partial<SyncQueueItem> = {}): SyncQueueItem => ({
   id: "q1",
@@ -61,11 +48,11 @@ describe("buildWordUpdates", () => {
     const updates = buildWordUpdates([
       makeItem({
         id: "q1",
-        data: makeSyncable({ memory: memoryAt(1000) }),
+        data: makeSyncable(),
       }),
       makeItem({
         id: "q2",
-        data: makeSyncable({ memory: memoryAt(2000) }),
+        data: makeSyncable(2000),
       }),
       makeItem({
         id: "q3",
@@ -115,7 +102,7 @@ describe("collectStaleQueueItemIds", () => {
   it("队列复习更晚或远端无该词时不判定为 stale", () => {
     const byId = new Map([["id-apple", makeWordData({ memory: memoryAt(1000) })]]);
     const staleIds = collectStaleQueueItemIds({ byId, byWord: byId }, [
-      makeItem({ data: makeSyncable({ memory: memoryAt(5000) }) }),
+      makeItem({ data: makeSyncable(5000) }),
       makeItem({ id: "q2", wordId: "id-missing" }),
     ]);
 

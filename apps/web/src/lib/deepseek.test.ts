@@ -29,42 +29,21 @@ describe("chatCompletionJson", () => {
     expect((error as DeepSeekError).status).toBe(502);
   });
 
-  it("网络错误重试一次后成功", async () => {
+  const failureModes: Array<[string, () => Promise<Response>]> = [
+    ["网络错误", () => Promise.reject(new Error("network down"))],
+    ["服务端 5xx", async () => new Response("{}", { status: 500 })],
+    ["服务端 429", async () => new Response("{}", { status: 429 })],
+  ];
+
+  it.each(failureModes)("%s 后重试一次成功", async (_label, failFirst) => {
     let calls = 0;
     globalThis.fetch = (async () => {
       calls += 1;
-      if (calls === 1) throw new Error("network down");
-      return completionResponse('{"ok":1}');
+      return calls === 1 ? failFirst() : completionResponse('{"ok":1}');
     }) as unknown as typeof fetch;
 
     const result = await chatCompletionJson<{ ok: number }>([{ role: "user", content: "hi" }]);
     expect(result.ok).toBe(1);
-    expect(calls).toBe(2);
-  });
-
-  it("服务端 5xx 重试一次后成功", async () => {
-    let calls = 0;
-    globalThis.fetch = (async () => {
-      calls += 1;
-      if (calls === 1) return new Response("{}", { status: 500 });
-      return completionResponse('{"ok":2}');
-    }) as unknown as typeof fetch;
-
-    const result = await chatCompletionJson<{ ok: number }>([{ role: "user", content: "hi" }]);
-    expect(result.ok).toBe(2);
-    expect(calls).toBe(2);
-  });
-
-  it("服务端 429 重试一次后成功", async () => {
-    let calls = 0;
-    globalThis.fetch = (async () => {
-      calls += 1;
-      if (calls === 1) return new Response("{}", { status: 429 });
-      return completionResponse('{"ok":3}');
-    }) as unknown as typeof fetch;
-
-    const result = await chatCompletionJson<{ ok: number }>([{ role: "user", content: "hi" }]);
-    expect(result.ok).toBe(3);
     expect(calls).toBe(2);
   });
 
