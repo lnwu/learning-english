@@ -4,11 +4,11 @@
 
 ## 数据模型
 
-- `users/{uid}/words/{docId}`：字段 `word`/`translation`/`memory`/`stats`/`inputTimes`/`reviews`/`createdAt`；`memory` 是 DSR 记忆状态，`stats` 是复习统计，`reviews` 是复习日志。文档 id 是 addDoc 自动 id，不是单词本身（归一化重命名时要保留 id 就是为此）。
+- `users/{uid}/words/{docId}`：字段 `word`/`translation`/`confusables`/`memory`/`stats`/`inputTimes`/`reviews`/`createdAt`；`memory` 是 DSR 记忆状态，`stats` 是复习统计，`reviews` 是复习日志，`confusables` 是该词在词库内的易混近义词。文档 id 是 addDoc 自动 id，不是单词本身（归一化重命名时要保留 id 就是为此）。
 - `users/{uid}/practiceTime/{YYYY-MM-DD}`：`{ seconds }`，每天一个文档。
 - preview 环境读写 `users/preview/*`，设计见根 AGENTS.md；安全规则只做鉴权、不做字段校验，见 `infra/AGENTS.md`。
 - 客户端所有 Firestore 读写都经 `lib/wordsRepo.ts`：repo 在构造时捕获 effective uid（preview 环境映射为 `preview`），调用方无法传错 uid；订阅、批量写与 practiceTime 递增都收在这一处，ledger 与页面不直接 import `firebase/firestore`。
-- 文档字段的投影与解析集中在 `lib/wordDoc.ts`：新词文档（`newWordDocFields`）、释义落库（`translationFields`）、队列/同步载荷（`practiceFields`）、落库更新（`attemptUpdateFields`）、重置（`resetPracticeFields`）与解析兜底（`parseWordDoc`）都从这里取；新增同步字段时改 `WordData`、`SyncableWordData` 与这个文件即可，不要在调用方内联字段清单。
+- 文档字段的投影与解析集中在 `lib/wordDoc.ts`：新词文档（`newWordDocFields`）、释义落库（`translationFields`）、释义与易混词一并落库（`confusableFields`）、队列/同步载荷（`practiceFields`）、落库更新（`attemptUpdateFields`）、重置（`resetPracticeFields`）与解析兜底（`parseWordDoc`）都从这里取；新增同步字段时改 `WordData`、`SyncableWordData` 与这个文件即可，不要在调用方内联字段清单。
 
 ## 订阅与快照合并
 
@@ -34,11 +34,11 @@
 ## 批量写与归一化
 
 - `commitWordOperations` 按 500 分片：Firestore writeBatch 上限 500。
-- `updateTranslations` 先 `setWordData`（store 即时更新、UI 立即反馈）再落库：onSnapshot 回来会幂等合并，顺序反了 UI 会有延迟。
+- `updateTranslations` 先 `setWordData`（store 即时更新、UI 立即反馈）再落库：onSnapshot 回来会幂等合并，顺序反了 UI 会有延迟。`updateConfusables` 同理，但一次可同时写 `translation` 与 `confusables`；批量刷新易混词时会清掉不再易混的词（只写 `confusables`，保留原释义）。两个入口都不触碰练习数据。
 - `normalizeWordForms` 先 `syncToFirestore()` 再操作：旧文档上的待同步条目若在重命名/合并后被 `not-found` 判定丢弃，练习数据就没了。落库成功后才 `words.moveWord` 更新 store（store 慢于 Firestore 一步没关系，快照会补）。
 - `mergeWordData` 合并语义：记忆状态取 `lastReviewAt` 更晚的一侧（相同取 `stability` 更低的一侧）；`stats` 逐项取大（`dailyReviews` 同日取大、异日跟随较晚日期）；`reviews` 按 id 并集并按时间排序保留最近 200 条；`inputTimes` 取最近 20 条；`createdAt` 取较早、`translation`/`id` 保留目标词。
 
 ## 日期与历史字段
 
 - `memory.lastReviewAt`/`due` 等时间统一存 epoch 毫秒；统计用的「本地日期」按客户端时区生成 `YYYY-MM-DD`，跨时区不解析 ISO 时间戳。
-- 输入判定（`practiceInput.ts`）：计时从输入第一个字符开始，单次插入多个字符（粘贴、联想补全）使计时失效，退回单字符后重新计时；`resolveReview` 只为可信输入产出复习（错误 → Again、用过提示 → Hard、独立答对 → Good），同一轮后续输入不重复记分。
+- 输入判定（`practiceInput.ts`）：计时从输入第一个字符开始，单次插入多个字符（粘贴、联想补全）使计时失效，退回单字符后重新计时；`resolveReview` 只为可信输入产出复习（错误 → Again、用过提示 → Hard、独立答对 → Good），同一轮后续输入不重复记分。若当前输入是词库内易混词的前缀（`WordData.confusables`），不记错误也不判为完成：用户分不清近义词时不应吃一次 Again，改由练习页给出提示并按用过提示计 Hard。

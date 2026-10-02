@@ -34,7 +34,7 @@ import {
   type PracticeInputState,
 } from "@/lib/practiceInput";
 import type { Words } from "@/lib/wordsStore";
-import type { TranslationKey } from "@/lib/i18n";
+import type { TranslationKey, TranslationParams } from "@/lib/i18n";
 
 interface WordRowProps {
   word: string;
@@ -43,7 +43,7 @@ interface WordRowProps {
   onInputChange: (word: string, value: string) => void;
   onHintReveal: (word: string) => void;
   inputRefs: RefObject<Map<string, HTMLInputElement>>;
-  t: (key: TranslationKey) => string;
+  t: (key: TranslationKey, params?: TranslationParams) => string;
 }
 
 interface RoundAttempt {
@@ -59,6 +59,7 @@ const WordRow = observer(
     const inputValue = words.getUserInput(word);
     const senses = useMemo(() => decodeSenses(translation), [translation]);
     const hasSense = senses.some((sense) => sense.chinese);
+    const confusableMatch = inputValue !== "" && words.getConfusables(word).includes(inputValue);
     const revealHintWhileTyping = () => {
       if (inputValue !== "" && inputValue !== word) {
         onHintReveal(word);
@@ -84,7 +85,7 @@ const WordRow = observer(
                         — {sense.english}
                       </span>
                     )}
-                    {sense.note && (
+                    {sense.note && sense.note !== senses[index - 1]?.note && (
                       <span className="block text-sm font-normal text-muted-foreground">
                         {SENSE_NOTE_PREFIX}
                         {sense.note}
@@ -96,20 +97,27 @@ const WordRow = observer(
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <Input
-            className="w-xs"
-            type="text"
-            id={word}
-            ref={(el) => {
-              if (el) {
-                inputRefs.current.set(word, el);
-              } else {
-                inputRefs.current.delete(word);
-              }
-            }}
-            onChange={(e) => onInputChange(word, e.target.value.toLowerCase())}
-            value={inputValue}
-          />
+          <div className="flex flex-col gap-1">
+            <Input
+              className="w-xs"
+              type="text"
+              id={word}
+              ref={(el) => {
+                if (el) {
+                  inputRefs.current.set(word, el);
+                } else {
+                  inputRefs.current.delete(word);
+                }
+              }}
+              onChange={(e) => onInputChange(word, e.target.value.toLowerCase())}
+              value={inputValue}
+            />
+            {confusableMatch && (
+              <p className="text-xs text-muted-foreground">
+                {t("words.confusableHint", { word: inputValue })}
+              </p>
+            )}
+          </div>
           <button
             type="button"
             title={word}
@@ -228,13 +236,17 @@ const WordsPractice = observer(() => {
 
   const handleInputChange = useCallback(
     (word: string, value: string) => {
+      const confusables = words.getConfusables(word);
       const previous = inputStatesRef.current.get(word) ?? createPracticeInputState();
-      const decision = evaluatePracticeInput(previous, word, value, Date.now());
+      const decision = evaluatePracticeInput(previous, word, value, Date.now(), confusables);
       inputStatesRef.current.set(word, decision);
 
       words.setUserInput(word, value);
 
       const attempt = getAttemptState(word);
+      if (confusables.includes(value)) {
+        attempt.hintUsed = true;
+      }
       if (attempt.reviewed) {
         return;
       }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { ApiParseResult } from "@/lib/apiRoute";
 import { isValidWordToken } from "@/lib/lemma";
+import { sanitizeWordSenses, type WordSense } from "@/lib/wordSenses";
 
 type ApiField<T> = { ok: true; value: T } | { ok: false; error: string };
 
@@ -33,6 +34,11 @@ export const optionalText =
 export const wordToken = (): FieldParser<string> => (raw) => {
   const value = typeof raw === "string" ? raw.trim().toLowerCase() : "";
   return isValidWordToken(value) ? { ok: true, value } : { ok: false, error: "无效单词" };
+};
+
+export const optionalWordToken = (): FieldParser<string> => (raw) => {
+  if (raw === undefined || raw === null || raw === "") return { ok: true, value: "" };
+  return wordToken()(raw);
 };
 
 export const wordTokenList =
@@ -73,6 +79,39 @@ export const wordList =
       return { ok: false, error: "输入内容过长" };
     }
     return { ok: true, value: values };
+  };
+
+export interface WordSensesInput {
+  word: string;
+  senses: WordSense[];
+}
+
+export const wordSensesList =
+  (options: { maxItems: number }): FieldParser<WordSensesInput[]> =>
+  (raw) => {
+    if (!Array.isArray(raw) || raw.length === 0) {
+      return { ok: false, error: "无效单词列表" };
+    }
+    if (raw.length > options.maxItems) {
+      return { ok: false, error: "单词数量过多" };
+    }
+
+    const seen = new Set<string>();
+    const words: WordSensesInput[] = [];
+    for (const item of raw) {
+      const record = (item ?? {}) as { word?: unknown; senses?: unknown };
+      const word = typeof record.word === "string" ? record.word.trim().toLowerCase() : "";
+      if (!isValidWordToken(word) || seen.has(word)) continue;
+      const senses = sanitizeWordSenses(record.senses);
+      if (senses.length === 0) continue;
+      seen.add(word);
+      words.push({ word, senses });
+    }
+
+    if (words.length === 0) {
+      return { ok: false, error: "无效单词列表" };
+    }
+    return { ok: true, value: words };
   };
 
 export interface SentenceWordInput {

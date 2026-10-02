@@ -40,6 +40,7 @@ const zh = {
   "error.deleteWordFailed": "从云端删除单词失败",
   "error.resetFailed": "重置练习记录失败",
   "error.updateTranslationFailed": "更新释义失败，请稍后重试",
+  "error.updateConfusablesFailed": "更新易混词辨析失败，请稍后重试",
   "error.normalizeWordFailed": "归一化单词失败，请稍后重试",
   "error.wordNotFound": "未找到单词",
   "error.requestFailed": "请求失败，请稍后重试",
@@ -75,6 +76,7 @@ const zh = {
   "words.emptyLibraryDescription": "先添加单词，开始拼写练习。",
   "words.allReviewedTitle": "今天的复习已完成",
   "words.allReviewedDescription": "所有单词今天都已复习或达到上限，明天再来继续。",
+  "words.confusableHint": "「{word}」也在词库中，本题考的是它的近义词",
 
   "profile.title": "用户资料",
   "profile.loading": "加载您的资料...",
@@ -137,6 +139,16 @@ const zh = {
   "profile.normalizePartial":
     "已归一化 {renamed} 个单词，合并 {merged} 个；{failed} 个单词请求失败，可稍后重试",
   "profile.normalizeFailed": "归一化失败，请稍后重试",
+  "profile.confusablesTitle": "AI 易混词辨析",
+  "profile.confusablesDesc":
+    "找出词库中容易混淆的近义词（如 medicine 与 medication），重写中文释义使其可区分并生成辨析；练习中误输易混词时只提示不记错。",
+  "profile.confusablesButton": "刷新易混词辨析",
+  "profile.confusablesConfirm": "确定要刷新易混词辨析吗？",
+  "profile.confusablesConfirmDesc":
+    "AI 将扫描全部单词，为易混词重写中文释义并生成辨析（替换这些词现有的释义，不影响练习记录）。此操作不可撤销。",
+  "profile.confusablesSuccess": "已为 {count} 个易混词生成辨析",
+  "profile.confusablesNone": "没有发现容易混淆的单词",
+  "profile.confusablesFailed": "生成易混词辨析失败，请稍后重试",
   "profile.practiceTimeTitle": "每日练习时间",
   "profile.practiceTimeDesc": "统计停留在单词练习或造句练习页面且窗口处于激活状态的时长",
   "profile.weekdayMon": "一",
@@ -157,6 +169,8 @@ const zh = {
   "addWord.confirmAdd": "确认添加",
   "addWord.cancel": "取消",
   "addWord.addSuccess": "单词已添加",
+  "addWord.confusablesUpdated": "发现易混词，已更新 {count} 个单词的释义与辨析",
+  "addWord.confusablesFailed": "易混词辨析生成失败，可在个人资料页重试",
   "addWord.saveLemma": "保存原形：{word}",
   "addWord.keepOriginal": "保留原词：{word}",
   "addWord.existsTitle": "单词已存在",
@@ -199,6 +213,7 @@ const en: Record<TranslationKey, string> = {
   "error.deleteWordFailed": "Failed to delete word from cloud",
   "error.resetFailed": "Failed to reset practice records",
   "error.updateTranslationFailed": "Failed to update definitions, please try again",
+  "error.updateConfusablesFailed": "Failed to update confusable-word notes, please try again",
   "error.normalizeWordFailed": "Failed to normalize words, please try again",
   "error.wordNotFound": "Word not found",
   "error.requestFailed": "Request failed, please try again later",
@@ -235,6 +250,8 @@ const en: Record<TranslationKey, string> = {
   "words.allReviewedTitle": "All caught up for today",
   "words.allReviewedDescription":
     "Every word has been reviewed or hit the daily limit. Come back tomorrow.",
+  "words.confusableHint":
+    '"{word}" is also in your wordbook — this row asks for its easily-confused counterpart',
 
   "profile.title": "User Profile",
   "profile.loading": "Loading your profile...",
@@ -301,6 +318,16 @@ const en: Record<TranslationKey, string> = {
   "profile.normalizePartial":
     "Normalized {renamed} words and merged {merged}; {failed} words failed and can be retried later",
   "profile.normalizeFailed": "Failed to normalize words, please try again",
+  "profile.confusablesTitle": "AI Confusable Word Notes",
+  "profile.confusablesDesc":
+    "Find easily-confused words in your wordbook (e.g. medicine vs medication), rewrite their glosses to be distinguishable, and add contrast notes. Typing a confusable word during practice only shows a hint instead of recording an error.",
+  "profile.confusablesButton": "Refresh Confusable Notes",
+  "profile.confusablesConfirm": "Refresh confusable-word notes?",
+  "profile.confusablesConfirmDesc":
+    "AI will scan all words, rewrite the glosses of confusable words and add contrast notes, replacing their current definitions. Practice records are not affected. This cannot be undone.",
+  "profile.confusablesSuccess": "Generated contrast notes for {count} confusable words",
+  "profile.confusablesNone": "No confusable words found",
+  "profile.confusablesFailed": "Failed to generate confusable-word notes, please try again",
   "profile.practiceTimeTitle": "Daily Practice Time",
   "profile.practiceTimeDesc":
     "Time counted while the window is on the word or sentence practice page and is active",
@@ -322,6 +349,10 @@ const en: Record<TranslationKey, string> = {
   "addWord.confirmAdd": "Add",
   "addWord.cancel": "Cancel",
   "addWord.addSuccess": "Word added",
+  "addWord.confusablesUpdated":
+    "Confusable words found; updated glosses and notes for {count} words",
+  "addWord.confusablesFailed":
+    "Failed to generate confusable-word notes; retry from your profile page",
   "addWord.saveLemma": "Save base form: {word}",
   "addWord.keepOriginal": "Keep original: {word}",
   "addWord.existsTitle": "Word Already Exists",

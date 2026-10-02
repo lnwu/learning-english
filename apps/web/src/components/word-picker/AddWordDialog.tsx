@@ -29,7 +29,7 @@ interface TranslateResult {
 }
 
 const AddWordDialog = ({ word, onClose, onFinished }: AddWordDialogProps) => {
-  const { words, addWord } = useFirestoreWords();
+  const { words, addWord, refreshConfusables } = useFirestoreWords();
   const { t } = useLocale();
   const [translated, setTranslated] = useState<TranslateResult | null>(null);
   const [useOriginalFor, setUseOriginalFor] = useState<string | null>(null);
@@ -113,6 +113,19 @@ const AddWordDialog = ({ word, onClose, onFinished }: AddWordDialogProps) => {
       await addWord(finalWord, current.senses);
       toast({ title: t("addWord.addSuccess"), variant: "success" });
       onFinished?.();
+      void refreshConfusables({ word: finalWord, senses: current.senses })
+        .then((updated) => {
+          if (updated > 0) {
+            toast({
+              title: t("addWord.confusablesUpdated", { count: updated }),
+              variant: "success",
+            });
+          }
+        })
+        .catch((error) => {
+          console.error("Failed to refresh confusables:", error);
+          toast({ title: t("addWord.confusablesFailed"), variant: "destructive" });
+        });
     } catch (error) {
       console.error("Failed to add word:", error);
       toast({

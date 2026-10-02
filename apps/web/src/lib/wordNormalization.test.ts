@@ -9,6 +9,7 @@ const makeMap = (entries: Array<[string, string]>) => new Map(entries);
 const makeWord = (overrides: Partial<WordData> = {}): WordData => ({
   word: "attackers",
   translation: "攻击者",
+  confusables: [],
   memory: memoryAt(1000),
   stats: {
     ...initialStats(),
