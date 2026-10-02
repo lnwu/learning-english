@@ -12,7 +12,6 @@ import type { WordsRepo } from "@/lib/wordsRepo";
 import type { WordSense } from "@/lib/wordSenses";
 import type { Rating } from "@/lib/masteryModel";
 import type { NewQueueItem, QueueStorage, SyncQueueItem } from "@/lib/queueStorage";
-import { buildNormalizeDocPlan } from "@/lib/wordNormalization";
 
 const MAX_SYNC_RETRIES = 3;
 
@@ -379,37 +378,6 @@ export class WordsLedger {
     } catch (error) {
       console.error("Failed to update confusables:", error);
       throw new Error(tNow("error.updateConfusablesFailed"));
-    }
-  };
-
-  normalizeWordForms = async (
-    renames: Array<{ from: string; to: string }>,
-  ): Promise<{ renamed: number; merged: number }> => {
-    const repo = this.#repo;
-    if (!repo) {
-      throw new Error(tNow("error.notAuthenticated"));
-    }
-
-    const plan = renames.filter(({ from, to }) => from !== to && this.#words.hasWord(from));
-    if (plan.length === 0) return { renamed: 0, merged: 0 };
-
-    try {
-      await this.sync();
-
-      const docPlan = buildNormalizeDocPlan(plan, (word) => this.#words.getWordData(word));
-
-      if (docPlan.operations.length > 0) {
-        await repo.commitWordOperations(docPlan.operations);
-      }
-
-      docPlan.storeUpdates.forEach(({ from, to, data }) => {
-        this.#words.moveWord(from, to, data);
-      });
-
-      return { renamed: docPlan.renamed, merged: docPlan.merged };
-    } catch (error) {
-      console.error("Failed to normalize word forms:", error);
-      throw new Error(tNow("error.normalizeWordFailed"));
     }
   };
 

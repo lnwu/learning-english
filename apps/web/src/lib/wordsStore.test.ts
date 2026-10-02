@@ -1,11 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import {
-  Words,
-  isQueueItemStale,
-  mergeSnapshotIntoStore,
-  mergeWordData,
-  type WordData,
-} from "./wordsStore";
+import { Words, isQueueItemStale, mergeSnapshotIntoStore, type WordData } from "./wordsStore";
 import { MAX_INPUT_TIMES, MAX_REVIEWS, type WordMemory } from "./masteryModel";
 import { DAY_MS } from "./time";
 import { getMasteryLevelIndex } from "./masteryLevels";
@@ -285,42 +279,6 @@ describe("practiceStats", () => {
 
     expect(practiceStats.map((item) => item.word)).toEqual(["apple", "banana"]);
     expect(practiceStats[0]).toMatchObject({ reviews: 1, hints: 1 });
-  });
-});
-
-describe("mergeWordData", () => {
-  it("取复习更晚的记忆、最大统计与并集日志", () => {
-    const target = makeWordData("apple", {
-      memory: memory({ lastReviewAt: 2000, stability: 10, state: "review" }),
-      stats: stats({ reviewDays: 2, hints: 1 }),
-      inputTimes: [3],
-      reviews: [{ id: "r2", at: 2000, g: 3, h: false, r: 0.9, s: 10, d: 5 }],
-    });
-    const source = makeWordData("apples", {
-      memory: memory({ lastReviewAt: 1000, stability: 2, state: "review" }),
-      stats: stats({ reviewDays: 1 }),
-      inputTimes: [1, 2],
-      reviews: [{ id: "r1", at: 1000, g: 3, h: false, r: null, s: 2, d: 5 }],
-    });
-
-    const merged = mergeWordData(target, source);
-
-    expect(merged.memory.lastReviewAt).toBe(2000);
-    expect(merged.stats.reviewDays).toBe(2);
-    expect(merged.stats.hints).toBe(1);
-    expect(merged.inputTimes).toEqual([3, 1, 2]);
-    expect(merged.reviews.map((entry) => entry.id)).toEqual(["r1", "r2"]);
-  });
-
-  it("复习时间相同时取稳定度更低的一侧", () => {
-    const target = makeWordData("apple", {
-      memory: memory({ lastReviewAt: 1000, stability: 2, state: "review" }),
-    });
-    const source = makeWordData("apples", {
-      memory: memory({ lastReviewAt: 1000, stability: 10, state: "review" }),
-    });
-
-    expect(mergeWordData(target, source).memory.stability).toBe(2);
   });
 });
 

@@ -14,7 +14,6 @@ export type ApiParseResult<T> = { ok: true; body: T } | { ok: false; response: N
 export const API_RATE_LIMITS = {
   translate: { name: "translate", limit: 30 },
   translateCompare: { name: "translate/compare", limit: 10 },
-  normalizeWords: { name: "normalize", limit: 60 },
   regenerateDefinitions: { name: "regenerate", limit: 60 },
   confusables: { name: "confusables", limit: 20 },
   sentenceGenerate: { name: "sentence/generate", limit: 10 },

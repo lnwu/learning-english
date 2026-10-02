@@ -441,29 +441,6 @@ describe("WordsLedger 词库命令", () => {
     ]);
   });
 
-  it("归一化时把屈折形式合并进已有原形", async () => {
-    const { repo, words, ledger } = setup();
-    repo.emit([
-      makeDoc("apple", {
-        memory: memory({ state: "review", stability: 2.3065, lastReviewAt: 1000 }),
-        stats: { ...initialStats(), reviewDays: 1 },
-        reviews: [reviewEntry("r1", 1000)],
-      }),
-      makeDoc("apples", {
-        memory: memory({ state: "review", stability: 2.3065, lastReviewAt: 2000 }),
-        stats: { ...initialStats(), reviewDays: 2 },
-        reviews: [reviewEntry("r2", 2000)],
-      }),
-    ]);
-
-    const result = await ledger.normalizeWordForms([{ from: "apples", to: "apple" }]);
-
-    expect(result).toEqual({ renamed: 0, merged: 1 });
-    expect(words.hasWord("apples")).toBe(false);
-    expect(words.getWordData("apple")!.reviews).toHaveLength(2);
-    expect(repo.operations.flat().map((operation) => operation.type)).toEqual(["update", "delete"]);
-  });
-
   it("重置练习记录时清空队列并回到 new", async () => {
     const { repo, queue, words, ledger } = setup();
     repo.emit([makeDoc("apple")]);

@@ -7,7 +7,7 @@ Next.js（App Router）+ Firebase（Auth + Firestore）+ MobX + Tailwind CSS 的
 - 词库练习：按中文提示拼写单词，练习结果写入熟练度模型
 - 造句练习：AI 生成语境句并批改，不写入熟练度数据
 - AI 模型：DeepSeek、OpenCode Zen（Claude / Gemini）与 MiMo 可选，添加单词时支持多模型对比释义
-- Profile：熟练度分布、练习热力图、单词表现、批量归一化与重新生成释义
+- Profile：熟练度分布、练习热力图、单词表现、重新生成释义
 - 多语言：`zh` / `en`，locale 持久化在 `locale` cookie
 
 ## 常用命令
