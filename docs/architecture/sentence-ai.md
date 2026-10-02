@@ -24,7 +24,7 @@
 
 ## 翻译与释义
 
-- `/api/translate` 一次调用同时返回 `lemma`（词典原形）与结构化 `senses`（只列学习者日常会遇到的常用义项，按使用频率从高到低，最常用在前）。释义与归一化的 prompt 用英文写给模型（面向模型的指令统一用英文，中文只作为 `chinese` 字段的值），含义项选择的约束在 `lib/aiPrompts.ts` 的 `SENSE_SELECTION_RULE`，translate 与 regenerate 共用。不使用 Google Translate/Datamuse 等免费源作回退：质量与可用性不稳定。模型判定非有效单词时 `senses: null`（前端提示、不落库）；调用失败返回错误且前端不落库。
+- `/api/translate` 一次调用同时返回 `lemma`（词典原形）与结构化 `senses`（只列学习者日常会遇到的常用义项，按使用频率从高到低，最常用在前）。释义的 prompt 用英文写给模型（面向模型的指令统一用英文，中文只作为 `chinese` 字段的值），含义项选择的约束在 `lib/aiPrompts.ts` 的 `SENSE_SELECTION_RULE`，translate 与 regenerate 共用。不使用 Google Translate/Datamuse 等免费源作回退：质量与可用性不稳定。模型判定非有效单词时 `senses: null`（前端提示、不落库）；调用失败返回错误且前端不落库。
 - 义项校验统一 `sanitizeWordSenses`（`lib/wordSenses.ts`），`/api/translate` 与 `regenerate-definitions` 共用，防止模型输出超长字段撑大文档（写入前的第一道清洗）。`WordSense` 类型与 `translation` 字符串的编解码（`encodeSenses`/`decodeSenses`）同在 `lib/wordSenses.ts`；写路径由 `lib/wordDoc.ts` 的 `translationFields` 统一编码，调用方与组件只传结构化义项。
 - translate 的 prompt 与解析在 `lib/wordLookup.ts`：`parseWordLookupResult` 负责 lemma 清洗、义项清洗与非单词判定（`senses: null`），`isWord` 为真但义项全非法时抛 502；路由只做取参与缓存读写。
 - 翻译缓存（`translationCache.ts`）：L1 进程内 LRU + L2 Redis（30 天），key 前缀带版本号（见该文件的 `CACHE_KEY_PREFIX`，不在文档里复述具体版本），只存 `senses` 非空的成功结果。默认模型（`deepseek/deepseek-flash`）用无模型后缀的 key，其他模型在 key 里带上模型 ID，避免不同模型互相污染。**改 translate 的 prompt 或默认模型必须 bump 前缀**，否则旧释义会在缓存里长期复用。
@@ -52,7 +52,7 @@
 
 - 用户选择的模型存在 Firestore `users/{uid}` 文档的 `aiModel` 字段（`lib/aiModelPreference.ts`），登录后加载、改完立即写回，登出回到默认值。不改用 localStorage：模型选择应当跟账号走，且 `users/{uid}` 根文档的读写已在现有安全规则内。
 - 服务端在根 layout 里把**已启用**的模型清单（Key 已配置的那些）传给客户端 Provider（`hooks/useAiModel.tsx`），Profile 页用它渲染选择器、添加单词弹窗用它渲染对比选项；不在客户端重复判定 Key 是否存在。
-- `postJson` 把当前模型注入每个请求体的 `model` 字段，各路由用 `optionalAiModelId()` 解析：翻译、重新生成、归一化、区分、造句生成与批改全部跟随同一个设置，缺省（字段为空或未传）等价于默认模型。
+- `postJson` 把当前模型注入每个请求体的 `model` 字段，各路由用 `optionalAiModelId()` 解析：翻译、重新生成、区分、造句生成与批改全部跟随同一个设置，缺省（字段为空或未传）等价于默认模型。
 
 ## 测试边界
 

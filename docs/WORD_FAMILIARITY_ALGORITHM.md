@@ -175,7 +175,6 @@ new 显示为未练习、不计分。分数只用于展示；调度只由 S、R 
 - `reviews`：按 `id` 并集去重，按 `at` 升序，保留最近 200 条。
 - `stats`：`reviewDays`、`hints` 取较大值；`lastReviewDay` 取较晚日期；`dailyReviews` 同日取较大值，异日跟随较晚的日期。
 - `inputTimes`：合并后保留最近 20 条。
-- 单词归一化导致两个文档合并时使用同一组规则：`memory` 按 `lastReviewAt`、`reviews` 并集、`stats` 取大、`inputTimes` 取最近 20 条。
 - 写入以单词文档为单位，沿用词库同步的队列、分片与失败提示机制。
 
 ## 参数总表

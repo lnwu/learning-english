@@ -40,9 +40,6 @@ interface WordsContextValue {
   resetPracticeRecords: () => Promise<void>;
   updateTranslations: (updates: Array<{ word: string; senses: WordSense[] }>) => Promise<void>;
   refreshConfusables: (focus?: { word: string; senses: WordSense[] }) => Promise<number>;
-  normalizeWordForms: (
-    renames: Array<{ from: string; to: string }>,
-  ) => Promise<{ renamed: number; merged: number }>;
   loading: boolean;
   error: string | null;
 }
@@ -161,7 +158,6 @@ export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
       resetPracticeRecords: ledger.resetPracticeRecords,
       updateTranslations: ledger.updateTranslations,
       refreshConfusables,
-      normalizeWordForms: ledger.normalizeWordForms,
       loading: status.loading,
       error: status.error,
     }),

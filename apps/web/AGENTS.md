@@ -42,10 +42,10 @@
 
 ### 模块边界
 
-- `lib/wordsLedger.ts` 的 `WordsLedger` 是练习旅程的唯一写入口：记分入队、快照合并、过期清理、分片提交、增删改/归一化/重置与同步状态都在这里；构造时注入模块级 `words` 单例、按 effective uid 构造的 `WordsRepo` 与 `QueueStorage`，不依赖 React 即可测试。
+- `lib/wordsLedger.ts` 的 `WordsLedger` 是练习旅程的唯一写入口：记分入队、快照合并、过期清理、分片提交、增删改/重置与同步状态都在这里；构造时注入模块级 `words` 单例、按 effective uid 构造的 `WordsRepo` 与 `QueueStorage`，不依赖 React 即可测试。
 - `hooks/useFirestoreWords.tsx` 是 context 组合层：构造 ledger、用 `useSyncExternalStore` 订阅其状态、接线 30s 定时 / `visibilitychange` / `online` 触发与 toast，提供 `WordsProvider`、`useFirestoreWords`、`useSyncStatus`、`useWordsRepo`。
 - `lib/queueStorage.ts` 是同步队列的存储端口（`load`/`get`/`save`/`removeByIds`/`clear`）：`createLocalStorageQueueStorage` 按 `sync_queue:{uid}:{wordId}` 每词一条，`createNoopQueueStorage` 供未登录。去重、重试上限与过期判定属于 ledger 的策略，不要下沉进存储适配器。
-- 纯逻辑位于 `lib/wordsStore.ts`、`lib/wordSync.ts`、`lib/wordNormalization.ts`、`lib/chunkedCommit.ts` 并配有测试；`lib/wordsRepo.ts` 是唯一接触 Firestore SDK 的模块（订阅、批量写、practiceTime），按 effective uid 构造并通过 `batchLimit` 暴露单次批量上限，`lib/firebase.ts` 惰性创建 app/db/auth（`getDb()`/`getAuthInstance()`）。动机与细节见 `docs/architecture/word-sync.md`。
+- 纯逻辑位于 `lib/wordsStore.ts`、`lib/wordSync.ts`、`lib/chunkedCommit.ts` 并配有测试；`lib/wordsRepo.ts` 是唯一接触 Firestore SDK 的模块（订阅、批量写、practiceTime），按 effective uid 构造并通过 `batchLimit` 暴露单次批量上限，`lib/firebase.ts` 惰性创建 app/db/auth（`getDb()`/`getAuthInstance()`）。动机与细节见 `docs/architecture/word-sync.md`。
 - 单词文档的字段投影与解析集中在 `lib/wordDoc.ts`（`translationFields`/`confusableFields`/`newWordDocFields`/`practiceFields`/`attemptUpdateFields`/`resetPracticeFields`/`parseWordDoc`）：新增同步字段时只改 `WordData`、`SyncableWordData` 与这个文件，不要在调用方内联字段清单。`translation` 的字符串形态由 `lib/wordSenses.ts` 的 `encodeSenses`/`decodeSenses` 负责，写路径经 `translationFields` 编码，调用方只传结构化 `WordSense[]`。
 
 ### 必须保持的行为
@@ -55,8 +55,8 @@
 - 派生数据使用 `Words` computed getter；写入口只通过 `Words` 的具名命令修改数据。练习数据重置走 `resetPracticeRecords()`，由 store 完成重置并返回待落库清单，不要在调用方原地修改 `WordData`。
 - `mergeSnapshotIntoStore` 必须保持增量合并及现有支配判定，不得改成全量替换 store 内容；支配判定按 `memory.lastReviewAt`，stale 判定统一使用 `collectStaleQueueItemIds(merged, queue)`，不要混用快照与 `byId` 视图。
 - 复习时间取客户端真实时刻写入 `memory.lastReviewAt`，不得改用同步时刻。
-- 分片提交使用 `commitInChunks`（纯执行器，`chunkSize` 取自 `WordsRepo.batchLimit`），Firestore 写入统一走 `lib/wordsRepo.ts` 的 `commitWordOperations`（按 `batchLimit` 分片、一次调用一个批次序列，保住归一化的原子性）；同步载荷、失败分类、过期队列和队列处置集中在 `lib/wordSync.ts` 的 `runWordSync`，由 `WordsLedger.sync()` 调用，不要内联回 hook。队列超过重试上限必须跨片汇总后只提示一次 `sync.dataLost`（ledger 递增 `dataLostCount`，provider 提示），localStorage 写失败回退内存必须提示 `sync.storageFailed`（存储适配器暴露 `usingMemoryFallback`，ledger 置 `storageFailed`）。
-- `normalizeWordForms` 先 `syncToFirestore()` 并按计划落库，Firestore 成功后才更新 store；调整合并或上限语义时同步 `lib/masteryModel.ts` 中的上限常量。`updateTranslations` 先即时更新 store，再 batch 写 `translation`，由 `onSnapshot` 幂等合并兜底。
+- 分片提交使用 `commitInChunks`（纯执行器，`chunkSize` 取自 `WordsRepo.batchLimit`），Firestore 写入统一走 `lib/wordsRepo.ts` 的 `commitWordOperations`（按 `batchLimit` 分片、一次调用一个批次序列）；同步载荷、失败分类、过期队列和队列处置集中在 `lib/wordSync.ts` 的 `runWordSync`，由 `WordsLedger.sync()` 调用，不要内联回 hook。队列超过重试上限必须跨片汇总后只提示一次 `sync.dataLost`（ledger 递增 `dataLostCount`，provider 提示），localStorage 写失败回退内存必须提示 `sync.storageFailed`（存储适配器暴露 `usingMemoryFallback`，ledger 置 `storageFailed`）。
+- 调整快照合并或上限语义时同步 `lib/masteryModel.ts` 中的上限常量。`updateTranslations` 先即时更新 store，再 batch 写 `translation`，由 `onSnapshot` 幂等合并兜底。
 - 练习页输入判定使用 `lib/practiceInput.ts` 与单个 `inputStatesRef`：只有计时有效的逐字输入由 `resolveReview` 写入复习，粘贴/联想补全不产生复习；输入是词库内易混词（`WordData.confusables`）的前缀时不记错误，练习页给出提示并按提示计 Hard；`WordRow` 保持独立 observer，父组件渲染路径不读 `words.userInputs`。
 - `PracticeHeatmap` 保持 `memo`、只接收 `practiceTime`，网格构建使用 `useMemo`；纯网格、分档与记账逻辑（`PracticeTimeRecorder`）都位于 `lib/practiceTime.ts`。
 - 练习时间由 `lib/practiceTime.ts` 的 `PracticeTimeRecorder` 记账（注入 `writeSeconds` 与时钟）：只在 visible + focus 时累计，每 60 秒把整秒用 `increment` 写入 `practiceTime/{YYYY-MM-DD}` 的 `seconds`，失败时把秒数放回池中重试，不足一秒的结余留到下次；`usePracticeTimeTracker` 只接线事件与定时器。
@@ -71,10 +71,9 @@
 ## Profile 与批量 AI 操作
 
 - `profile/page.tsx` 只保留账号、语言、热力图、统计、熟练度、单词列表及删除/重置确认；批量 AI 操作放在 `profile/ProfileAiSection.tsx`。
-- 归一化链路为 `/api/normalize-words`（每批不超过 50）→ `resolveRenamePlan` → `normalizeWordForms`；消息构造与解析位于 `lib/normalizeWords.ts`，lemma 清洗复用 `lib/lemma.ts`。
 - 重新生成释义调用 `/api/regenerate-definitions`（每批不超过 50）；`senses: null` 的词保留原释义，只通过 `updateTranslations` 修改 `translation`，不触碰练习数据；前端串行分批并显示进度。translate 与 regenerate 只产生 `pos`/`chinese`/`english`（共用 `lib/aiPrompts.ts` 的 `SENSE_FIELD_LINES`），区分说明 `note` 只由 `/api/confusables` 产生。
 - 区分易混词调用 `/api/confusables`（单次请求，词数上限 `MAX_CONFUSABLES_WORDS`）：prompt 与解析在 `lib/confusables.ts`，只与词库内已有的词对比，同组词由解析层对称化（不做传递闭包），提到词库外单词或提到自身的 `note` 被丢弃；写入口是 `useFirestoreWords` 的 `refreshConfusables`（全量区分做完整重算，添加新词传 `focus` 只更新新词与同组词），落库经 `updateConfusables`；送模型的 `chinese` 先去掉尾部括号限定语。
-- 两条批量流程共用 `lib/batchAiTask.ts` 的 `runBatchedAiTask`（串行分批、进度回调、单批失败不中断），失败单词数用 `countFailedWords` 统计；部分批次失败必须提示（`profile.regeneratePartial` / `profile.normalizePartial`），不要静默当成全部成功。熟练度均值与分布用 `lib/masteryStats.ts`，热力图月份文案用 `lib/practiceTime.ts` 的 `formatPracticeMonthLabel`。
+- 重新生成释义的批量流程使用 `lib/batchAiTask.ts` 的 `runBatchedAiTask`（串行分批、进度回调、单批失败不中断），失败单词数用 `countFailedWords` 统计；部分批次失败必须提示（`profile.regeneratePartial`），不要静默当成全部成功。熟练度均值与分布用 `lib/masteryStats.ts`，热力图月份文案用 `lib/practiceTime.ts` 的 `formatPracticeMonthLabel`。
 
 ## 多语言
 
@@ -89,7 +88,7 @@
 - 用户选定模型存在 Firestore `users/{uid}` 文档的 `aiModel` 字段，已启用模型的清单由根 layout 服务端计算并经 `hooks/useAiModel.tsx` 下发；`postJson` 自动注入 `model` 字段，各路由用 `optionalAiModelId()` 解析，不要在各调用点手写模型参数。
 - 路由骨架统一 `withApiPost`；translate 的 prompt 与解析在 `lib/wordLookup.ts`，造句生成/批改的 prompt 与解析在 `lib/sentenceMessages.ts`（生成响应会校验目标词为候选词子集并限制数量，批改响应会夹取 `score`、截断超长字段、过滤 `issues`），批改结果（含「完全相同直接满分」快路径）都由该文件构造，路由只做取参与返回。
 - 造句抽词为从词库中均匀随机抽取至多 `SENTENCE_WORD_POOL_SIZE` 个候选词，由模型从中挑出 2-3 个能自然共现的词作为本题目标词并随响应返回，逻辑在 `lib/sentenceWords.ts`（纯函数 + 测试）；单词数下限统一用 `MIN_SENTENCE_WORDS`，不足时 hook 置 `insufficientWords` 布尔状态，错误文案走 `tNow`。
-- 翻译、归一化、重新生成释义共用的 prompt 片段（lemma 还原规则、义项字段说明）在 `lib/aiPrompts.ts`，修改片段等同修改 translate prompt，需提升缓存 key 前缀；翻译缓存按模型区分（默认模型沿用原前缀，其他模型在 key 中带模型 ID），不要把不同模型的结果写进同一个 key；进程内有上限的缓存/计数 Map 统一用 `lib/boundedMap.ts` 的 `setBounded` 淘汰。
+- 翻译与重新生成释义共用的 prompt 片段（lemma 还原规则、义项字段说明）在 `lib/aiPrompts.ts`，修改片段等同修改 translate prompt，需提升缓存 key 前缀；翻译缓存按模型区分（默认模型沿用原前缀，其他模型在 key 中带模型 ID），不要把不同模型的结果写进同一个 key；进程内有上限的缓存/计数 Map 统一用 `lib/boundedMap.ts` 的 `setBounded` 淘汰。
 - 限流与缓存的 Redis 客户端统一使用 `lib/redis.ts` 的 `getRedis()`；未配置 Upstash 时仅在本地开发回退进程内实现。
 - 义项清洗统一使用 `lib/wordSenses.ts` 的 `sanitizeWordSenses`，由翻译与重新生成释义接口共用；`WordSense` 类型、编码（`encodeSenses`）与解析（`decodeSenses`）也都在这个文件。
 - 批改前判等与满分快路径统一走 `lib/sentenceMessages.ts` 的 `isExactMatchAnswer` + `buildExactMatchResult`（内部复用 `lib/sentenceCompare.ts` 的 `normalizeForComparison`），与模型批改路径产出同一份 `CheckResult`。

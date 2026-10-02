@@ -6,8 +6,6 @@ import { Button, ConfirmDialog } from "@/components/ui";
 import { useFirestoreWords, useLocale, toast } from "@/hooks";
 import { postJson } from "@/lib/apiClient";
 import { MAX_REGENERATE_BATCH_SIZE, type RegenerateResult } from "@/lib/regenerateDefinitions";
-import { MAX_NORMALIZE_BATCH_SIZE, type NormalizeResult } from "@/lib/normalizeWords";
-import { resolveRenamePlan } from "@/lib/wordNormalization";
 import { countFailedWords, runBatchedAiTask } from "@/lib/batchAiTask";
 import type { WordSense } from "@/lib/wordSenses";
 import { SettingRow } from "./SettingRow";
@@ -96,10 +94,9 @@ const BatchAiActionRow = ({
 };
 
 export const ProfileAiSection = observer(() => {
-  const { words, updateTranslations, normalizeWordForms, refreshConfusables } = useFirestoreWords();
+  const { words, updateTranslations, refreshConfusables } = useFirestoreWords();
   const { t } = useLocale();
   const regenerate = useBatchAiAction(t("profile.regenerateFailed"));
-  const normalize = useBatchAiAction(t("profile.normalizeFailed"));
   const confusables = useBatchAiAction(t("profile.confusablesFailed"));
 
   const totalWords = words.wordCount;
@@ -153,57 +150,6 @@ export const ProfileAiSection = observer(() => {
     });
   };
 
-  const handleNormalizeWords = () => {
-    const allWords = words.knownWords();
-    if (allWords.length === 0) return;
-
-    return normalize.run(async (onProgress) => {
-      const outcomes = await runBatchedAiTask({
-        words: allWords,
-        batchSize: MAX_NORMALIZE_BATCH_SIZE,
-        runBatch: (batch) =>
-          postJson<{ results?: NormalizeResult[] }>(
-            "/api/normalize-words",
-            { words: batch },
-            t("profile.normalizeFailed"),
-          ),
-        onProgress,
-      });
-
-      const renames: Array<{ from: string; to: string }> = [];
-      for (const outcome of outcomes) {
-        if ("error" in outcome) {
-          console.error("Normalize batch failed:", outcome.error);
-          continue;
-        }
-        const lemmaByWord = new Map(
-          (outcome.result.results ?? []).map((item) => [item.word, item.lemma]),
-        );
-        renames.push(...resolveRenamePlan(outcome.words, lemmaByWord));
-      }
-
-      const failedWords = countFailedWords(outcomes);
-      if (failedWords === allWords.length) {
-        toast({ title: t("profile.normalizeFailed"), variant: "destructive" });
-        return;
-      }
-
-      const { renamed, merged } =
-        renames.length > 0 ? await normalizeWordForms(renames) : { renamed: 0, merged: 0 };
-
-      if (failedWords > 0) {
-        toast({
-          title: t("profile.normalizePartial", { renamed, merged, failed: failedWords }),
-          variant: "destructive",
-        });
-      } else if (renamed === 0 && merged === 0) {
-        toast({ title: t("profile.normalizeNone"), variant: "success" });
-      } else {
-        toast({ title: t("profile.normalizeSuccess", { renamed, merged }), variant: "success" });
-      }
-    });
-  };
-
   const handleConfusables = () =>
     confusables.run(async () => {
       const updated = await refreshConfusables();
@@ -237,16 +183,6 @@ export const ProfileAiSection = observer(() => {
         confirmTitle={t("profile.regenerateConfirm")}
         confirmDescription={t("profile.regenerateConfirmDesc")}
         onConfirm={handleRegenerateAll}
-      />
-      <BatchAiActionRow
-        action={normalize}
-        totalWords={totalWords}
-        title={t("profile.normalizeTitle")}
-        description={t("profile.normalizeDesc")}
-        buttonLabel={t("profile.normalizeButton")}
-        confirmTitle={t("profile.normalizeConfirm")}
-        confirmDescription={t("profile.normalizeConfirmDesc")}
-        onConfirm={handleNormalizeWords}
       />
     </>
   );

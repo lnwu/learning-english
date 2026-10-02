@@ -190,12 +190,6 @@ export class Words {
     this.wordData.delete(word);
   }
 
-  moveWord(from: string, to: string, data: WordData) {
-    this.wordData.delete(from);
-    this.wordData.set(to, data);
-    this.userInputs.delete(from);
-  }
-
   removeAllWords() {
     this.wordData.clear();
   }
@@ -384,16 +378,6 @@ export class Words {
     return stats;
   }
 }
-
-export const mergeWordData = (
-  target: Readonly<WordData>,
-  source: Readonly<WordData>,
-): WordData => ({
-  ...target,
-  ...mergePractice(target, source),
-  createdAt:
-    target.createdAt.getTime() <= source.createdAt.getTime() ? target.createdAt : source.createdAt,
-});
 
 const isWordDataEqual = (a: Readonly<WordData>, b: Readonly<WordData>): boolean =>
   a.id === b.id &&

@@ -41,7 +41,6 @@ const zh = {
   "error.resetFailed": "重置练习记录失败",
   "error.updateTranslationFailed": "更新释义失败，请稍后重试",
   "error.updateConfusablesFailed": "更新易混词区分失败，请稍后重试",
-  "error.normalizeWordFailed": "归一化单词失败，请稍后重试",
   "error.wordNotFound": "未找到单词",
   "error.requestFailed": "请求失败，请稍后重试",
 
@@ -130,18 +129,6 @@ const zh = {
   "profile.regenerateSuccess": "已重新生成 {success} 个单词的释义",
   "profile.regeneratePartial": "已重新生成 {success} 个单词的释义，{skipped} 个保留原释义",
   "profile.regenerateFailed": "重新生成释义失败，请稍后重试",
-  "profile.normalizeTitle": "归一化词形",
-  "profile.normalizeDesc":
-    "让 AI 把词库中已有的屈折形式（复数、过去式等）统一为词典原形；重复的单词会合并为一条，练习记录一并保留。",
-  "profile.normalizeButton": "归一化全部单词",
-  "profile.normalizeConfirm": "确定要归一化全部单词吗？",
-  "profile.normalizeConfirmDesc":
-    "AI 会检查当前所有单词，把屈折形式还原为词典原形；若原形已存在，则合并为一条并保留两边的练习记录。此操作不可撤销。",
-  "profile.normalizeSuccess": "已归一化 {renamed} 个单词，合并 {merged} 个重复单词",
-  "profile.normalizeNone": "没有需要归一化的单词",
-  "profile.normalizePartial":
-    "已归一化 {renamed} 个单词，合并 {merged} 个；{failed} 个单词请求失败，可稍后重试",
-  "profile.normalizeFailed": "归一化失败，请稍后重试",
   "profile.confusablesTitle": "AI 区分易混词",
   "profile.confusablesDesc":
     "找出词库中容易混淆的近义词（如 medicine 与 medication），只与词库内的词对比：重写中文释义使其可区分，并生成一句区分说明；练习中误输易混词时只提示不记错。",
@@ -223,7 +210,6 @@ const en: Record<TranslationKey, string> = {
   "error.resetFailed": "Failed to reset practice records",
   "error.updateTranslationFailed": "Failed to update definitions, please try again",
   "error.updateConfusablesFailed": "Failed to update confusable-word notes, please try again",
-  "error.normalizeWordFailed": "Failed to normalize words, please try again",
   "error.wordNotFound": "Word not found",
   "error.requestFailed": "Request failed, please try again later",
 
@@ -319,18 +305,6 @@ const en: Record<TranslationKey, string> = {
   "profile.regeneratePartial":
     "Regenerated definitions for {success} words, kept {skipped} unchanged",
   "profile.regenerateFailed": "Failed to regenerate definitions, please try again",
-  "profile.normalizeTitle": "Normalize Word Forms with AI",
-  "profile.normalizeDesc":
-    "Let AI convert inflected forms in your library (plurals, past tense, etc.) to their dictionary base form. Duplicates are merged into one entry and both sets of practice records are kept.",
-  "profile.normalizeButton": "Normalize All Words",
-  "profile.normalizeConfirm": "Normalize all words?",
-  "profile.normalizeConfirmDesc":
-    "AI will check all words and convert inflected forms back to their base form. If a base form already exists, the two entries are merged and both sets of practice records are kept. This action cannot be undone.",
-  "profile.normalizeSuccess": "Normalized {renamed} words, merged {merged} duplicates",
-  "profile.normalizeNone": "No words need normalization",
-  "profile.normalizePartial":
-    "Normalized {renamed} words and merged {merged}; {failed} words failed and can be retried later",
-  "profile.normalizeFailed": "Failed to normalize words, please try again",
   "profile.confusablesTitle": "AI Confusable Word Notes",
   "profile.confusablesDesc":
     "Find easily-confused words in your wordbook (e.g. medicine vs medication), rewrite their glosses to be distinguishable, and add contrast notes. Typing a confusable word during practice only shows a hint instead of recording an error.",
