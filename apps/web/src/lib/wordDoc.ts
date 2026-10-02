@@ -11,10 +11,7 @@ import {
   type WordStats,
 } from "@/lib/masteryModel";
 import { encodeSenses, type WordSense } from "@/lib/wordSenses";
-import { isValidWordToken } from "@/lib/lemma";
 import type { SyncableWordData, WordData } from "@/lib/wordsStore";
-
-export const MAX_CONFUSABLES_PER_WORD = 8;
 
 export const translationFields = (senses: WordSense[]) => ({
   translation: encodeSenses(senses),
@@ -118,14 +115,8 @@ const parseReview = (value: unknown): ReviewLogEntry | null => {
 
 export const parseWordDoc = (id: string, data: DocumentData): WordData => {
   const createdAt = data.createdAt?.toDate() ?? new Date();
-  const confusables = Array.isArray(data.confusables)
-    ? Array.from(
-        new Set(
-          data.confusables
-            .map((item: unknown) => (typeof item === "string" ? item.trim().toLowerCase() : ""))
-            .filter((item: string) => isValidWordToken(item) && item !== data.word),
-        ),
-      ).slice(0, MAX_CONFUSABLES_PER_WORD)
+  const confusables: string[] = Array.isArray(data.confusables)
+    ? data.confusables.filter((item: unknown): item is string => typeof item === "string")
     : [];
   const inputTimes = Array.isArray(data.inputTimes)
     ? data.inputTimes
