@@ -10,30 +10,30 @@ interface BatchTaskFailure {
 
 export type BatchTaskOutcome<T> = BatchTaskSuccess<T> | BatchTaskFailure;
 
-export const chunkWords = (words: readonly string[], batchSize: number): string[][] => {
-  const batches: string[][] = [];
-  for (let i = 0; i < words.length; i += batchSize) {
-    batches.push(words.slice(i, i + batchSize));
+export const chunkItems = <T>(items: readonly T[], batchSize: number): T[][] => {
+  const batches: T[][] = [];
+  for (let i = 0; i < items.length; i += batchSize) {
+    batches.push(items.slice(i, i + batchSize));
   }
   return batches;
 };
 
-export const runBatchedAiTask = async <T>(input: {
-  words: readonly string[];
-  batchSize: number;
+export const runAiBatches = async <T>(input: {
+  batches: ReadonlyArray<readonly string[]>;
   runBatch: (batch: string[]) => Promise<T>;
   onProgress?: (completed: number) => void;
 }): Promise<BatchTaskOutcome<T>[]> => {
   const outcomes: BatchTaskOutcome<T>[] = [];
   let completed = 0;
 
-  for (const batch of chunkWords(input.words, input.batchSize)) {
+  for (const batch of input.batches) {
+    const words = [...batch];
     try {
-      outcomes.push({ words: batch, result: await input.runBatch(batch) });
+      outcomes.push({ words, result: await input.runBatch(words) });
     } catch (error) {
-      outcomes.push({ words: batch, error });
+      outcomes.push({ words, error });
     }
-    completed += batch.length;
+    completed += words.length;
     input.onProgress?.(completed);
   }
 

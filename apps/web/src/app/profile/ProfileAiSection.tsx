@@ -6,7 +6,7 @@ import { Button, ConfirmDialog } from "@/components/ui";
 import { useFirestoreWords, useLocale, toast } from "@/hooks";
 import { postJson } from "@/lib/apiClient";
 import { MAX_REGENERATE_BATCH_SIZE, type RegenerateResult } from "@/lib/regenerateDefinitions";
-import { countFailedWords, runBatchedAiTask } from "@/lib/batchAiTask";
+import { countFailedWords, chunkItems, runAiBatches } from "@/lib/batchAiTask";
 import type { WordSense } from "@/lib/wordSenses";
 import { SettingRow } from "./SettingRow";
 
@@ -106,9 +106,8 @@ export const ProfileAiSection = observer(() => {
     if (allWords.length === 0) return;
 
     return regenerate.run(async (onProgress) => {
-      const outcomes = await runBatchedAiTask({
-        words: allWords,
-        batchSize: MAX_REGENERATE_BATCH_SIZE,
+      const outcomes = await runAiBatches<{ results?: RegenerateResult[] }>({
+        batches: chunkItems(allWords, MAX_REGENERATE_BATCH_SIZE),
         runBatch: (batch) =>
           postJson<{ results?: RegenerateResult[] }>(
             "/api/regenerate-definitions",
@@ -151,8 +150,15 @@ export const ProfileAiSection = observer(() => {
   };
 
   const handleConfusables = () =>
-    confusables.run(async () => {
-      const updated = await refreshConfusables();
+    confusables.run(async (onProgress) => {
+      const { updated, failed } = await refreshConfusables({ onProgress });
+      if (failed > 0) {
+        toast({
+          title: t("profile.confusablesPartial", { success: updated, failed }),
+          variant: "destructive",
+        });
+        return;
+      }
       toast({
         title:
           updated > 0

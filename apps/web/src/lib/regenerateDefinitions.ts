@@ -2,7 +2,7 @@ import { extractResultItems, type ChatMessage } from "@/lib/aiClient";
 import { SENSE_FIELD_LINES, SENSE_SELECTION_RULE } from "@/lib/aiPrompts";
 import { sanitizeWordSenses, type WordSense } from "@/lib/wordSenses";
 
-export const MAX_REGENERATE_BATCH_SIZE = 50;
+export const MAX_REGENERATE_BATCH_SIZE = 10;
 
 export interface RegenerateResult {
   word: string;

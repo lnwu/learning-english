@@ -138,13 +138,15 @@ const AddWordDialog = ({ word, onClose, onFinished }: AddWordDialogProps) => {
       await addWord(finalWord, current.senses);
       toast({ title: t("addWord.addSuccess"), variant: "success" });
       onFinished?.();
-      void refreshConfusables({ word: finalWord, senses: current.senses })
-        .then((updated) => {
+      void refreshConfusables({ focus: { word: finalWord, senses: current.senses } })
+        .then(({ updated, failed }) => {
           if (updated > 0) {
             toast({
               title: t("addWord.confusablesUpdated", { count: updated }),
               variant: "success",
             });
+          } else if (failed > 0) {
+            toast({ title: t("addWord.confusablesFailed"), variant: "destructive" });
           }
         })
         .catch((error) => {

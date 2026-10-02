@@ -9,31 +9,13 @@ export interface ConfusableWordInput {
   senses: WordSense[];
 }
 
-export interface ConfusableResult {
+export interface ConfusableSenses {
   word: string;
-  confusables: string[];
   senses: WordSense[];
 }
 
-const REWRITE_RULES = [
-  "对每个同组的词重写其 senses：",
-  "1. 保持原有含义、义项顺序与词性 pos 不变；",
-  "2. chinese 在不改变原意的前提下改写，使同组词的中文译名明确可区分，可用括号注明侧重点、搭配对象或语境（不超过 20 个字）；",
-  "3. english 重新生成一句学习型词典风格的简短英文释义，不超过 15 个单词；",
-  "4. note 必填：一句中文（不超过 40 个字），只用同组的其他词与它对比，说明用法差别；不得提及词库外的单词，也不要出现该单词本身；",
-  "5. confusables 列出同组的其他单词，必须来自输入的单词列表。",
-];
-
-const RESPONSE_FORMAT =
-  '只返回 JSON，不要添加其它字段或解释：{"results": [{"word": "...", "confusables": ["..."], "senses": [{"pos": "...", "chinese": "...", "english": "...", "note": "..."}]}]}';
-
 const GROUP_EXAMPLES =
   "如 medicine 与 medication、replicate 与 duplicate、associated 与 corresponding";
-
-const taskLine = (focus?: string): string =>
-  focus
-    ? `任务：在词库中找出与目标单词 ${focus} 易混的词——中文译名相同或相近、含义接近，根据中文释义回忆英文时容易张冠李戴（${GROUP_EXAMPLES}）。没有时 results 返回空数组；找到时 results 必须同时包含 ${focus} 和它的每个易混词。`
-    : `任务：找出其中所有易混词组——中文译名相同或相近、含义接近，根据中文释义回忆英文时容易张冠李戴的词（${GROUP_EXAMPLES}）。没有易混关系的词不要出现在结果中。`;
 
 const stripTrailingQualifier = (chinese: string): string =>
   chinese.replace(/(?:[（(][^）)]*[）)]\s*)+$/, "").trim();
@@ -46,21 +28,71 @@ const compactWords = (words: ConfusableWordInput[]): string =>
     })),
   );
 
-export const buildConfusablesMessages = (
-  words: ConfusableWordInput[],
-  focus?: string,
-): ChatMessage[] => [
+export const buildConfusableGroupsMessages = (words: ConfusableWordInput[]): ChatMessage[] => [
   {
     role: "system",
     content: [
       "你是一位英语词典编辑，熟悉中国学习者容易混淆的英文近义词。",
       "用户会给出其词书中的全部单词（JSON 数组，义项只保留 pos 与 chinese）。",
-      taskLine(focus),
+      `任务：找出其中所有易混词组——中文译名相同或相近、含义接近，根据中文释义回忆英文时容易张冠李戴的词（${GROUP_EXAMPLES}）。`,
+      "只给出词组，不要改写释义、不要解释：每组至少 2 个词，词必须来自输入的单词列表，每个词最多出现在一个词组里；没有易混关系的词不要出现在结果中。",
+      '只返回 JSON，不要添加其它字段：{"groups": [["medicine", "medication"], ["replicate", "duplicate"]]}',
+    ].join("\n"),
+  },
+  { role: "user", content: compactWords(words) },
+];
+
+export const parseConfusableGroups = (
+  raw: unknown,
+  allowedWords: readonly string[],
+): string[][] => {
+  const allowed = new Set(allowedWords);
+  const groups =
+    typeof raw === "object" && raw !== null ? (raw as { groups?: unknown }).groups : null;
+  const used = new Set<string>();
+  const parsed: string[][] = [];
+
+  for (const group of Array.isArray(groups) ? groups : []) {
+    if (!Array.isArray(group)) continue;
+
+    const members: string[] = [];
+    for (const item of group) {
+      const word = typeof item === "string" ? item.trim().toLowerCase() : "";
+      if (!word || !allowed.has(word) || used.has(word) || members.includes(word)) continue;
+      members.push(word);
+    }
+    if (members.length < 2) continue;
+
+    const kept = members.slice(0, MAX_CONFUSABLES_PER_WORD);
+    kept.forEach((word) => used.add(word));
+    parsed.push(kept);
+  }
+
+  return parsed;
+};
+
+const REWRITE_RULES = [
+  "对每个词重写其 senses：",
+  "1. 保持原有含义、义项顺序与词性 pos 不变；",
+  "2. chinese 在不改变原意的前提下改写，使同组词的中文译名明确可区分，可用括号注明侧重点、搭配对象或语境（不超过 20 个字）；",
+  "3. english 重新生成一句学习型词典风格的简短英文释义，不超过 15 个单词；",
+  "4. note 必填：一句中文（不超过 40 个字），只用同组的其他词与它对比，说明用法差别；不得提及词库外的单词，也不要出现该单词本身。",
+];
+
+const RESPONSE_FORMAT =
+  '只返回 JSON，不要添加其它字段或解释：{"results": [{"word": "...", "senses": [{"pos": "...", "chinese": "...", "english": "...", "note": "..."}]}]}';
+
+export const buildConfusableSensesMessages = (group: ConfusableWordInput[]): ChatMessage[] => [
+  {
+    role: "system",
+    content: [
+      "你是一位英语词典编辑，熟悉中国学习者容易混淆的英文近义词。",
+      `用户会给出同一组易混词（${GROUP_EXAMPLES}）。`,
       ...REWRITE_RULES,
       RESPONSE_FORMAT,
     ].join("\n"),
   },
-  { role: "user", content: compactWords(words) },
+  { role: "user", content: compactWords(group) },
 ];
 
 const sanitizeNote = (
@@ -70,23 +102,23 @@ const sanitizeNote = (
 ): string | undefined => {
   if (!note) return undefined;
   const mentioned = note.match(/[A-Za-z]{2,}/g) ?? [];
-  const onlyBookWords = mentioned.every((token) => {
+  const onlyGroupWords = mentioned.every((token) => {
     const lower = token.toLowerCase();
     return lower !== word && allowed.has(lower);
   });
-  return onlyBookWords ? note : undefined;
+  return onlyGroupWords ? note : undefined;
 };
 
-export const parseConfusablesResults = (
+export const parseConfusableSenses = (
   raw: unknown,
-  allowedWords: readonly string[],
-): ConfusableResult[] => {
-  const allowed = new Set(allowedWords);
-  const byWord = new Map<string, { confusables: string[]; senses: WordSense[] }>();
+  groupWords: readonly string[],
+): ConfusableSenses[] => {
+  const allowed = new Set(groupWords);
+  const results: ConfusableSenses[] = [];
 
   for (const record of extractResultItems(raw)) {
     const word = typeof record.word === "string" ? record.word.trim().toLowerCase() : "";
-    if (!word || !allowed.has(word) || byWord.has(word)) continue;
+    if (!word || !allowed.has(word) || results.some((item) => item.word === word)) continue;
 
     const senses = sanitizeWordSenses(record.senses).map(({ pos, chinese, english, note }) => {
       const kept = sanitizeNote(note, word, allowed);
@@ -94,34 +126,8 @@ export const parseConfusablesResults = (
     });
     if (senses.length === 0) continue;
 
-    const confusables = (Array.isArray(record.confusables) ? record.confusables : [])
-      .map((item) => (typeof item === "string" ? item.trim().toLowerCase() : ""))
-      .filter((item) => item !== "" && item !== word);
-
-    byWord.set(word, { confusables, senses });
+    results.push({ word, senses });
   }
 
-  const neighbors = new Map<string, Set<string>>();
-  const link = (from: string, to: string) => {
-    const linked = neighbors.get(from) ?? new Set<string>();
-    linked.add(to);
-    neighbors.set(from, linked);
-  };
-  for (const [word, entry] of byWord) {
-    for (const other of entry.confusables) {
-      if (!byWord.has(other)) continue;
-      link(word, other);
-      link(other, word);
-    }
-  }
-
-  return Array.from(byWord, ([word, entry]) => ({
-    word,
-    confusables: Array.from(neighbors.get(word) ?? [])
-      .sort()
-      .slice(0, MAX_CONFUSABLES_PER_WORD),
-    senses: entry.senses,
-  }))
-    .filter((item) => item.confusables.length > 0)
-    .sort((a, b) => a.word.localeCompare(b.word));
+  return results;
 };

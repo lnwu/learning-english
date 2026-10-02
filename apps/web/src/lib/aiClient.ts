@@ -106,17 +106,23 @@ export interface ChatCompletionOptions {
   model?: string;
   temperature?: number;
   maxOutputTokens?: number;
+  timeoutMs?: number;
+}
+
+interface RequestSettings {
+  temperature: number;
+  maxOutputTokens: number;
+  timeoutMs: number;
 }
 
 async function requestWithRetry(
   spec: AiModelSpec,
   messages: ChatMessage[],
-  temperature: number,
-  maxOutputTokens: number,
+  settings: RequestSettings,
 ): Promise<string> {
   for (let attempt = 0; ; attempt++) {
     try {
-      return await requestOnce(spec, messages, temperature, maxOutputTokens);
+      return await requestOnce(spec, messages, settings);
     } catch (error) {
       if (!isRetryableError(error) || attempt >= MAX_ATTEMPTS - 1) {
         throw toServiceError(error);
@@ -129,11 +135,10 @@ async function requestWithRetry(
 async function requestOnce(
   spec: AiModelSpec,
   messages: ChatMessage[],
-  temperature: number,
-  maxOutputTokens: number,
+  { temperature, maxOutputTokens, timeoutMs }: RequestSettings,
 ): Promise<string> {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
   const { instructions, conversation } = splitSystemMessages(messages);
 
   try {
@@ -166,12 +171,11 @@ export async function chatCompletionJson<T>(
     throw new AiServiceError("未知模型", 400);
   }
 
-  const text = await requestWithRetry(
-    spec,
-    messages,
-    options?.temperature ?? 0.7,
-    options?.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS,
-  );
+  const text = await requestWithRetry(spec, messages, {
+    temperature: options?.temperature ?? 0.7,
+    maxOutputTokens: options?.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS,
+    timeoutMs: options?.timeoutMs ?? REQUEST_TIMEOUT_MS,
+  });
 
   if (!text.trim()) {
     throw new AiServiceError("AI 服务返回内容为空", 502);
