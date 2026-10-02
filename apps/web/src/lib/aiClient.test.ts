@@ -42,6 +42,21 @@ const captureRequest = (response: Response) => {
   return captured;
 };
 
+const stalledFetch = () => {
+  const state = { calls: 0 };
+  globalThis.fetch = ((_url: string, init: RequestInit) => {
+    state.calls += 1;
+    return new Promise((_resolve, reject) => {
+      if (init.signal?.aborted) {
+        reject(new Error("aborted"));
+        return;
+      }
+      init.signal?.addEventListener("abort", () => reject(new Error("aborted")));
+    });
+  }) as unknown as typeof fetch;
+  return state;
+};
+
 describe("chatCompletionJson", () => {
   useEnvVar("DEEPSEEK_API_KEY", "test-key");
   useRestoredFetch();
@@ -97,17 +112,7 @@ describe("chatCompletionJson", () => {
 
   it("请求超时（504）不重试", async () => {
     jest.useFakeTimers();
-    let calls = 0;
-    globalThis.fetch = ((_url: string, init: RequestInit) => {
-      calls += 1;
-      return new Promise((_resolve, reject) => {
-        if (init.signal?.aborted) {
-          reject(new Error("aborted"));
-          return;
-        }
-        init.signal?.addEventListener("abort", () => reject(new Error("aborted")));
-      });
-    }) as unknown as typeof fetch;
+    const state = stalledFetch();
 
     try {
       const pending = chatCompletionJson(messages).catch((caught) => caught);
@@ -115,7 +120,23 @@ describe("chatCompletionJson", () => {
       const error = await pending;
       expect(error).toBeInstanceOf(AiServiceError);
       expect((error as AiServiceError).status).toBe(504);
-      expect(calls).toBe(1);
+      expect(state.calls).toBe(1);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it("timeoutMs 覆盖默认的 30 秒预算", async () => {
+    jest.useFakeTimers();
+    const state = stalledFetch();
+
+    try {
+      const pending = chatCompletionJson(messages, { timeoutMs: 5_000 }).catch((caught) => caught);
+      jest.advanceTimersByTime(5_000);
+      const error = await pending;
+      expect(error).toBeInstanceOf(AiServiceError);
+      expect((error as AiServiceError).status).toBe(504);
+      expect(state.calls).toBe(1);
     } finally {
       jest.useRealTimers();
     }
@@ -178,6 +199,19 @@ describe("模型路由", () => {
     });
     expect(captured.url).toBe("https://opencode.ai/zen/v1/models/gemini-3.8-flash:generateContent");
     expect(result.ok).toBe(true);
+  });
+
+  it("disableThinking 只关掉 DeepSeek 的思考", async () => {
+    const deepseekRequest = captureRequest(openAiResponse('{"ok":true}'));
+    await chatCompletionJson(messages, { disableThinking: true });
+    expect(JSON.parse(String(deepseekRequest.init?.body)).thinking).toEqual({ type: "disabled" });
+
+    const claudeRequest = captureRequest(anthropicResponse('{"ok":true}'));
+    await chatCompletionJson(messages, {
+      model: "opencode/claude-sonnet-5-5",
+      disableThinking: true,
+    });
+    expect(JSON.parse(String(claudeRequest.init?.body))).not.toHaveProperty("thinking");
   });
 });
 

@@ -34,7 +34,7 @@
 ## 批量写
 
 - `commitWordOperations` 按 500 分片：Firestore writeBatch 上限 500。
-- `updateTranslations` 先 `setWordData`（store 即时更新、UI 立即反馈）再落库：onSnapshot 回来会幂等合并，顺序反了 UI 会有延迟。`updateConfusables` 同理，一次写 `translation` 与 `confusables`；全量区分是完整重算：模型没判为易混的词会同时清空 `confusables` 与释义里的区分说明（两个字段必须一起变）。两个入口都不触碰练习数据。
+- `updateTranslations` 先 `setWordData`（store 即时更新、UI 立即反馈）再落库：onSnapshot 回来会幂等合并，顺序反了 UI 会有延迟。`updateConfusables` 同理，一次写 `translation` 与 `confusables`；全量区分是完整重算：一次运行后每个词的 `confusables` 与释义里的区分说明都来自这次运行（不在任何词组的词清空两者，改写失败的一组保留易混关系、只丢掉旧说明）。两个入口都不触碰练习数据。
 
 ## 日期与历史字段
 

@@ -8,6 +8,8 @@ import {
   MAX_REGENERATE_BATCH_SIZE,
 } from "@/lib/regenerateDefinitions";
 
+const TIMEOUT_MS = 60_000;
+
 const parse = parseBody<{ words: string[]; model: string }>({
   words: wordTokenList({ maxItems: MAX_REGENERATE_BATCH_SIZE }),
   model: optionalAiModelId(),
@@ -25,6 +27,7 @@ export async function POST(request: Request) {
       const raw = await chatCompletionJson<unknown>(buildRegenerateMessages(words), {
         temperature: 0.2,
         maxOutputTokens: 8192,
+        timeoutMs: TIMEOUT_MS,
         model,
       });
       return NextResponse.json({

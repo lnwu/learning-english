@@ -137,6 +137,8 @@ const zh = {
   "profile.confusablesConfirmDesc":
     "AI 将扫描全部单词，为易混词重写中文释义并生成区分说明（替换这些词现有的释义，不影响练习记录）。此操作不可撤销。",
   "profile.confusablesSuccess": "已为 {count} 个易混词生成区分说明",
+  "profile.confusablesPartial":
+    "已为 {success} 个易混词生成区分说明，{failed} 个词的区分说明生成失败",
   "profile.confusablesNone": "没有发现容易混淆的单词",
   "profile.confusablesFailed": "区分易混词失败，请稍后重试",
   "profile.practiceTimeTitle": "每日练习时间",
@@ -313,6 +315,8 @@ const en: Record<TranslationKey, string> = {
   "profile.confusablesConfirmDesc":
     "AI will scan all words, rewrite the glosses of confusable words and add contrast notes, replacing their current definitions. Practice records are not affected. This cannot be undone.",
   "profile.confusablesSuccess": "Generated contrast notes for {count} confusable words",
+  "profile.confusablesPartial":
+    "Generated contrast notes for {success} confusable words; {failed} words failed",
   "profile.confusablesNone": "No confusable words found",
   "profile.confusablesFailed": "Failed to generate confusable-word notes, please try again",
   "profile.practiceTimeTitle": "Daily Practice Time",

@@ -37,11 +37,6 @@ export const wordToken = (): FieldParser<string> => (raw) => {
   return isValidWordToken(value) ? { ok: true, value } : { ok: false, error: "无效单词" };
 };
 
-export const optionalWordToken = (): FieldParser<string> => (raw) => {
-  if (raw === undefined || raw === null || raw === "") return { ok: true, value: "" };
-  return wordToken()(raw);
-};
-
 export const wordTokenList =
   (options: { maxItems: number }): FieldParser<string[]> =>
   (raw) => {

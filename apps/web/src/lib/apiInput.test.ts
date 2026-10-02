@@ -4,7 +4,6 @@ import {
   badRequest,
   optionalAiModelId,
   optionalText,
-  optionalWordToken,
   parseBody,
   requiredText,
   sentenceWordList,
@@ -99,23 +98,6 @@ describe("wordTokenList", () => {
 
   it("全部非法时返回无效单词列表", () => {
     expect(errorOf(parser, ["b!", 5, ""])).toBe("无效单词列表");
-  });
-});
-
-describe("optionalWordToken", () => {
-  const parser = optionalWordToken();
-
-  it("缺失或空值返回空字符串", () => {
-    expect(valueOf(parser, undefined)).toBe("");
-    expect(valueOf(parser, "")).toBe("");
-  });
-
-  it("非法单词返回错误", () => {
-    expect(errorOf(parser, "b!")).toBe("无效单词");
-  });
-
-  it("转小写", () => {
-    expect(valueOf(parser, "Apple")).toBe("apple");
   });
 });
 

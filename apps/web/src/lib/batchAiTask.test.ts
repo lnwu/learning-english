@@ -1,24 +1,23 @@
 import { describe, it, expect } from "bun:test";
-import { chunkWords, countFailedWords, runBatchedAiTask } from "./batchAiTask";
+import { chunkItems, countFailedWords, runAiBatches } from "./batchAiTask";
 
-describe("chunkWords", () => {
+describe("chunkItems", () => {
   it("按 batchSize 切分，最后一批可以更短", () => {
-    expect(chunkWords(["a", "b", "c", "d", "e"], 2)).toEqual([["a", "b"], ["c", "d"], ["e"]]);
+    expect(chunkItems(["a", "b", "c", "d", "e"], 2)).toEqual([["a", "b"], ["c", "d"], ["e"]]);
   });
 
   it("空列表返回空数组", () => {
-    expect(chunkWords([], 2)).toEqual([]);
+    expect(chunkItems([], 2)).toEqual([]);
   });
 });
 
-describe("runBatchedAiTask", () => {
-  it("串行执行每批并上报累计进度", async () => {
+describe("runAiBatches", () => {
+  it("串行执行每批并按单词数上报累计进度", async () => {
     const calls: string[][] = [];
     const progress: number[] = [];
 
-    const outcomes = await runBatchedAiTask({
-      words: ["a", "b", "c"],
-      batchSize: 2,
+    const outcomes = await runAiBatches({
+      batches: [["a", "b"], ["c"]],
       runBatch: async (batch) => {
         calls.push(batch);
         return batch.join("-");
@@ -35,9 +34,8 @@ describe("runBatchedAiTask", () => {
   });
 
   it("单批失败不中断后续批次，错误被记录", async () => {
-    const outcomes = await runBatchedAiTask({
-      words: ["a", "b", "c"],
-      batchSize: 2,
+    const outcomes = await runAiBatches({
+      batches: [["a", "b"], ["c"]],
       runBatch: async (batch) => {
         if (batch[0] === "a") throw new Error("boom");
         return "ok";

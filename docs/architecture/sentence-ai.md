@@ -17,7 +17,7 @@
 
 - 模型清单是代码里的注册表（`lib/aiProviders.ts`）：每个模型一条 `provider/model` 复合 ID，含服务商、得名、SDK 类型、baseUrl 与 API Key 环境变量名。**baseUrl 与模型清单写在代码里**，环境变量只提供 API Key（`DEEPSEEK_API_KEY`/`OPENCODE_API_KEY`/`MIMO_API_KEY`）：端点与模型 ID 属于代码常量，改它们应当走代码评审，而 API Key 只存在于部署环境。未配置 Key 的服务商不在可选列表中，请求它得到 500。
 - 三个服务商都是 OpenAI / Anthropic / Google 协议中的一个，因此用 Vercel AI SDK 统一调用：`@ai-sdk/openai-compatible`（DeepSeek、MiMo 的 chat/completions）、`@ai-sdk/anthropic`（OpenCode Zen 的 Claude）、`@ai-sdk/google`（OpenCode Zen 的 Gemini）。上层只看到 `generateText`，路由不知道底层协议差异。
-- `chatCompletionJson`（`lib/aiClient.ts`）：按模型 ID 解析 provider、读 Key、缓存 provider 实例；网络错误与 429/5xx 自动重试一次；**504 不重试**（超时本身已耗掉预算，重试让总时长翻倍且大概率再超时）；SDK 自己的重试关闭（`maxRetries: 0`），重试语义只由这一层决定。非 JSON 响应与 AI 服务错误统一归类 `AiServiceError(502)`，超时 504，未配置 Key 500，未知模型 400。
+- `chatCompletionJson`（`lib/aiClient.ts`）：按模型 ID 解析 provider、读 Key、缓存 provider 实例；网络错误与 429/5xx 自动重试一次；**504 不重试**（超时本身已耗掉预算，重试让总时长翻倍且大概率再超时）；SDK 自己的重试关闭（`maxRetries: 0`），重试语义只由这一层决定。非 JSON 响应与 AI 服务错误统一归类 `AiServiceError(502)`，超时 504，未配置 Key 500，未知模型 400。单次请求超时由调用方用 `timeoutMs` 指定（缺省 30s）：区分易混词的判定段 120s、改写段 60s，重新生成释义 60s。**超时预算要与该路由的工作量对齐**：`maxOutputTokens` 是上限而不是承诺，30s 内生成不出 8192 个 token 的输出（所以重新生成释义的批大小压到 10）；推理型模型的思考 token 也占这个上限，判定段这种「输入大、答案小」的请求用 `disableThinking` 关掉思考（实测 DeepSeek V4.1 Flash 在 160 词的判定上开思考要 70s，思考占满 `maxOutputTokens` 后返回空内容、路由报 502；关掉后 7.7s 正常返回）。`disableThinking` 只对注册了关闭方式的 provider 生效（当前只有 DeepSeek），其他模型不受影响。超时值还要留在 Vercel 函数上限（Hobby + Fluid compute 为 300s）以内。
 - JSON 输出的鲁棒性由 `extractJson` 统一兜住：OpenAI 系的 `response_format: json_object` 在 Anthropic/Google 协议没有对应参数，因此不依赖该参数，而是从返回值里取 markdown fence 或首尾大括号之间的对象再解析；prompt 里「只返回 JSON」的约定保持不变。
 - `ChatMessage[]` 里的 system 消息在调用前抽成 SDK 的顶层 `instructions`：AI SDK 默认不接受 `messages` 数组里的 system 消息（会报 `AI_InvalidPromptError`），而各路由的 prompt 都是 system + user 形态。
 - Claude 5.5 不支持 `temperature`，注册表用 `supportsTemperature` 标注，调用时不传该参数（否则 SDK 每次都会打告警）。
@@ -30,8 +30,9 @@
 - 翻译缓存（`translationCache.ts`）：L1 进程内 LRU + L2 Redis（30 天），key 前缀带版本号（见该文件的 `CACHE_KEY_PREFIX`，不在文档里复述具体版本），只存 `senses` 非空的成功结果。默认模型（`deepseek/deepseek-flash`）用无模型后缀的 key，其他模型在 key 里带上模型 ID，避免不同模型互相污染。**改 translate 的 prompt 或默认模型必须 bump 前缀**，否则旧释义会在缓存里长期复用。
 - `/api/translate/compare` 一次请求并行取多个模型的释义（上限为注册表里的模型总数，不会超过一排可选模型），供添加单词时并排对比：逐模型返回 `{ model, lemma, senses }` 或错误（单个模型失败不影响其他模型）。对比是挑选动作，**不读写翻译缓存**；选定后由前端走常规添加流程落库。
 - 前端 `encodeSenses` 把 `senses` 拼成「词性+中文 — 英文」逐行存入 `translation`（写路径经 `translationFields`）；`decodeSenses` 逐行解析回结构化义项。
-- 易混近义词的区分说明（`WordSense.note`，可选）：`duplicate`/`replicate` 这类词的中文译法几乎相同，只看释义时无法判断该拼哪个词，所以在确认词库里确实存在易混词之后，用一句中文说明两者用法差别。`note` 只由 `/api/confusables` 产生（translate 与 regenerate 不产生它），编码为义项下一行 `区分：...`；prompt 要求只用同组的其他词做对比、不得提及词库外的单词，也不得出现该词本身（避免泄漏答案），解析层会丢弃违反这两条的说明。
-- 全量区分是完整重算，不是叠加：一次扫描后，词库的易混状态就等于这次扫描的结果，模型不再判为易混的词会连释义里的说明一起清掉（只清配对会留下没有对手的说明）。为了让重跑稳定，送模型的 `chinese` 会先去掉**尾部**括号限定语（限定语由本流程自己写在末尾，前置括号的历史释义保持原样）：上一轮改写出的「质量（好坏程度）」在下一轮会被当成已经区分开的释义，从而漏判原本的易混对。
+- 易混近义词的区分说明（`WordSense.note`，可选）：`duplicate`/`replicate` 这类词的中文译法几乎相同，只看释义时无法判断该拼哪个词，所以在确认词库里确实存在易混词之后，用一句中文说明两者用法差别。`note` 只由 `/api/confusables` 的改写段产生（translate 与 regenerate 不产生它），编码为义项下一行 `区分：...`；prompt 要求只用同组的其他词做对比、不得提及词库外的单词，也不得出现该词本身（避免泄漏答案），解析层会丢弃违反这两条的说明。
+- 全量区分拆成两段请求，原因是「一次判定全库 + 改写全部词组」的输出量装不进单次请求的超时预算（实测 160 词的词书用默认模型时判定加改写要跑几分钟，而小输出的同一份输入只要十几秒）：`/api/confusables/groups` 只判定词组（全库输入，输出只有词组结构），`/api/confusables` 只改写一组词（输入与输出都限于组内词）。**易混关系只由判定段决定**：组内词两两互为易混词，一个词最多属于一个词组（模型给出重叠词组时按先出现的组归属，每组截断到 `MAX_CONFUSABLES_PER_WORD`），改写段只提供 `senses` 与 `note`；改写失败的一组保留判定段给出的易混关系、只丢掉旧的 `note`（丢掉了「没有对手的说明」这一状态）。
+- 全量区分是完整重算，不是叠加：一次扫描后，词库的易混状态就等于这次扫描的结果，判定段没判为易混的词会连释义里的说明一起清掉（只清配对会留下没有对手的说明）。为了让重跑稳定，送模型的 `chinese` 会先去掉**尾部**括号限定语（限定语由本流程自己写在末尾，前置括号的历史释义保持原样）：上一轮改写出的「质量（好坏程度）」在下一轮会被当成已经区分开的释义，从而漏判原本的易混对。
 
 ## 造句交互设计（有意为之，别改）
 
@@ -46,7 +47,7 @@
 
 ## 批量重新生成释义
 
-- `/api/regenerate-definitions`：每批 ≤50、服务端过滤非小写字母/超长词并去重；一次调用返回逐词 `senses`，`null` 表示未识别（前端保留原释义）。前端串行分批并显示进度，通过 `updateTranslations` 落库——只改 `translation`，不碰练习数据。
+- `/api/regenerate-definitions`：每批 ≤10（`MAX_REGENERATE_BATCH_SIZE`，与 60s 超时预算对齐：50 个词一次调用生成不完）、服务端过滤非小写字母/超长词并去重；一次调用返回逐词 `senses`，`null` 表示未识别（前端保留原释义）。前端串行分批并显示进度，通过 `updateTranslations` 落库——只改 `translation`，不碰练习数据。
 
 ## 模型选择
 

@@ -106,17 +106,39 @@ export interface ChatCompletionOptions {
   model?: string;
   temperature?: number;
   maxOutputTokens?: number;
+  timeoutMs?: number;
+  disableThinking?: boolean;
+}
+
+type AiProviderOptions = NonNullable<Parameters<typeof generateText>[0]["providerOptions"]>;
+
+const THINKING_DISABLED_OPTIONS: Record<string, AiProviderOptions[string]> = {
+  deepseek: { thinking: { type: "disabled" } },
+};
+
+const providerOptionsFor = (
+  spec: AiModelSpec,
+  disableThinking: boolean | undefined,
+): AiProviderOptions | undefined => {
+  const options = disableThinking ? THINKING_DISABLED_OPTIONS[spec.provider] : undefined;
+  return options ? { [spec.provider]: options } : undefined;
+};
+
+interface RequestSettings {
+  temperature: number;
+  maxOutputTokens: number;
+  timeoutMs: number;
+  providerOptions?: AiProviderOptions;
 }
 
 async function requestWithRetry(
   spec: AiModelSpec,
   messages: ChatMessage[],
-  temperature: number,
-  maxOutputTokens: number,
+  settings: RequestSettings,
 ): Promise<string> {
   for (let attempt = 0; ; attempt++) {
     try {
-      return await requestOnce(spec, messages, temperature, maxOutputTokens);
+      return await requestOnce(spec, messages, settings);
     } catch (error) {
       if (!isRetryableError(error) || attempt >= MAX_ATTEMPTS - 1) {
         throw toServiceError(error);
@@ -129,11 +151,10 @@ async function requestWithRetry(
 async function requestOnce(
   spec: AiModelSpec,
   messages: ChatMessage[],
-  temperature: number,
-  maxOutputTokens: number,
+  { temperature, maxOutputTokens, timeoutMs, providerOptions }: RequestSettings,
 ): Promise<string> {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
   const { instructions, conversation } = splitSystemMessages(messages);
 
   try {
@@ -143,6 +164,7 @@ async function requestOnce(
       messages: conversation,
       temperature: spec.supportsTemperature ? temperature : undefined,
       maxOutputTokens,
+      providerOptions,
       maxRetries: 0,
       abortSignal: controller.signal,
     });
@@ -166,12 +188,12 @@ export async function chatCompletionJson<T>(
     throw new AiServiceError("未知模型", 400);
   }
 
-  const text = await requestWithRetry(
-    spec,
-    messages,
-    options?.temperature ?? 0.7,
-    options?.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS,
-  );
+  const text = await requestWithRetry(spec, messages, {
+    temperature: options?.temperature ?? 0.7,
+    maxOutputTokens: options?.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS,
+    timeoutMs: options?.timeoutMs ?? REQUEST_TIMEOUT_MS,
+    providerOptions: providerOptionsFor(spec, options?.disableThinking),
+  });
 
   if (!text.trim()) {
     throw new AiServiceError("AI 服务返回内容为空", 502);
