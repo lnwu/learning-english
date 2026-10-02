@@ -48,14 +48,10 @@ export const useLocale = () => {
     document.documentElement.lang = localeToHtmlLang(locale);
   }, [locale]);
 
-  const setLocale = useCallback((newLocale: Locale) => {
-    setI18nLocale(newLocale);
-  }, []);
-
   const translate = useCallback(
     (key: TranslationKey, params?: TranslationParams) => t(key, locale, params),
     [locale],
   );
 
-  return { locale, setLocale, t: translate };
+  return { locale, setLocale: setI18nLocale, t: translate };
 };

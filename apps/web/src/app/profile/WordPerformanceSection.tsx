@@ -12,6 +12,7 @@ import {
   MasteryBar,
 } from "@/components/ui";
 import type { TranslationKey } from "@/lib/i18n";
+import { getWordLengthCategory } from "@/lib/masteryModel";
 import type { Words } from "@/lib/wordsStore";
 
 const CATEGORY_META = [
@@ -99,10 +100,10 @@ export const WordPerformanceSection = observer(
         2: [],
       };
       wordsWithStats.forEach((item) => {
-        grouped[words.getWordLengthCategory(item.word)].push(item);
+        grouped[getWordLengthCategory(item.word)].push(item);
       });
       return grouped;
-    }, [wordsWithStats, words]);
+    }, [wordsWithStats]);
 
     const filteredWordsByCategory = useMemo<Record<number, WordStat[]>>(() => {
       if (!searchQuery.trim()) {

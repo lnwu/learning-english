@@ -1,6 +1,6 @@
-import { mergeWordData, type WordData } from "./wordsStore";
-import { practiceFields } from "./wordDoc";
-import type { WordOperation } from "./wordsRepo";
+import { mergeWordData, type WordData } from "@/lib/wordsStore";
+import { practiceFields } from "@/lib/wordDoc";
+import type { WordOperation } from "@/lib/wordsRepo";
 
 export interface WordRename {
   from: string;

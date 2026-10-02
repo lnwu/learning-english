@@ -10,6 +10,7 @@ import { MAX_NORMALIZE_BATCH_SIZE, type NormalizeResult } from "@/lib/normalizeW
 import { resolveRenamePlan } from "@/lib/wordNormalization";
 import { countFailedWords, runBatchedAiTask } from "@/lib/batchAiTask";
 import type { WordSense } from "@/lib/wordSenses";
+import { SettingRow } from "./SettingRow";
 
 export const ProfileAiSection = observer(() => {
   const { words, updateTranslations, normalizeWordForms } = useFirestoreWords();
@@ -187,14 +188,9 @@ export const ProfileAiSection = observer(() => {
 
   return (
     <>
-      <div className="flex flex-col gap-2 py-6 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-        <div className="flex flex-col gap-1">
-          <h3 className="text-sm font-medium">{t("profile.regenerateTitle")}</h3>
-          <p className="text-sm text-muted-foreground">{t("profile.regenerateDesc")}</p>
-        </div>
+      <SettingRow title={t("profile.regenerateTitle")} description={t("profile.regenerateDesc")}>
         <Button
           variant="outline"
-          className="shrink-0 self-start sm:self-auto"
           onClick={() => setShowRegenerateDialog(true)}
           disabled={regenerating || totalWords === 0}
         >
@@ -202,16 +198,11 @@ export const ProfileAiSection = observer(() => {
             ? `${t("common.loading")} ${regenerateProgress}/${totalWords}`
             : t("profile.regenerateButton")}
         </Button>
-      </div>
+      </SettingRow>
 
-      <div className="flex flex-col gap-2 py-6 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-        <div className="flex flex-col gap-1">
-          <h3 className="text-sm font-medium">{t("profile.normalizeTitle")}</h3>
-          <p className="text-sm text-muted-foreground">{t("profile.normalizeDesc")}</p>
-        </div>
+      <SettingRow title={t("profile.normalizeTitle")} description={t("profile.normalizeDesc")}>
         <Button
           variant="outline"
-          className="shrink-0 self-start sm:self-auto"
           onClick={() => setShowNormalizeDialog(true)}
           disabled={normalizing || totalWords === 0}
         >
@@ -219,7 +210,7 @@ export const ProfileAiSection = observer(() => {
             ? `${t("common.loading")} ${normalizeProgress}/${totalWords}`
             : t("profile.normalizeButton")}
         </Button>
-      </div>
+      </SettingRow>
 
       <ConfirmDialog
         open={showRegenerateDialog}
