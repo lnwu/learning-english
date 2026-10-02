@@ -144,7 +144,11 @@ export async function chatCompletionJson<T>(
         lastError = new AiServiceError("AI 服务返回错误，请稍后重试", 502);
         continue;
       }
-      lastError = new AiServiceError("调用 AI 服务失败，请稍后重试", 502);
+      const cause = error as Error & { statusCode?: number; responseBody?: string };
+      lastError = new AiServiceError(
+        `调用 AI 服务失败，请稍后重试 [probe ${cause.name}: ${cause.message} / status ${cause.statusCode} / body ${String(cause.responseBody ?? "").slice(0, 200)}]`,
+        502,
+      );
     }
   }
 
