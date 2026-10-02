@@ -20,7 +20,7 @@ export const buildWordLookupMessages = (word: string): ChatMessage[] => [
       LEMMA_EXCEPTION_RULE,
       "senses 针对 lemma 列出最常见到较常见的多个义项（通常 2-4 个），最常用的义项排在最前面。每个义项包含：",
       ...SENSE_FIELD_LINES,
-      '只返回 JSON，不要添加其它字段或解释：{"isWord": true|false, "lemma": "...", "senses": [{"pos": "...", "chinese": "...", "english": "...", "note": "..."}]}',
+      '只返回 JSON，不要添加其它字段或解释：{"isWord": true|false, "lemma": "...", "senses": [{"pos": "...", "chinese": "...", "english": "..."}]}',
     ].join("\n"),
   },
   { role: "user", content: word },

@@ -426,7 +426,7 @@ describe("WordsLedger 词库命令", () => {
         type: "update",
         wordId: "id-medicine",
         fields: {
-          translation: "n. 药；医学 — drugs or the science\n辨析：与 medication 比",
+          translation: "n. 药；医学 — drugs or the science\n区分：与 medication 比",
           confusables: ["medication"],
         },
       },

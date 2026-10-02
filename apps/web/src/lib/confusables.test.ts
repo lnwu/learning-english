@@ -144,6 +144,56 @@ describe("parseConfusablesResults", () => {
     expect(confusablesOf("duplicate")).toEqual(["medication"]);
   });
 
+  it("丢弃提到词库外单词或提到自身的区分说明", () => {
+    const raw = {
+      results: [
+        {
+          word: "medicine",
+          confusables: ["medication"],
+          senses: [
+            {
+              pos: "n.",
+              chinese: "药；医学",
+              english: "e1",
+              note: "与 medication 比，还可指医学",
+            },
+            {
+              pos: "n.",
+              chinese: "医学",
+              english: "e2",
+              note: "与 drug 比，更泛指",
+            },
+            {
+              pos: "n.",
+              chinese: "药",
+              english: "e3",
+              note: "medicine 常指治疗用药",
+            },
+          ],
+        },
+        {
+          word: "medication",
+          confusables: ["medicine"],
+          senses: [
+            { pos: "n.", chinese: "药物", english: "e4", note: "与 medicine 比，多指处方药" },
+          ],
+        },
+      ],
+    };
+
+    const results = parseConfusablesResults(raw, allowedWords);
+    const medicine = results.find((item) => item.word === "medicine");
+
+    expect(medicine?.senses.map((sense) => sense.note)).toEqual([
+      "与 medication 比，还可指医学",
+      undefined,
+      undefined,
+    ]);
+    expect(results.find((item) => item.word === "medication")?.senses[0]?.note).toBe(
+      "与 medicine 比，多指处方药",
+    );
+  });
+
   it("丢弃未知单词、无效义项与不在组内的结果", () => {
     const raw = {
       results: [

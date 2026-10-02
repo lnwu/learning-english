@@ -23,9 +23,9 @@
 - `/api/translate` 一次调用同时返回 `lemma`（词典原形）与结构化 `senses`（2~4 个义项，最常用在前）。不使用 Google Translate/Datamuse 等免费源作回退：质量与可用性不稳定。模型判定非有效单词时 `senses: null`（前端提示、不落库）；调用失败返回错误且前端不落库。
 - 义项校验统一 `sanitizeWordSenses`（`lib/wordSenses.ts`），`/api/translate` 与 `regenerate-definitions` 共用，防止模型输出超长字段撑大文档（写入前的第一道清洗）。`WordSense` 类型与 `translation` 字符串的编解码（`encodeSenses`/`decodeSenses`）同在 `lib/wordSenses.ts`；写路径由 `lib/wordDoc.ts` 的 `translationFields` 统一编码，调用方与组件只传结构化义项。
 - translate 的 prompt 与解析在 `lib/wordLookup.ts`：`parseWordLookupResult` 负责 lemma 清洗、义项清洗与非单词判定（`senses: null`），`isWord` 为真但义项全非法时抛 502；路由只做取参与缓存读写。
-- 翻译缓存（`translationCache.ts`）：L1 进程内 LRU + L2 Redis（30 天，key 前缀 `translation:v4`），只存 `senses` 非空的成功结果。**改 translate 的 prompt 或默认模型必须 bump 前缀**，否则旧释义会在缓存里长期复用。
+- 翻译缓存（`translationCache.ts`）：L1 进程内 LRU + L2 Redis（30 天，key 前缀 `translation:v5`），只存 `senses` 非空的成功结果。**改 translate 的 prompt 或默认模型必须 bump 前缀**，否则旧释义会在缓存里长期复用。
 - 前端 `encodeSenses` 把 `senses` 拼成「词性+中文 — 英文」逐行存入 `translation`（写路径经 `translationFields`）；`decodeSenses` 逐行解析回结构化义项。
-- 易混近义词的辨析（`WordSense.note`，可选）：`duplicate`/`replicate` 这类词的中文译法几乎相同，只看释义时无法判断该拼哪个词，所以让模型为义项追加一句中文用法差别（`note`），在练习页作为释义的次级行展示。`note` 编码为义项下一行 `辨析：...`，提示词要求它不出现该词本身，避免直接泄漏答案；没有易混近义词时省略。
+- 易混近义词的区分说明（`WordSense.note`，可选）：`duplicate`/`replicate` 这类词的中文译法几乎相同，只看释义时无法判断该拼哪个词，所以在确认词库里确实存在易混词之后，用一句中文说明两者用法差别。`note` 只由 `/api/confusables` 产生（translate 与 regenerate 不产生它），编码为义项下一行 `区分：...`；prompt 要求只用同组的其他词做对比、不得提及词库外的单词，也不得出现该词本身（避免泄漏答案），解析层会丢弃违反这两条的说明。
 
 ## 造句交互设计（有意为之，别改）
 
