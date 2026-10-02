@@ -37,12 +37,6 @@
       "skillPath": "skills/firestore-rules-creation/SKILL.md",
       "computedHash": "ec66da257f0ed19259b48f9252684c950eb29294b2265f51b25d517a56063000"
     },
-    "principle-subtract-before-you-add": {
-      "source": "cursor/plugins",
-      "sourceType": "github",
-      "skillPath": "pstack/skills/principle-subtract-before-you-add/SKILL.md",
-      "computedHash": "c85188049e825fe715bb76bb0aa53adfa7f2f719a0b52db2b0c72daf6dd9aac7"
-    },
     "shadcn": {
       "source": "shadcn/ui",
       "sourceType": "github",
