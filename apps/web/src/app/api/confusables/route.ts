@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { API_RATE_LIMITS, withApiPost } from "@/lib/apiRoute";
-import { optionalAiModelId, parseBody, wordSensesList, type WordSensesInput } from "@/lib/apiInput";
+import {
+  optionalText,
+  optionalAiModelId,
+  parseBody,
+  wordSensesList,
+  type WordSensesInput,
+} from "@/lib/apiInput";
 import { chatCompletionJson } from "@/lib/aiClient";
 import {
   buildConfusableSensesMessages,
@@ -10,9 +16,10 @@ import {
 
 const TIMEOUT_MS = 60_000;
 
-const parse = parseBody<{ words: WordSensesInput[]; model: string }>({
+const parse = parseBody<{ words: WordSensesInput[]; model: string; probe: string }>({
   words: wordSensesList({ maxItems: MAX_CONFUSABLES_PER_WORD }),
   model: optionalAiModelId(),
+  probe: optionalText(24),
 });
 
 export async function POST(request: Request) {
@@ -20,11 +27,12 @@ export async function POST(request: Request) {
     request,
     { ...API_RATE_LIMITS.confusables, fallbackError: "区分易混词失败，请稍后重试" },
     parse,
-    async ({ words, model }) => {
+    async ({ words, model, probe }) => {
       const raw = await chatCompletionJson<unknown>(buildConfusableSensesMessages(words), {
         temperature: 0.2,
         maxOutputTokens: 8192,
         timeoutMs: TIMEOUT_MS,
+        disableThinking: probe === "thinking-off",
         model,
       });
       return NextResponse.json({
