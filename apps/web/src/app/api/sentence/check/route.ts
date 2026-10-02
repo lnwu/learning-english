@@ -43,13 +43,13 @@ export async function POST(request: Request) {
     parse,
     async ({ chinese, words, reference, userAnswer }) => {
       if (isExactMatchAnswer(reference, userAnswer)) {
-        return NextResponse.json(buildExactMatchResult(reference, words));
+        return NextResponse.json(buildExactMatchResult(reference));
       }
 
       const result = await chatCompletionJson<unknown>(
         buildCheckMessages({ chinese, words, reference, userAnswer }),
       );
-      return NextResponse.json(parseCheckResult(result, words));
+      return NextResponse.json(parseCheckResult(result));
     },
   );
 }

@@ -1,5 +1,5 @@
 import type { ChatMessage } from "@/lib/deepseek";
-import { normalizeForComparison, resolveUsedWords, sanitizeUsedWords } from "@/lib/sentenceCompare";
+import { normalizeForComparison } from "@/lib/sentenceCompare";
 import { MAX_SENTENCE_WORDS, MIN_SENTENCE_WORDS } from "@/lib/sentenceWords";
 
 export const MAX_SENTENCE_LENGTH = 500;
@@ -33,7 +33,6 @@ export interface CheckResult {
   feedback: string;
   corrected: string;
   issues: string[];
-  usedWords: string[];
 }
 
 export const buildGenerateMessages = (candidates: SentenceWord[]): ChatMessage[] => [
@@ -101,7 +100,7 @@ export const buildCheckMessages = (input: CheckInput): ChatMessage[] => [
       "2. 用户不需要逐字复刻参考表达；即使使用不同的时态、语态、词序或句式，只要意思基本符合中文且表达自然，也应认可，不要像中国英语考试一样要求特定语法形式。",
       "3. 若用户未使用某个目标单词，但使用了自然、准确的同义表达，不要仅因未使用指定单词判错，只需在 feedback 中提示该目标词。",
       "4. 只有语法错误确实影响理解或导致表达不自然时才指出。",
-      "只返回 JSON，字段为：correct（布尔值，是否达到自然且正确的表达）、score（0-100 的整数评分）、feedback（用中文给出总体点评与建议）、corrected（修改后的自然英文句子；如果原句已经自然正确则保留原句）、issues（字符串数组，逐条列出影响准确性、自然度或目标单词使用的问题，用中文；若无问题则为空数组）、usedWords（字符串数组，目标单词中用户在句子里实际用到的词，以自然同义表达替代的也算用到，完全未体现的词不要列入）。不要添加其它字段或解释。",
+      "只返回 JSON，字段为：correct（布尔值，是否达到自然且正确的表达）、score（0-100 的整数评分）、feedback（用中文给出总体点评与建议）、corrected（修改后的自然英文句子；如果原句已经自然正确则保留原句）、issues（字符串数组，逐条列出影响准确性、自然度或目标单词使用的问题，用中文；若无问题则为空数组）。不要添加其它字段或解释。",
     ].join("\n"),
   },
   {
@@ -119,16 +118,15 @@ export const isExactMatchAnswer = (reference: string, userAnswer: string): boole
   );
 };
 
-export const buildExactMatchResult = (reference: string, words: string[]): CheckResult => ({
+export const buildExactMatchResult = (reference: string): CheckResult => ({
   correct: true,
   score: 100,
   feedback: "答案正确，评分已按大小写不敏感处理。",
   corrected: reference,
   issues: [],
-  usedWords: resolveUsedWords(reference, words),
 });
 
-export const parseCheckResult = (raw: unknown, words: string[]): CheckResult => {
+export const parseCheckResult = (raw: unknown): CheckResult => {
   const result = (raw ?? {}) as Partial<CheckResult>;
   const score =
     typeof result.score === "number" && Number.isFinite(result.score)
@@ -147,6 +145,5 @@ export const parseCheckResult = (raw: unknown, words: string[]): CheckResult => 
           .filter((issue): issue is string => typeof issue === "string")
           .slice(0, MAX_ISSUES)
       : [],
-    usedWords: sanitizeUsedWords(result.usedWords, words),
   };
 };
