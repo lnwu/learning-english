@@ -50,6 +50,6 @@ export const parseRegenerateResults = (
 
   return requestedWords.map((word) => ({
     word,
-    senses: byWord.has(word) ? (byWord.get(word) ?? null) : null,
+    senses: byWord.get(word) ?? null,
   }));
 };

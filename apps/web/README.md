@@ -15,7 +15,7 @@ Next.js（App Router）+ Firebase（Auth + Firestore）+ MobX + Tailwind CSS 的
 
 ```bash
 bun run dev     # 启动开发服务器，首次会自动 vercel link
-bun run check   # lint + typecheck + test
+bun run check   # lint + format:check + typecheck + test
 bun run test    # bun test
 bun run build   # 生产构建
 ```

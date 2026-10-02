@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach, jest } from "bun:test";
-import { checkRateLimit, checkInMemoryRateLimit } from "./rateLimit";
+import { MAX_BUCKETS, checkRateLimit, checkInMemoryRateLimit } from "./rateLimit";
 
 const REDIS_ENV_KEYS = [
   "KV_REST_API_URL",
@@ -35,6 +35,16 @@ describe("checkInMemoryRateLimit", () => {
     } finally {
       jest.useRealTimers();
     }
+  });
+
+  it("桶数量达到上限后淘汰最旧条目，不会无界增长", () => {
+    const keys = Array.from({ length: MAX_BUCKETS + 1 }, (_, index) => `test:cap:${index}`);
+    for (const key of keys) {
+      expect(checkInMemoryRateLimit(key, 1, 60_000)).toBeNull();
+    }
+
+    expect(checkInMemoryRateLimit(keys[0], 1, 60_000)).toBeNull();
+    expect(checkInMemoryRateLimit(keys.at(-1)!, 1, 60_000)?.status).toBe(429);
   });
 });
 

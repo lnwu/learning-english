@@ -21,7 +21,7 @@
 
 常用命令（仓库根目录）：
 
-- `bun run check`：lint + typecheck + test
+- `bun run check`：lint + format:check + typecheck + test
 - `bun run lint` / `bun run typecheck` / `bun run test`：单项检查
 - `bun run build`：构建
 

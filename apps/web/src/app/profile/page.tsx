@@ -76,13 +76,13 @@ const Profile = observer(() => {
         title: t("profile.resetSuccess"),
         variant: "success",
       });
-      setResetting(false);
     } catch (err) {
       console.error("Reset failed:", err);
       toast({
         title: t("profile.resetError"),
         variant: "destructive",
       });
+    } finally {
       setResetting(false);
     }
   };

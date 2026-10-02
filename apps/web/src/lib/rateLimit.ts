@@ -7,12 +7,20 @@ interface Bucket {
   resetAt: number;
 }
 
-const MAX_BUCKETS = 5000;
+export const MAX_BUCKETS = 5000;
 const buckets = new Map<string, Bucket>();
 
 function evictExpiredBuckets(now: number) {
   for (const [key, bucket] of buckets) {
     if (bucket.resetAt <= now) buckets.delete(key);
+  }
+}
+
+function evictOldestBuckets() {
+  while (buckets.size >= MAX_BUCKETS) {
+    const oldest = buckets.keys().next().value;
+    if (oldest === undefined) break;
+    buckets.delete(oldest);
   }
 }
 
@@ -25,7 +33,11 @@ export function checkInMemoryRateLimit(
   const bucket = buckets.get(key);
 
   if (!bucket || bucket.resetAt <= now) {
-    if (buckets.size >= MAX_BUCKETS) evictExpiredBuckets(now);
+    if (bucket) buckets.delete(key);
+    if (buckets.size >= MAX_BUCKETS) {
+      evictExpiredBuckets(now);
+      evictOldestBuckets();
+    }
     buckets.set(key, { count: 1, resetAt: now + windowMs });
     return null;
   }
