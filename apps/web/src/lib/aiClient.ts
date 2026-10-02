@@ -107,12 +107,16 @@ export interface ChatCompletionOptions {
   temperature?: number;
   maxOutputTokens?: number;
   timeoutMs?: number;
+  providerOptions?: AiProviderOptions;
 }
+
+export type AiProviderOptions = NonNullable<Parameters<typeof generateText>[0]["providerOptions"]>;
 
 interface RequestSettings {
   temperature: number;
   maxOutputTokens: number;
   timeoutMs: number;
+  providerOptions?: AiProviderOptions;
 }
 
 async function requestWithRetry(
@@ -135,7 +139,7 @@ async function requestWithRetry(
 async function requestOnce(
   spec: AiModelSpec,
   messages: ChatMessage[],
-  { temperature, maxOutputTokens, timeoutMs }: RequestSettings,
+  { temperature, maxOutputTokens, timeoutMs, providerOptions }: RequestSettings,
 ): Promise<string> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -148,6 +152,7 @@ async function requestOnce(
       messages: conversation,
       temperature: spec.supportsTemperature ? temperature : undefined,
       maxOutputTokens,
+      providerOptions,
       maxRetries: 0,
       abortSignal: controller.signal,
     });
@@ -175,6 +180,7 @@ export async function chatCompletionJson<T>(
     temperature: options?.temperature ?? 0.7,
     maxOutputTokens: options?.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS,
     timeoutMs: options?.timeoutMs ?? REQUEST_TIMEOUT_MS,
+    providerOptions: options?.providerOptions,
   });
 
   if (!text.trim()) {
