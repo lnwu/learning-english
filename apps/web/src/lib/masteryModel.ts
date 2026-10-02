@@ -1,4 +1,4 @@
-import type { MasteryLevel } from "@/lib/masteryLevels";
+import { MASTERY_LEVELS, MASTERY_LEVEL_ORDER, type MasteryLevel } from "@/lib/masteryLevels";
 import { formatLocalPracticeDate } from "@/lib/practiceDate";
 
 export type Rating = 1 | 2 | 3;
@@ -64,14 +64,6 @@ const RELEARNING_STEP_MINUTES = 10;
 const HARD_LEARNING_MINUTES = Math.round((LEARNING_STEP_MINUTES[0] + LEARNING_STEP_MINUTES[1]) / 2);
 const HARD_RELEARNING_MINUTES = Math.round(RELEARNING_STEP_MINUTES * 1.5);
 const LAST_LEARNING_STEP = LEARNING_STEP_MINUTES.length - 1;
-
-const LEVEL_RANK: Record<MasteryLevel, number> = {
-  new: 0,
-  learning: 1,
-  familiar: 2,
-  proficient: 3,
-  mastered: 4,
-};
 
 const clamp = (value: number, min: number, max: number): number =>
   Math.min(Math.max(value, min), max);
@@ -263,10 +255,17 @@ export const isDailyLimitReached = (stats: WordStats, now: number): boolean =>
   stats.lastReviewDay === formatLocalPracticeDate(new Date(now)) &&
   stats.dailyReviews >= DAILY_REVIEW_LIMIT;
 
+const STABILITY_RANGE: Record<Exclude<MasteryLevel, "new">, readonly [number, number]> = {
+  learning: [0, 1],
+  familiar: [1, 7],
+  proficient: [7, 30],
+  mastered: [30, 365],
+};
+
 const levelFromStability = (stability: number): MasteryLevel => {
-  if (stability < 1) return "learning";
-  if (stability < 7) return "familiar";
-  if (stability < 30) return "proficient";
+  if (stability < STABILITY_RANGE.familiar[0]) return "learning";
+  if (stability < STABILITY_RANGE.proficient[0]) return "familiar";
+  if (stability < STABILITY_RANGE.mastered[0]) return "proficient";
   return "mastered";
 };
 
@@ -281,29 +280,20 @@ export const effectiveLevel = (memory: WordMemory, stats: WordStats): MasteryLev
   if (isNewMemory(memory)) return "new";
   const band = levelFromStability(memory.stability);
   const unlocked = levelUnlockedByReviewDays(stats.reviewDays);
-  return LEVEL_RANK[band] <= LEVEL_RANK[unlocked] ? band : unlocked;
+  return MASTERY_LEVEL_ORDER.indexOf(band) <= MASTERY_LEVEL_ORDER.indexOf(unlocked)
+    ? band
+    : unlocked;
 };
 
 export const masteryScoreFor = (memory: WordMemory, stats: WordStats): number => {
   const level = effectiveLevel(memory, stats);
-  const stability = memory.stability;
-  let score: number;
-  switch (level) {
-    case "new":
-      return 0;
-    case "learning":
-      score = 20 + 19 * Math.min(stability, 1);
-      break;
-    case "familiar":
-      score = 40 + 19 * Math.min((stability - 1) / 6, 1);
-      break;
-    case "proficient":
-      score = 60 + 19 * Math.min((stability - 7) / 23, 1);
-      break;
-    default:
-      score = 80 + 20 * Math.min((stability - 30) / 335, 1);
-  }
-  return clamp(Math.round(score), 0, 100);
+  if (level === "new") return 0;
+  const index = MASTERY_LEVEL_ORDER.indexOf(level);
+  const floor = MASTERY_LEVELS[index].min;
+  const ceiling = index < MASTERY_LEVELS.length - 1 ? MASTERY_LEVELS[index + 1].min - 1 : 100;
+  const [from, to] = STABILITY_RANGE[level];
+  const progress = Math.min((memory.stability - from) / (to - from), 1);
+  return clamp(Math.round(floor + (ceiling - floor) * progress), 0, 100);
 };
 
 const median = (values: readonly number[]): number => {

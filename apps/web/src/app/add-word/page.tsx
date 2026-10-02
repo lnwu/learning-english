@@ -14,11 +14,11 @@ import {
 import { AddWordDialog } from "@/components/word-picker";
 import { useRef, useState } from "react";
 import Link from "next/link";
-import { useFirestoreWords, useLocale, toast } from "@/hooks";
-import { checkWordAddable } from "@/lib/wordSelection";
+import { useAddableWordCheck, useFirestoreWords, useLocale } from "@/hooks";
 
 const Home = () => {
-  const { words, loading: wordsLoading, error: wordsError } = useFirestoreWords();
+  const { loading: wordsLoading, error: wordsError } = useFirestoreWords();
+  const checkAddable = useAddableWordCheck();
   const { t } = useLocale();
   const [word, setWord] = useState("");
   const [pendingWord, setPendingWord] = useState<string | null>(null);
@@ -32,14 +32,7 @@ const Home = () => {
   const handleAddWord = () => {
     if (!word) return;
 
-    const status = checkWordAddable((candidate) => words.hasWord(candidate), word);
-    if (status === "exists") {
-      toast({ title: t("addWord.wordExists", { word }), variant: "destructive" });
-      clear();
-      return;
-    }
-    if (status === "invalid") {
-      toast({ title: t("addWord.invalidChars", { word }), variant: "destructive" });
+    if (!checkAddable(word)) {
       clear();
       return;
     }
