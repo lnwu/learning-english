@@ -45,41 +45,9 @@ export const encodeSenses = (senses: WordSense[]): string =>
     })
     .join("\n");
 
-export const decodeSenses = (translation: string): WordSense[] => {
-  const lines = translation
+export const decodeSenses = (translation: string): WordSense[] =>
+  translation
     .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean);
-
-  if (lines.length === 0) return [];
-
-  const senses: WordSense[] = [];
-  let legacyEnglish: string | null = null;
-
-  for (const line of lines) {
-    const match = SENSE_LINE_PATTERN.exec(line);
-    if (match) {
-      senses.push({ pos: match[1], chinese: match[2], english: match[3] });
-    } else if (/[\u4e00-\u9fff]/.test(line)) {
-      const last = senses[senses.length - 1];
-      if (last && last.chinese && !last.pos && !last.english) {
-        last.chinese = `${last.chinese}\n${line}`;
-      } else {
-        senses.push({ pos: "", chinese: line, english: "" });
-      }
-    } else {
-      legacyEnglish = line;
-    }
-  }
-
-  if (legacyEnglish) {
-    const firstChinese = senses.find((sense) => sense.chinese && !sense.english);
-    if (firstChinese) {
-      firstChinese.english = legacyEnglish;
-    } else {
-      senses.unshift({ pos: "", chinese: "", english: legacyEnglish });
-    }
-  }
-
-  return senses;
-};
+    .map((line) => SENSE_LINE_PATTERN.exec(line.trim()))
+    .filter((match): match is RegExpExecArray => match !== null)
+    .map((match) => ({ pos: match[1], chinese: match[2], english: match[3] }));
