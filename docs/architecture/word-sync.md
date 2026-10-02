@@ -7,7 +7,7 @@
 - `users/{uid}/words/{docId}`：字段 `word`/`translation`/`memory`/`stats`/`inputTimes`/`reviews`/`createdAt`；`memory` 是 DSR 记忆状态，`stats` 是复习统计，`reviews` 是复习日志。文档 id 是 addDoc 自动 id，不是单词本身（归一化重命名时要保留 id 就是为此）。
 - `users/{uid}/practiceTime/{YYYY-MM-DD}`：`{ seconds }`，每天一个文档。
 - preview 环境读写 `users/preview/*`，设计见根 AGENTS.md；安全规则只做鉴权、不做字段校验，见 `infra/AGENTS.md`。
-- 客户端所有 Firestore 读写都经 `lib/wordsRepo.ts`：repo 在构造时捕获 effective uid（preview 环境映射为 `preview`），调用方无法传错 uid；订阅、批量写与 practiceTime 递增都收在这一处，ledger 与页面不再 import `firebase/firestore`。
+- 客户端所有 Firestore 读写都经 `lib/wordsRepo.ts`：repo 在构造时捕获 effective uid（preview 环境映射为 `preview`），调用方无法传错 uid；订阅、批量写与 practiceTime 递增都收在这一处，ledger 与页面不直接 import `firebase/firestore`。
 - 文档字段的投影与解析集中在 `lib/wordDoc.ts`：新词文档（`newWordDocFields`）、释义落库（`translationFields`）、队列/同步载荷（`practiceFields`）、落库更新（`attemptUpdateFields`）、重置（`resetPracticeFields`）与解析兜底（`parseWordDoc`）都从这里取；新增同步字段时改 `WordData`、`SyncableWordData` 与这个文件即可，不要在调用方内联字段清单。
 
 ## 订阅与快照合并

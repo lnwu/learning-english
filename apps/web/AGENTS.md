@@ -28,7 +28,7 @@
 
 - `apps/web/components.json` 是 shadcn/ui 配置来源；标准组件优先通过 `bun x shadcn@latest add <组件>` 添加，项目自有组件保留现有 API。添加后检查 import 使用 `@/lib/utils`、依赖 diff 与非标准改动，不把 CLI 的临时修补当作长期约定。
 - Base UI 多态使用 `render` prop，不用 `asChild`；render 到非 button 元素时传 `nativeButton={false}`；动画使用 `data-open:animate-in` / `data-closed:animate-out`。
-- toast 统一通过 `hooks/useToast.ts` 的 `toast({ title, variant })`；`<Toaster>` 保持经 `components/ui/toaster.tsx` 惰性加载，`WordPicker` 保持经 `word-picker/WordPickerLazy.tsx` 惰性加载。
+- toast 统一通过 `hooks/useToast.tsx` 的 `toast({ title, variant })`；`<Toaster>` 保持经 `components/ui/toaster.tsx` 惰性加载，`WordPicker` 保持经 `word-picker/WordPickerLazy.tsx` 惰性加载。
 - 非组件代码需要当前 locale 文案时，使用 `lib/i18n.ts` 的 `tNow(key, params)`。
 
 ## UI 风格

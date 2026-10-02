@@ -7,7 +7,7 @@
 
 - `apps/web`：Next.js（App Router）+ Firebase（Auth + Firestore）+ MobX + Tailwind CSS
 - `infra`：Terraform 管理 GCP 项目、Identity Platform、Firestore 与安全规则
-- `scripts`：预览同步（`sync-preview-words.mjs`）、熟练度数据迁移（`migrate-words-v2.mjs`）与校准工具（`export-review-logs.mjs`、`calibration-report.mjs`、`calibration-issue.mjs`）
+- `scripts`：预览同步（`sync-preview-words.mjs`）与校准工具（`export-review-logs.mjs`、`calibration-report.mjs`、`calibration-issue.mjs`）
 
 ## 本地开发
 
