@@ -1,16 +1,10 @@
-import { describe, it, expect, beforeAll, afterAll } from "bun:test";
+import { describe, it, expect } from "bun:test";
 import {
   getCachedTranslation,
   setCachedTranslation,
   type TranslationCacheEntry,
 } from "./translationCache";
-
-const REDIS_ENV_KEYS = [
-  "KV_REST_API_URL",
-  "KV_REST_API_TOKEN",
-  "UPSTASH_REDIS_REST_URL",
-  "UPSTASH_REDIS_REST_TOKEN",
-] as const;
+import { useNoRedisEnv } from "./testSupport";
 
 const makeEntry = (): TranslationCacheEntry => ({
   lemma: "apple",
@@ -18,25 +12,7 @@ const makeEntry = (): TranslationCacheEntry => ({
 });
 
 describe("translationCache", () => {
-  const savedEnv = new Map<string, string | undefined>();
-
-  beforeAll(() => {
-    for (const key of REDIS_ENV_KEYS) {
-      savedEnv.set(key, process.env[key]);
-      delete process.env[key];
-    }
-  });
-
-  afterAll(() => {
-    for (const key of REDIS_ENV_KEYS) {
-      const value = savedEnv.get(key);
-      if (value === undefined) {
-        delete process.env[key];
-      } else {
-        process.env[key] = value;
-      }
-    }
-  });
+  useNoRedisEnv();
 
   it("写入后可读取", async () => {
     const word = `cache-${Math.random()}`;

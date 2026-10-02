@@ -1,4 +1,4 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it, expect, spyOn } from "bun:test";
 import {
   PracticeTimeRecorder,
   buildPracticeTimeWeeks,
@@ -96,6 +96,7 @@ describe("PracticeTimeRecorder", () => {
   });
 
   it("写出失败时把整秒放回池中，下次 flush 重试", async () => {
+    const errorSpy = spyOn(console, "error").mockImplementation(() => {});
     const { recorder, writes, advance, setFailing } = createRecorder();
     recorder.setActive(true);
     advance(5_000);
@@ -107,6 +108,7 @@ describe("PracticeTimeRecorder", () => {
     setFailing(false);
     await recorder.flush();
     expect(writes).toEqual([{ dateId: "2026-08-19", seconds: 5 }]);
+    errorSpy.mockRestore();
   });
 
   it("flush 使用注入时钟当天的日期", async () => {
@@ -136,13 +138,13 @@ describe("getPracticeTimeLevel", () => {
 
 describe("buildPracticeTimeWeeks", () => {
   it("生成指定周数、每周 7 天，首列为周日开头", () => {
-    const end = new Date(2026, 7, 19); // 2026-08-19 周三
+    const end = new Date(2026, 7, 19);
     const weeks = buildPracticeTimeWeeks(new Map(), end, 4);
     expect(weeks).toHaveLength(4);
     weeks.forEach((week) => expect(week).toHaveLength(7));
-    expect(weeks[0][0]?.date).toBe("2026-07-26"); // 周日
+    expect(weeks[0][0]?.date).toBe("2026-07-26");
     expect(weeks[3][3]?.date).toBe("2026-08-19");
-    expect(weeks[3][4]).toBeNull(); // 未来日期留空
+    expect(weeks[3][4]).toBeNull();
   });
 
   it("填充秒数与档位，缺失日期为 0", () => {

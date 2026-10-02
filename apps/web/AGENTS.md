@@ -90,4 +90,4 @@
 - 义项清洗统一使用 `lib/wordSenses.ts` 的 `sanitizeWordSenses`，由翻译与重新生成释义接口共用；`WordSense` 类型、编码（`encodeSenses`）与解析（`decodeSenses`）也都在这个文件。
 - 批改前判等与满分快路径统一走 `lib/sentenceMessages.ts` 的 `isExactMatchAnswer` + `buildExactMatchResult`（内部复用 `lib/sentenceCompare.ts` 的 `normalizeForComparison`），与模型批改路径产出同一份 `CheckResult`。
 - 造句不写入熟练度数据；答案输入使用 `Textarea`，Enter 提交、Shift+Enter 换行，`onKeyDown` 必须检查 `isComposing`。
-- 纯函数测试使用 `bun:test`。熟练度、翻译解析、句意判定、日期、同步合并等核心算法修改时同步补测试；统一验证入口为仓库根目录 `bun run test`。
+- 纯函数测试使用 `bun:test`；跨测试复用的夹具与环境变量/fetch 还原辅助放在 `lib/testSupport.ts`，不要在各测试文件里重复实现。熟练度、翻译解析、句意判定、日期、同步合并等核心算法修改时同步补测试；统一验证入口为仓库根目录 `bun run test`。

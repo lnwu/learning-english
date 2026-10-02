@@ -1,8 +1,6 @@
-import { describe, it, expect, beforeEach, afterEach, jest } from "bun:test";
+import { describe, it, expect, jest } from "bun:test";
 import { chatCompletionJson, DeepSeekError } from "./deepseek";
-
-const originalFetch = globalThis.fetch;
-const originalKey = process.env.DEEPSEEK_API_KEY;
+import { useEnvVar, useRestoredFetch } from "./testSupport";
 
 const completionResponse = (content: string, status = 200) =>
   new Response(JSON.stringify({ choices: [{ message: { content } }] }), {
@@ -10,18 +8,8 @@ const completionResponse = (content: string, status = 200) =>
   });
 
 describe("chatCompletionJson", () => {
-  beforeEach(() => {
-    process.env.DEEPSEEK_API_KEY = "test-key";
-  });
-
-  afterEach(() => {
-    globalThis.fetch = originalFetch;
-    if (originalKey === undefined) {
-      delete process.env.DEEPSEEK_API_KEY;
-    } else {
-      process.env.DEEPSEEK_API_KEY = originalKey;
-    }
-  });
+  useEnvVar("DEEPSEEK_API_KEY", "test-key");
+  useRestoredFetch();
 
   it("解析 JSON 返回内容", async () => {
     globalThis.fetch = (async () => completionResponse('{"ok":true}')) as unknown as typeof fetch;

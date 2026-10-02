@@ -39,9 +39,14 @@ describe("pickSentenceWords", () => {
   });
 
   it("所有候选词都有机会被抽中", () => {
+    let seed = 1;
+    const rng = () => {
+      seed = (seed * 1103515245 + 12345) % 2147483648;
+      return seed / 2147483648;
+    };
     const counts = new Map<string, number>();
     for (let i = 0; i < 200; i++) {
-      pickSentenceWords(["a", "b", "c"], { count: 1, rng: Math.random }).forEach((word) =>
+      pickSentenceWords(["a", "b", "c"], { count: 1, rng }).forEach((word) =>
         counts.set(word, (counts.get(word) ?? 0) + 1),
       );
     }

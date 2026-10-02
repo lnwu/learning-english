@@ -1,17 +1,7 @@
-import { describe, it, expect, beforeEach, afterEach } from "bun:test";
+import { describe, it, expect, beforeEach } from "bun:test";
 import { NextResponse } from "next/server";
 import { verifyFirebaseIdToken } from "./serverAuth";
-
-let tokenNonce = 0;
-
-const makeToken = (uid: string, expSeconds: number) => {
-  tokenNonce += 1;
-  const header = Buffer.from(JSON.stringify({ alg: "none", typ: "JWT" })).toString("base64url");
-  const payload = Buffer.from(
-    JSON.stringify({ user_id: uid, exp: expSeconds, jti: tokenNonce }),
-  ).toString("base64url");
-  return `${header}.${payload}.signature`;
-};
+import { makeToken, useEnvVar, useRestoredFetch } from "./testSupport";
 
 const futureExpiry = () => Math.floor(Date.now() / 1000) + 3600;
 
@@ -21,8 +11,8 @@ const makeRequest = (token?: string) =>
   });
 
 describe("verifyFirebaseIdToken", () => {
-  const originalFetch = globalThis.fetch;
-  const originalKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+  useEnvVar("NEXT_PUBLIC_FIREBASE_API_KEY", "test-key");
+  useRestoredFetch();
   let fetchCalls = 0;
 
   const mockFetch = (result: { ok: boolean; localId?: string } | "network") => {
@@ -42,16 +32,6 @@ describe("verifyFirebaseIdToken", () => {
 
   beforeEach(() => {
     fetchCalls = 0;
-    process.env.NEXT_PUBLIC_FIREBASE_API_KEY = "test-key";
-  });
-
-  afterEach(() => {
-    globalThis.fetch = originalFetch;
-    if (originalKey === undefined) {
-      delete process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
-    } else {
-      process.env.NEXT_PUBLIC_FIREBASE_API_KEY = originalKey;
-    }
   });
 
   it("缺少 Authorization 时返回 401", async () => {

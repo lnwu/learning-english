@@ -6,26 +6,10 @@ import {
   mergeWordData,
   type WordData,
 } from "./wordsStore";
-import {
-  DAY_MS,
-  MAX_INPUT_TIMES,
-  MAX_REVIEWS,
-  initialMemory,
-  initialStats,
-  type WordMemory,
-  type WordStats,
-} from "./masteryModel";
+import { DAY_MS, MAX_INPUT_TIMES, MAX_REVIEWS, type WordMemory } from "./masteryModel";
 import { getMasteryLevelIndex } from "./masteryLevels";
-
-const memory = (overrides: Partial<WordMemory> = {}): WordMemory => ({
-  ...initialMemory(0),
-  ...overrides,
-});
-
-const stats = (overrides: Partial<WordStats> = {}): WordStats => ({
-  ...initialStats(),
-  ...overrides,
-});
+import { formatLocalPracticeDate } from "./practiceDate";
+import { makeMemory as memory, makeStats as stats } from "./testSupport";
 
 const makeWordData = (word: string, overrides: Partial<WordData> = {}): WordData => ({
   word,
@@ -225,8 +209,7 @@ describe("getRandomWords", () => {
   it("当天已达复习上限的词跳过", () => {
     const store = new Words();
     const now = Date.now();
-    const today = new Date(now);
-    const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    const todayKey = formatLocalPracticeDate(new Date(now));
     addWord(store, "capped", {
       memory: dueReviewMemory(now),
       stats: stats({
@@ -248,8 +231,7 @@ describe("getRandomWords", () => {
   it("所有词都达上限且没有新词时返回空数组", () => {
     const store = new Words();
     const now = Date.now();
-    const today = new Date(now);
-    const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    const todayKey = formatLocalPracticeDate(new Date(now));
     addWord(store, "capped", {
       memory: dueReviewMemory(now),
       stats: stats({
@@ -265,8 +247,7 @@ describe("getRandomWords", () => {
   it("当天已复习的常规词不参与补位", () => {
     const store = new Words();
     const now = Date.now();
-    const today = new Date(now);
-    const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    const todayKey = formatLocalPracticeDate(new Date(now));
     addWord(store, "reviewed", {
       memory: dueReviewMemory(now),
       stats: stats({
@@ -298,10 +279,10 @@ describe("practiceStats", () => {
     store.recordReview("banana", 3, { now: Date.UTC(2026, 0, 1) });
     store.recordReview("apple", 2, { hint: true, now: Date.UTC(2026, 0, 1) });
 
-    const stats = store.practiceStats;
+    const practiceStats = store.practiceStats;
 
-    expect(stats.map((item) => item.word)).toEqual(["apple", "banana"]);
-    expect(stats[0]).toMatchObject({ reviews: 1, hints: 1 });
+    expect(practiceStats.map((item) => item.word)).toEqual(["apple", "banana"]);
+    expect(practiceStats[0]).toMatchObject({ reviews: 1, hints: 1 });
   });
 });
 
