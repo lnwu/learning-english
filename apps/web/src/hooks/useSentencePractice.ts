@@ -22,7 +22,6 @@ export interface SentenceFeedback {
   feedback: string;
   corrected: string;
   issues: string[];
-  usedWords: string[];
 }
 
 export const useSentencePractice = () => {

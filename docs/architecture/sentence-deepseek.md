@@ -31,9 +31,8 @@
 - **题面不显示目标词**：学生凭中文句子推断用词。因此生成请求会把词库存的中文译法随目标词一并传给模型，prompt 要求中文译文自然、使用参考译法、且能让学生反推出目标词；批改时同义表达不判错、仅提示。
 - **每题一考**：同一道题首次提交后可以「重新批改」，但批改只更新反馈，不写任何持久化数据。
 - 页面提交后**不锁定答案**：输入框保持可编辑，首次批改后显示「重新批改」；重新批改只更新反馈。首次批改满分自动下一题，重新批改满分停留本题（让用户看反馈）。
-- `usedWords` 语义：批改接口只返回用户实际用到的目标词（同义替代也算）；模型没返回该字段时回退全部目标词。
 - 造句练习不写入熟练度数据：不产生记忆状态、复习日志与计时样本（见 `docs/WORD_FAMILIARITY_ALGORITHM.md`）。
-- 提交前先 `normalizeForComparison` 规范化判等：与参考译文完全一致时用 `isExactMatchAnswer` + `buildExactMatchResult` 直接构造满分结果，**省一次模型调用**；`resolveUsedWords`/`sanitizeUsedWords` 在 `lib/sentenceCompare.ts` 维护，快路径与模型路径都产出同一份 `CheckResult`，字段集与「`usedWords` 缺失回退全部目标词」的语义只有 `lib/sentenceMessages.ts` 一处，客户端不再自带回退。
+- 提交前先 `normalizeForComparison`（`lib/sentenceCompare.ts`）规范化判等：与参考译文完全一致时用 `isExactMatchAnswer` + `buildExactMatchResult` 直接构造满分结果，**省一次模型调用**；快路径与模型批改路径产出同一份 `CheckResult`。
 - 生成与批改的 prompt、消息构造与响应解析在 `lib/sentenceMessages.ts`：`parseGenerateResult` 要求 `chinese`/`english` 非空，且模型所选目标词是候选词子集（大小写不敏感、去重、上限 `MAX_SENTENCE_WORDS`）、数量不少于 `MIN_SENTENCE_WORDS`，否则判失败；`parseCheckResult` 对 `score` 做 0-100 夹取取整、截断超长 `feedback`/`corrected`、过滤非字符串 `issues`（防御模型异常输出），但**不改** `correct` 的判定语义。
 - 题目生成的抽词：从词库中均匀随机抽取至多 `SENTENCE_WORD_POOL_SIZE`（6）个候选词，由模型从中挑选 2-3 个能自然共现的词作为本题目标词并随响应返回（`lib/sentenceWords.ts`，纯函数可测）；单词不足时 hook 置 `insufficientWords` 状态。
 - 句子质量约束：模型从候选池选词而不是强行使用全部随机词，是为了避免语义跨度大的词被硬凑进一句话、编出不符合常识的情节；prompt 要求先设想真实生活场景、禁止牵强的因果与对比、宁可平实也不硬凑，并在同等自然的前提下优先选择更值得练习的词（抽象名词、动词、形容词、固定搭配优先于具体名词），以缓解池选词对抽象词的覆盖损失。

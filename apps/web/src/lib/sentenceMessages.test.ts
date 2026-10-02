@@ -110,33 +110,27 @@ describe("isExactMatchAnswer", () => {
 });
 
 describe("buildExactMatchResult", () => {
-  it("返回完整批改结果，usedWords 按参考译文推导", () => {
-    expect(buildExactMatchResult("I run every day.", ["run", "apple"])).toEqual({
+  it("返回完整批改结果", () => {
+    expect(buildExactMatchResult("I run every day.")).toEqual({
       correct: true,
       score: 100,
       feedback: "答案正确，评分已按大小写不敏感处理。",
       corrected: "I run every day.",
       issues: [],
-      usedWords: ["run"],
     });
   });
 });
 
 describe("parseCheckResult", () => {
-  const words = ["run", "apple"];
-
-  it("正常输出原样返回，usedWords 只保留目标词", () => {
-    const result = parseCheckResult(
-      {
-        correct: true,
-        score: 87,
-        feedback: "不错",
-        corrected: "I run every day.",
-        issues: ["时态"],
-        usedWords: ["run", "banana"],
-      },
-      words,
-    );
+  it("正常输出原样返回，未知字段被丢弃", () => {
+    const result = parseCheckResult({
+      correct: true,
+      score: 87,
+      feedback: "不错",
+      corrected: "I run every day.",
+      issues: ["时态"],
+      unexpectedField: "ignored",
+    });
 
     expect(result).toEqual({
       correct: true,
@@ -144,40 +138,38 @@ describe("parseCheckResult", () => {
       feedback: "不错",
       corrected: "I run every day.",
       issues: ["时态"],
-      usedWords: ["run"],
     });
   });
 
   it("score 夹取到 0-100 并取整", () => {
-    expect(parseCheckResult({ score: 150 }, words).score).toBe(100);
-    expect(parseCheckResult({ score: -5 }, words).score).toBe(0);
-    expect(parseCheckResult({ score: 87.6 }, words).score).toBe(88);
-    expect(parseCheckResult({ score: Number.NaN }, words).score).toBe(0);
-    expect(parseCheckResult({ score: "90" }, words).score).toBe(0);
+    expect(parseCheckResult({ score: 150 }).score).toBe(100);
+    expect(parseCheckResult({ score: -5 }).score).toBe(0);
+    expect(parseCheckResult({ score: 87.6 }).score).toBe(88);
+    expect(parseCheckResult({ score: Number.NaN }).score).toBe(0);
+    expect(parseCheckResult({ score: "90" }).score).toBe(0);
   });
 
   it("feedback 与 corrected 超长时截断", () => {
-    const result = parseCheckResult(
-      { feedback: "a".repeat(2500), corrected: "b".repeat(600) },
-      words,
-    );
+    const result = parseCheckResult({
+      feedback: "a".repeat(2500),
+      corrected: "b".repeat(600),
+    });
 
     expect(result.feedback).toHaveLength(2000);
     expect(result.corrected).toHaveLength(500);
   });
 
   it("issues 过滤非字符串并限制条数", () => {
-    const result = parseCheckResult(
-      { issues: [...Array.from({ length: 12 }, (_, i) => `i${i}`), 42, null] },
-      words,
-    );
+    const result = parseCheckResult({
+      issues: [...Array.from({ length: 12 }, (_, i) => `i${i}`), 42, null],
+    });
 
     expect(result.issues).toHaveLength(10);
     expect(result.issues[0]).toBe("i0");
   });
 
   it("字段缺失或类型错误时回退默认值", () => {
-    const result = parseCheckResult(null, words);
+    const result = parseCheckResult(null);
 
     expect(result).toEqual({
       correct: false,
@@ -185,7 +177,6 @@ describe("parseCheckResult", () => {
       feedback: "",
       corrected: "",
       issues: [],
-      usedWords: words,
     });
   });
 });
