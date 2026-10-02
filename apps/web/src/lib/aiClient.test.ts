@@ -27,7 +27,20 @@ const googleResponse = (text: string, status = 200) =>
     { status },
   );
 
-const messages = [{ role: "user" as const, content: "hi" }];
+const messages = [
+  { role: "system" as const, content: "只返回 JSON" },
+  { role: "user" as const, content: "hi" },
+];
+
+const captureRequest = (response: Response) => {
+  const captured: { url?: string; init?: RequestInit } = {};
+  globalThis.fetch = (async (url: string, init: RequestInit) => {
+    captured.url = url;
+    captured.init = init;
+    return response;
+  }) as unknown as typeof fetch;
+  return captured;
+};
 
 describe("chatCompletionJson", () => {
   useEnvVar("DEEPSEEK_API_KEY", "test-key");
@@ -37,6 +50,16 @@ describe("chatCompletionJson", () => {
     globalThis.fetch = (async () => openAiResponse('{"ok":true}')) as unknown as typeof fetch;
     const result = await chatCompletionJson<{ ok: boolean }>(messages);
     expect(result.ok).toBe(true);
+  });
+
+  it("system 消息经 instructions 下发而不报 prompt 错误", async () => {
+    const captured = captureRequest(openAiResponse('{"ok":true}'));
+    const result = await chatCompletionJson<{ ok: boolean }>(messages);
+    expect(result.ok).toBe(true);
+    expect(JSON.parse(String(captured.init?.body)).messages).toEqual([
+      { role: "system", content: "只返回 JSON" },
+      { role: "user", content: "hi" },
+    ]);
   });
 
   it("解析 markdown fence 包裹的 JSON", async () => {
@@ -131,16 +154,6 @@ describe("模型路由", () => {
   useEnvVar("OPENCODE_API_KEY", "test-key");
   useEnvVar("MIMO_API_KEY", "test-key");
   useRestoredFetch();
-
-  const captureRequest = (response: Response) => {
-    const captured: { url?: string; init?: RequestInit } = {};
-    globalThis.fetch = (async (url: string, init: RequestInit) => {
-      captured.url = url;
-      captured.init = init;
-      return response;
-    }) as unknown as typeof fetch;
-    return captured;
-  };
 
   it("mimo 模型路由到 MiMo chat/completions", async () => {
     const captured = captureRequest(openAiResponse('{"ok":true}'));

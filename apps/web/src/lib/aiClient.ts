@@ -67,6 +67,16 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const isRetryableStatus = (status: number) => status === 429 || status >= 500;
 
+const splitSystemMessages = (
+  messages: ChatMessage[],
+): { instructions: string | undefined; conversation: ChatMessage[] } => ({
+  instructions: messages
+    .filter((message) => message.role === "system")
+    .map((message) => message.content)
+    .join("\n\n"),
+  conversation: messages.filter((message) => message.role !== "system"),
+});
+
 export const extractJson = (text: string): string => {
   const trimmed = text.trim();
   const fenced = /```(?:json)?\s*([\s\S]*?)```/.exec(trimmed);
@@ -90,11 +100,13 @@ async function requestCompletion(
 ): Promise<string> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const { instructions, conversation } = splitSystemMessages(messages);
 
   try {
     const result = await generateText({
       model: getModelFactory(spec)(spec.model),
-      messages,
+      instructions: instructions || undefined,
+      messages: conversation,
       temperature: spec.supportsTemperature ? temperature : undefined,
       maxOutputTokens,
       maxRetries: 0,
@@ -144,11 +156,7 @@ export async function chatCompletionJson<T>(
         lastError = new AiServiceError("AI 服务返回错误，请稍后重试", 502);
         continue;
       }
-      const cause = error as Error & { statusCode?: number; responseBody?: string };
-      lastError = new AiServiceError(
-        `调用 AI 服务失败，请稍后重试 [probe ${cause.name}: ${cause.message} / status ${cause.statusCode} / body ${String(cause.responseBody ?? "").slice(0, 200)}]`,
-        502,
-      );
+      lastError = new AiServiceError("调用 AI 服务失败，请稍后重试", 502);
     }
   }
 
