@@ -15,6 +15,7 @@ export const API_RATE_LIMITS = {
   translate: { name: "translate", limit: 30 },
   normalizeWords: { name: "normalize", limit: 60 },
   regenerateDefinitions: { name: "regenerate", limit: 60 },
+  confusables: { name: "confusables", limit: 20 },
   sentenceGenerate: { name: "sentence/generate", limit: 10 },
   sentenceCheck: { name: "sentence/check", limit: 20 },
 } as const;

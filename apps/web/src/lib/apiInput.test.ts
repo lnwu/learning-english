@@ -2,10 +2,12 @@ import { describe, it, expect } from "bun:test";
 import {
   badRequest,
   optionalText,
+  optionalWordToken,
   parseBody,
   requiredText,
   sentenceWordList,
   wordList,
+  wordSensesList,
   wordToken,
   wordTokenList,
   type FieldParser,
@@ -95,6 +97,61 @@ describe("wordTokenList", () => {
 
   it("全部非法时返回无效单词列表", () => {
     expect(errorOf(parser, ["b!", 5, ""])).toBe("无效单词列表");
+  });
+});
+
+describe("optionalWordToken", () => {
+  const parser = optionalWordToken();
+
+  it("缺失或空值返回空字符串", () => {
+    expect(valueOf(parser, undefined)).toBe("");
+    expect(valueOf(parser, "")).toBe("");
+  });
+
+  it("非法单词返回错误", () => {
+    expect(errorOf(parser, "b!")).toBe("无效单词");
+  });
+
+  it("转小写", () => {
+    expect(valueOf(parser, "Apple")).toBe("apple");
+  });
+});
+
+describe("wordSensesList", () => {
+  const parser = wordSensesList({ maxItems: 2 });
+
+  it("非数组或空数组返回无效单词列表", () => {
+    expect(errorOf(parser, undefined)).toBe("无效单词列表");
+    expect(errorOf(parser, [])).toBe("无效单词列表");
+  });
+
+  it("超过上限返回单词数量过多", () => {
+    const item = { word: "apple", senses: [{ pos: "n.", chinese: "苹果" }] };
+    expect(errorOf(parser, [item, item, item])).toBe("单词数量过多");
+  });
+
+  it("丢弃无有效义项与重复的单词", () => {
+    const local = wordSensesList({ maxItems: 4 });
+    const senses = [{ pos: "n.", chinese: "药", english: "a drug" }];
+    expect(
+      valueOf(local, [
+        { word: "Medicine", senses },
+        { word: "medicine", senses },
+        { word: "medication", senses: [] },
+        { word: "b!", senses },
+      ]),
+    ).toEqual([{ word: "medicine", senses: [{ pos: "n.", chinese: "药", english: "a drug" }] }]);
+  });
+
+  it("清洗义项字段", () => {
+    expect(
+      valueOf(parser, [
+        {
+          word: "apple",
+          senses: [{ pos: "n.", chinese: "  苹果  ", english: "a fruit" }],
+        },
+      ]),
+    ).toEqual([{ word: "apple", senses: [{ pos: "n.", chinese: "苹果", english: "a fruit" }] }]);
   });
 });
 

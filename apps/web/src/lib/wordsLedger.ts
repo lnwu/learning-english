@@ -1,8 +1,9 @@
 import { tNow } from "@/lib/i18n";
-import { mergeSnapshotIntoStore, type Words } from "@/lib/wordsStore";
+import { mergeSnapshotIntoStore, type Words, type WordData } from "@/lib/wordsStore";
 import { buildWordUpdates, collectStaleQueueItemIds, runWordSync } from "@/lib/wordSync";
 import {
   attemptUpdateFields,
+  confusableFields,
   practiceFields,
   resetPracticeFields,
   translationFields,
@@ -340,6 +341,56 @@ export class WordsLedger {
     } catch (error) {
       console.error("Failed to update translations:", error);
       throw new Error(tNow("error.updateTranslationFailed"));
+    }
+  };
+
+  updateConfusables = async (
+    updates: Array<{ word: string; senses: WordSense[]; confusables: string[] }>,
+    cleared: string[] = [],
+  ): Promise<void> => {
+    const repo = this.#repo;
+    if (!repo) {
+      throw new Error(tNow("error.notAuthenticated"));
+    }
+
+    const entries: Array<{
+      data: Readonly<WordData>;
+      fields: { translation?: string; confusables: string[] };
+    }> = [];
+    for (const { word, senses, confusables } of updates) {
+      const data = this.#words.getWordData(word);
+      if (!data) continue;
+      entries.push({ data, fields: confusableFields(senses, confusables) });
+    }
+    const updatedWords = new Set(updates.map((item) => item.word));
+    for (const word of cleared) {
+      if (updatedWords.has(word)) continue;
+      const data = this.#words.getWordData(word);
+      if (!data || data.confusables.length === 0) continue;
+      entries.push({ data, fields: { confusables: [] } });
+    }
+
+    if (entries.length === 0) return;
+
+    try {
+      entries.forEach(({ data, fields }) => {
+        this.#words.setWordData(data.word, {
+          ...data,
+          translation: fields.translation ?? data.translation,
+          confusables: fields.confusables,
+        });
+      });
+
+      await repo.commitWordOperations(
+        entries.map(({ data, fields }) => ({
+          type: "update" as const,
+          wordId: data.id,
+          fields,
+        })),
+      );
+    } catch (error) {
+      console.error("Failed to update confusables:", error);
+      throw new Error(tNow("error.updateConfusablesFailed"));
     }
   };
 

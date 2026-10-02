@@ -75,7 +75,11 @@ const BatchAiActionRow = ({
           onClick={() => action.setDialogOpen(true)}
           disabled={action.running || totalWords === 0}
         >
-          {action.running ? `${t("common.loading")} ${action.progress}/${totalWords}` : buttonLabel}
+          {action.running
+            ? action.progress > 0
+              ? `${t("common.loading")} ${action.progress}/${totalWords}`
+              : t("common.loading")
+            : buttonLabel}
         </Button>
       </SettingRow>
       <ConfirmDialog
@@ -92,10 +96,11 @@ const BatchAiActionRow = ({
 };
 
 export const ProfileAiSection = observer(() => {
-  const { words, updateTranslations, normalizeWordForms } = useFirestoreWords();
+  const { words, updateTranslations, normalizeWordForms, refreshConfusables } = useFirestoreWords();
   const { t } = useLocale();
   const regenerate = useBatchAiAction(t("profile.regenerateFailed"));
   const normalize = useBatchAiAction(t("profile.normalizeFailed"));
+  const confusables = useBatchAiAction(t("profile.confusablesFailed"));
 
   const totalWords = words.wordCount;
 
@@ -199,8 +204,30 @@ export const ProfileAiSection = observer(() => {
     });
   };
 
+  const handleConfusables = () =>
+    confusables.run(async () => {
+      const updated = await refreshConfusables();
+      toast({
+        title:
+          updated > 0
+            ? t("profile.confusablesSuccess", { count: updated })
+            : t("profile.confusablesNone"),
+        variant: "success",
+      });
+    });
+
   return (
     <>
+      <BatchAiActionRow
+        action={confusables}
+        totalWords={totalWords}
+        title={t("profile.confusablesTitle")}
+        description={t("profile.confusablesDesc")}
+        buttonLabel={t("profile.confusablesButton")}
+        confirmTitle={t("profile.confusablesConfirm")}
+        confirmDescription={t("profile.confusablesConfirmDesc")}
+        onConfirm={handleConfusables}
+      />
       <BatchAiActionRow
         action={regenerate}
         totalWords={totalWords}

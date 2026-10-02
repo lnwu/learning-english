@@ -1,0 +1,228 @@
+import { describe, it, expect } from "bun:test";
+import {
+  buildConfusablesMessages,
+  parseConfusablesResults,
+  type ConfusableWordInput,
+} from "./confusables";
+import { MAX_CONFUSABLES_PER_WORD } from "./wordDoc";
+
+const input = (word: string, chinese: string): ConfusableWordInput => ({
+  word,
+  senses: [{ pos: "n.", chinese, english: `definition of ${word}` }],
+});
+
+const book = [
+  input("medicine", "药、医学"),
+  input("medication", "药物"),
+  input("replicate", "复制"),
+  input("duplicate", "复制"),
+  input("apple", "苹果"),
+];
+
+const allowedWords = book.map((item) => item.word);
+
+describe("buildConfusablesMessages", () => {
+  it("批量模式把全部单词压缩为 pos 与 chinese", () => {
+    const messages = buildConfusablesMessages(book);
+
+    expect(messages).toHaveLength(2);
+    const user = messages[1];
+    expect(user?.role).toBe("user");
+    expect(user?.content).toContain('"word":"medicine"');
+    expect(user?.content).toContain('"chinese":"药、医学"');
+    expect(user?.content).not.toContain("definition of medicine");
+  });
+
+  it("focus 模式区分目标单词与其他单词", () => {
+    const messages = buildConfusablesMessages(book, "medication");
+    const user = messages[1];
+
+    expect(user?.content).toContain("目标单词：");
+    expect(user?.content).toContain("其他单词：");
+    const [targetPart, othersPart] = user?.content.split("\n其他单词：") ?? [];
+    expect(targetPart).toContain('"medication"');
+    expect(targetPart).not.toContain('"medicine"');
+    expect(othersPart).toContain('"medicine"');
+  });
+});
+
+describe("parseConfusablesResults", () => {
+  it("解析结果并把同组词对称化", () => {
+    const raw = {
+      results: [
+        {
+          word: "medicine",
+          confusables: ["medication"],
+          senses: [
+            {
+              pos: "n.",
+              chinese: "药；医学（学科）",
+              english: "drugs or the science",
+              note: "与 medication 比，还可指医学",
+            },
+          ],
+        },
+        {
+          word: "medication",
+          confusables: ["medicine"],
+          senses: [
+            {
+              pos: "n.",
+              chinese: "药（处方药）",
+              english: "prescribed drugs",
+              note: "与 medicine 比，仅指药品",
+            },
+          ],
+        },
+      ],
+    };
+
+    const results = parseConfusablesResults(raw, allowedWords);
+
+    expect(results.map((item) => item.word)).toEqual(["medication", "medicine"]);
+    expect(results.find((item) => item.word === "medicine")?.confusables).toEqual(["medication"]);
+    expect(results.find((item) => item.word === "medication")?.confusables).toEqual(["medicine"]);
+  });
+
+  it("单向声明的边也会补全为同组", () => {
+    const raw = {
+      results: [
+        {
+          word: "replicate",
+          confusables: ["duplicate"],
+          senses: [
+            {
+              pos: "v.",
+              chinese: "复现（实验）",
+              english: "repeat exactly",
+              note: "与 duplicate 比，强调复现",
+            },
+          ],
+        },
+        {
+          word: "duplicate",
+          confusables: [],
+          senses: [
+            {
+              pos: "v.",
+              chinese: "复制（副本）",
+              english: "make a copy",
+              note: "与 replicate 比，强调副本",
+            },
+          ],
+        },
+      ],
+    };
+
+    const results = parseConfusablesResults(raw, allowedWords);
+
+    expect(results.find((item) => item.word === "duplicate")?.confusables).toEqual(["replicate"]);
+  });
+
+  it("传递闭包聚成一组", () => {
+    const raw = {
+      results: [
+        {
+          word: "medicine",
+          confusables: ["medication"],
+          senses: [{ pos: "n.", chinese: "药；医学", english: "e1", note: "n1" }],
+        },
+        {
+          word: "medication",
+          confusables: ["medicine", "duplicate"],
+          senses: [{ pos: "n.", chinese: "药", english: "e2", note: "n2" }],
+        },
+        {
+          word: "duplicate",
+          confusables: ["medication"],
+          senses: [{ pos: "v.", chinese: "复制", english: "e3", note: "n3" }],
+        },
+      ],
+    };
+
+    const results = parseConfusablesResults(raw, allowedWords);
+
+    expect(results).toHaveLength(3);
+    expect(results.find((item) => item.word === "medicine")?.confusables).toEqual([
+      "duplicate",
+      "medication",
+    ]);
+  });
+
+  it("丢弃未知单词、无效义项与不在组内的结果", () => {
+    const raw = {
+      results: [
+        {
+          word: "unknown",
+          confusables: ["medicine"],
+          senses: [{ pos: "n.", chinese: "x", english: "y" }],
+        },
+        {
+          word: "apple",
+          confusables: [],
+          senses: [{ pos: "n.", chinese: "苹果", english: "a fruit" }],
+        },
+        {
+          word: "medicine",
+          confusables: ["unknown"],
+          senses: [{ pos: "n.", chinese: "药", english: "e" }],
+        },
+        { word: "medication", confusables: ["medicine"], senses: [] },
+      ],
+    };
+
+    expect(parseConfusablesResults(raw, allowedWords)).toEqual([]);
+  });
+
+  it("每个词的易混词列表截断到上限且不含自身", () => {
+    const others = Array.from({ length: MAX_CONFUSABLES_PER_WORD + 3 }, (_, index) =>
+      input(`word${String(index).padStart(2, "0")}`, "相同"),
+    );
+    const words = [input("target", "相同"), ...others];
+    const raw = {
+      results: [
+        {
+          word: "target",
+          confusables: ["target", ...others.map((item) => item.word)],
+          senses: [{ pos: "n.", chinese: "相同", english: "e", note: "n" }],
+        },
+        ...others.map((item) => ({
+          word: item.word,
+          confusables: ["target"],
+          senses: [{ pos: "n.", chinese: "相同", english: "e", note: "n" }],
+        })),
+      ],
+    };
+
+    const results = parseConfusablesResults(
+      raw,
+      words.map((item) => item.word),
+    );
+    const target = results.find((item) => item.word === "target");
+
+    expect(target?.confusables).toHaveLength(MAX_CONFUSABLES_PER_WORD);
+    expect(target?.confusables).not.toContain("target");
+  });
+
+  it("声明的易混词过滤自身与重复项", () => {
+    const raw = {
+      results: [
+        {
+          word: "medicine",
+          confusables: ["medicine", "medication", "medication"],
+          senses: [{ pos: "n.", chinese: "药；医学", english: "e1", note: "n1" }],
+        },
+        {
+          word: "medication",
+          confusables: [],
+          senses: [{ pos: "n.", chinese: "药", english: "e2", note: "n2" }],
+        },
+      ],
+    };
+
+    const results = parseConfusablesResults(raw, allowedWords);
+
+    expect(results).toHaveLength(2);
+    expect(results.find((item) => item.word === "medicine")?.confusables).toEqual(["medication"]);
+  });
+});

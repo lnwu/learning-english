@@ -15,6 +15,7 @@ import { makeMemory as memory, makeStats as stats } from "./testSupport";
 const makeWordData = (word: string, overrides: Partial<WordData> = {}): WordData => ({
   word,
   translation: `${word}-中文`,
+  confusables: [],
   memory: memory(),
   stats: stats(),
   inputTimes: [],

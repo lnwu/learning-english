@@ -11,15 +11,24 @@ import {
   type WordStats,
 } from "@/lib/masteryModel";
 import { encodeSenses, type WordSense } from "@/lib/wordSenses";
+import { isValidWordToken } from "@/lib/lemma";
 import type { SyncableWordData, WordData } from "@/lib/wordsStore";
+
+export const MAX_CONFUSABLES_PER_WORD = 8;
 
 export const translationFields = (senses: WordSense[]) => ({
   translation: encodeSenses(senses),
 });
 
+export const confusableFields = (senses: WordSense[], confusables: string[]) => ({
+  translation: encodeSenses(senses),
+  confusables,
+});
+
 export const newWordDocFields = (word: string, senses: WordSense[]) => ({
   word,
   ...translationFields(senses),
+  confusables: [],
   memory: initialMemory(Date.now()),
   stats: initialStats(),
   inputTimes: [],
@@ -109,6 +118,15 @@ const parseReview = (value: unknown): ReviewLogEntry | null => {
 
 export const parseWordDoc = (id: string, data: DocumentData): WordData => {
   const createdAt = data.createdAt?.toDate() ?? new Date();
+  const confusables = Array.isArray(data.confusables)
+    ? Array.from(
+        new Set(
+          data.confusables
+            .map((item: unknown) => (typeof item === "string" ? item.trim().toLowerCase() : ""))
+            .filter((item: string) => isValidWordToken(item) && item !== data.word),
+        ),
+      ).slice(0, MAX_CONFUSABLES_PER_WORD)
+    : [];
   const inputTimes = Array.isArray(data.inputTimes)
     ? data.inputTimes
         .filter((time): time is number => typeof time === "number" && Number.isFinite(time))
@@ -124,6 +142,7 @@ export const parseWordDoc = (id: string, data: DocumentData): WordData => {
   return {
     word: data.word,
     translation: data.translation,
+    confusables,
     memory: parseMemory(data.memory, createdAt.getTime()),
     stats: parseStats(data.stats),
     inputTimes,
