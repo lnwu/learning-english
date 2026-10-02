@@ -131,13 +131,7 @@ export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
       );
 
       const updates = results ?? [];
-      const updatedWords = new Set(updates.map((item) => item.word));
-      const cleared = focus
-        ? []
-        : list
-            .map((item) => item.word)
-            .filter((word) => words.getConfusables(word).length > 0 && !updatedWords.has(word));
-      await ledger.updateConfusables(updates, cleared);
+      await ledger.updateConfusables(updates);
       return updates.length;
     },
     [ledger],

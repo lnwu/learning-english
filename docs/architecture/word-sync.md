@@ -34,7 +34,7 @@
 ## 批量写与归一化
 
 - `commitWordOperations` 按 500 分片：Firestore writeBatch 上限 500。
-- `updateTranslations` 先 `setWordData`（store 即时更新、UI 立即反馈）再落库：onSnapshot 回来会幂等合并，顺序反了 UI 会有延迟。`updateConfusables` 同理，但一次可同时写 `translation` 与 `confusables`；批量刷新易混词时会清掉不再易混的词（只写 `confusables`，保留原释义）。两个入口都不触碰练习数据。
+- `updateTranslations` 先 `setWordData`（store 即时更新、UI 立即反馈）再落库：onSnapshot 回来会幂等合并，顺序反了 UI 会有延迟。`updateConfusables` 同理，一次写 `translation` 与 `confusables`，且只增不删：模型对易混的判断会波动，抹掉旧配对会让 `confusables` 与释义里的辨析不一致。两个入口都不触碰练习数据。
 - `normalizeWordForms` 先 `syncToFirestore()` 再操作：旧文档上的待同步条目若在重命名/合并后被 `not-found` 判定丢弃，练习数据就没了。落库成功后才 `words.moveWord` 更新 store（store 慢于 Firestore 一步没关系，快照会补）。
 - `mergeWordData` 合并语义：记忆状态取 `lastReviewAt` 更晚的一侧（相同取 `stability` 更低的一侧）；`stats` 逐项取大（`dailyReviews` 同日取大、异日跟随较晚日期）；`reviews` 按 id 并集并按时间排序保留最近 200 条；`inputTimes` 取最近 20 条；`createdAt` 取较早、`translation`/`id` 保留目标词。
 

@@ -441,24 +441,6 @@ describe("WordsLedger 词库命令", () => {
     ]);
   });
 
-  it("批量刷新时清理不再易混的词，且不动释义", async () => {
-    const { repo, words, ledger } = setup();
-    repo.emit([
-      makeDoc("apple", { translation: "n. 苹果 — a fruit", confusables: ["pear"] }),
-      makeDoc("pear", { translation: "n. 梨 — a fruit", confusables: ["apple"] }),
-    ]);
-
-    await ledger.updateConfusables([], ["apple", "pear"]);
-
-    expect(words.getConfusables("apple")).toEqual([]);
-    expect(words.getConfusables("pear")).toEqual([]);
-    expect(words.getTranslation("apple")).toBe("n. 苹果 — a fruit");
-    expect(repo.operations[0]).toEqual([
-      { type: "update", wordId: "id-apple", fields: { confusables: [] } },
-      { type: "update", wordId: "id-pear", fields: { confusables: [] } },
-    ]);
-  });
-
   it("归一化时把屈折形式合并进已有原形", async () => {
     const { repo, words, ledger } = setup();
     repo.emit([
