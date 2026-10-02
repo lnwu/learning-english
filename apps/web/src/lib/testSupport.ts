@@ -7,6 +7,7 @@ import {
   type WordStats,
 } from "@/lib/masteryModel";
 import type { QueueStorage, SyncQueueItem } from "@/lib/queueStorage";
+import type { SyncableWordData } from "@/lib/wordsStore";
 
 export const makeMemory = (overrides: Partial<WordMemory> = {}): WordMemory => ({
   ...initialMemory(0),
@@ -37,6 +38,22 @@ export const reviewEntry = (id: string, at: number): ReviewLogEntry => ({
   r: null,
   s: 2.3065,
   d: 2.1181,
+});
+
+export const makeSyncable = (
+  at = 1000,
+  overrides: Partial<SyncableWordData> = {},
+): SyncableWordData => ({
+  memory: memoryAt(at),
+  stats: {
+    ...initialStats(),
+    reviewDays: 1,
+    lastReviewDay: "2026-01-01",
+    dailyReviews: 1,
+  },
+  inputTimes: [1],
+  reviews: [reviewEntry("r1", at)],
+  ...overrides,
 });
 
 let tokenNonce = 0;

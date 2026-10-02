@@ -15,19 +15,19 @@ describe("translationCache", () => {
   useNoRedisEnv();
 
   it("写入后可读取", async () => {
-    const word = `cache-${Math.random()}`;
+    const word = "cache-hit";
     const entry = makeEntry();
     setCachedTranslation(word, entry);
     expect(await getCachedTranslation(word)).toEqual(entry);
   });
 
   it("未识别单词不写入缓存", async () => {
-    const word = `invalid-${Math.random()}`;
+    const word = "cache-invalid";
     setCachedTranslation(word, { lemma: word, senses: null });
     expect(await getCachedTranslation(word)).toBeUndefined();
   });
 
   it("未命中返回 undefined", async () => {
-    expect(await getCachedTranslation(`missing-${Math.random()}`)).toBeUndefined();
+    expect(await getCachedTranslation("cache-missing")).toBeUndefined();
   });
 });
