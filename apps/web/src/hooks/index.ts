@@ -4,4 +4,5 @@ export { useLocale, LocaleProvider } from "./useLocale";
 export { toast } from "./useToast";
 export { useAuth } from "./useAuth";
 export { useAddableWordCheck } from "./useAddableWordCheck";
+export { useAiModel, AiModelsProvider } from "./useAiModel";
 export { usePracticeTimeTracker } from "./usePracticeTimeTracker";

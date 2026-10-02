@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { DeepSeekError } from "./deepseek";
+import { AiServiceError } from "./aiClient";
 import { buildWordLookupMessages, parseWordLookupResult } from "./wordLookup";
 
 describe("buildWordLookupMessages", () => {
@@ -58,6 +58,6 @@ describe("parseWordLookupResult", () => {
         { isWord: true, lemma: "word", senses: [{ pos: "", chinese: "" }] },
         "word",
       ),
-    ).toThrow(DeepSeekError);
+    ).toThrow(AiServiceError);
   });
 });

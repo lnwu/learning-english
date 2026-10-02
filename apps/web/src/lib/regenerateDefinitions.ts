@@ -1,4 +1,4 @@
-import { extractResultItems, type ChatMessage } from "@/lib/deepseek";
+import { extractResultItems, type ChatMessage } from "@/lib/aiClient";
 import { SENSE_FIELD_LINES } from "@/lib/aiPrompts";
 import { sanitizeWordSenses, type WordSense } from "@/lib/wordSenses";
 

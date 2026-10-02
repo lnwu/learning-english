@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isAiModelId } from "@/lib/aiProviders";
 import type { ApiParseResult } from "@/lib/apiRoute";
 import { isValidWordToken } from "@/lib/lemma";
 import { sanitizeWordSenses, type WordSense } from "@/lib/wordSenses";
@@ -149,6 +150,35 @@ export const sentenceWordList =
       return { ok: false, error: "输入内容过长" };
     }
     return { ok: true, value: items };
+  };
+
+export const optionalAiModelId = (): FieldParser<string> => (raw) => {
+  if (raw === undefined || raw === null || raw === "") return { ok: true, value: "" };
+  if (typeof raw !== "string" || !isAiModelId(raw.trim())) {
+    return { ok: false, error: "未知模型" };
+  }
+  return { ok: true, value: raw.trim() };
+};
+
+export const aiModelIdList =
+  (options: { maxItems: number }): FieldParser<string[]> =>
+  (raw) => {
+    if (!Array.isArray(raw) || raw.length === 0) {
+      return { ok: false, error: "缺少模型" };
+    }
+    const models = Array.from(
+      new Set(raw.map((item) => (typeof item === "string" ? item.trim() : ""))),
+    ).filter(Boolean);
+    if (models.length === 0) {
+      return { ok: false, error: "缺少模型" };
+    }
+    if (models.length > options.maxItems) {
+      return { ok: false, error: "模型数量过多" };
+    }
+    if (models.some((model) => !isAiModelId(model))) {
+      return { ok: false, error: "未知模型" };
+    }
+    return { ok: true, value: models };
   };
 
 export const parseBody =

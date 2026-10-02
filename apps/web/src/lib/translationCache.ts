@@ -1,4 +1,5 @@
 import { setBounded } from "@/lib/boundedMap";
+import { DEFAULT_AI_MODEL_ID } from "@/lib/aiProviders";
 import { getRedis } from "@/lib/redis";
 import type { WordSense } from "@/lib/wordSenses";
 
@@ -13,41 +14,48 @@ const CACHE_KEY_PREFIX = "translation:v5";
 
 const memoryCache = new Map<string, TranslationCacheEntry>();
 
+const cacheKey = (word: string, model: string): string =>
+  model === DEFAULT_AI_MODEL_ID
+    ? `${CACHE_KEY_PREFIX}:${word}`
+    : `${CACHE_KEY_PREFIX}:${model}:${word}`;
+
 const isCacheEntry = (value: unknown): value is TranslationCacheEntry =>
   typeof value === "object" &&
   value !== null &&
   "senses" in value &&
   typeof (value as { lemma?: unknown }).lemma === "string";
 
-const readMemory = (word: string): TranslationCacheEntry | undefined => {
-  const entry = memoryCache.get(word);
+const readMemory = (key: string): TranslationCacheEntry | undefined => {
+  const entry = memoryCache.get(key);
   if (entry) {
-    memoryCache.delete(word);
-    memoryCache.set(word, entry);
+    memoryCache.delete(key);
+    memoryCache.set(key, entry);
   }
   return entry;
 };
 
-const writeMemory = (word: string, entry: TranslationCacheEntry): void => {
-  if (!entry.senses || entry.senses.length === 0 || memoryCache.has(word)) {
+const writeMemory = (key: string, entry: TranslationCacheEntry): void => {
+  if (!entry.senses || entry.senses.length === 0 || memoryCache.has(key)) {
     return;
   }
-  setBounded(memoryCache, word, entry, MAX_CACHE_ENTRIES);
+  setBounded(memoryCache, key, entry, MAX_CACHE_ENTRIES);
 };
 
 export const getCachedTranslation = async (
   word: string,
+  model: string = DEFAULT_AI_MODEL_ID,
 ): Promise<TranslationCacheEntry | undefined> => {
-  const memory = readMemory(word);
+  const key = cacheKey(word, model);
+  const memory = readMemory(key);
   if (memory) return memory;
 
   const redis = getRedis();
   if (!redis) return undefined;
 
   try {
-    const value = await redis.get<TranslationCacheEntry>(`${CACHE_KEY_PREFIX}:${word}`);
+    const value = await redis.get<TranslationCacheEntry>(key);
     if (!isCacheEntry(value)) return undefined;
-    writeMemory(word, value);
+    writeMemory(key, value);
     return value;
   } catch (error) {
     console.error("Failed to read translation cache:", error);
@@ -55,15 +63,20 @@ export const getCachedTranslation = async (
   }
 };
 
-export const setCachedTranslation = (word: string, entry: TranslationCacheEntry): void => {
-  writeMemory(word, entry);
+export const setCachedTranslation = (
+  word: string,
+  entry: TranslationCacheEntry,
+  model: string = DEFAULT_AI_MODEL_ID,
+): void => {
+  const key = cacheKey(word, model);
+  writeMemory(key, entry);
 
   if (!entry.senses || entry.senses.length === 0) return;
 
   const redis = getRedis();
   if (!redis) return;
 
-  redis.set(`${CACHE_KEY_PREFIX}:${word}`, entry, { ex: CACHE_TTL_SECONDS }).catch((error) => {
+  redis.set(key, entry, { ex: CACHE_TTL_SECONDS }).catch((error) => {
     console.error("Failed to write translation cache:", error);
   });
 };

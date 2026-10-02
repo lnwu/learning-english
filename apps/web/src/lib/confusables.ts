@@ -1,4 +1,4 @@
-import { extractResultItems, type ChatMessage } from "@/lib/deepseek";
+import { extractResultItems, type ChatMessage } from "@/lib/aiClient";
 import { sanitizeWordSenses, type WordSense } from "@/lib/wordSenses";
 
 export const MAX_CONFUSABLES_WORDS = 800;

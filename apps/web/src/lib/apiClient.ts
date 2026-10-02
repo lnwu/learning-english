@@ -1,4 +1,5 @@
 import { getAuthInstance } from "@/lib/firebase";
+import { getSelectedAiModel } from "@/lib/aiModelPreference";
 import { getCurrentLocale, t, tNow } from "@/lib/i18n";
 
 export async function postJson<T>(
@@ -11,13 +12,18 @@ export async function postJson<T>(
     throw new Error(t("error.notAuthenticated", getCurrentLocale()));
   }
 
+  const body =
+    typeof payload === "object" && payload !== null
+      ? { ...(payload as Record<string, unknown>), model: getSelectedAiModel() }
+      : payload;
+
   const response = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${idToken}`,
     },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(body),
   });
 
   const data = await response.json().catch(() => null);

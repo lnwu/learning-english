@@ -10,7 +10,7 @@
 ## Vercel 运行时
 
 - `apps/web/vercel.json` 的 `bunVersion` 固定 `1.4.x`：Vercel Functions（API 路由与 SSR）在 Bun 上运行，Next 的 build/dev 也经 `bun run --bun` 执行；版本与本机 `packageManager`、CI 的 bun 1.4.2 对齐。
-- `regions` 固定 `hkg1`：函数就近访问 Upstash（`sin1`）、Firestore / Identity Platform（`asia-east2`）与 DeepSeek API。
+- `regions` 固定 `hkg1`：函数就近访问 Upstash（`sin1`）、Firestore / Identity Platform（`asia-east2`）与各模型服务商 API。
 
 ## Vercel 环境变量（apps/web 项目）
 
@@ -18,7 +18,7 @@
 | --- | --- |
 | `NEXT_PUBLIC_FIREBASE_API_KEY` / `AUTH_DOMAIN` / `PROJECT_ID` / `STORAGE_BUCKET` / `MESSAGING_SENDER_ID` / `APP_ID` / `MEASUREMENT_ID` | Firebase Web App 配置（Firebase 控制台获取），缺失时构建/运行直接抛错 |
 | `NEXT_PUBLIC_VERCEL_ENV` | Vercel 自动注入（preview 判定用） |
-| `DEEPSEEK_API_KEY` / `DEEPSEEK_BASE_URL` / `DEEPSEEK_MODEL` | 服务端 DeepSeek（BASE_URL/MODEL 可选，缺省走内置） |
+| `DEEPSEEK_API_KEY` / `OPENCODE_API_KEY` / `MIMO_API_KEY` | 服务端 AI 服务的 API Key（baseUrl 与模型清单写在 `apps/web/src/lib/aiProviders.ts`）；缺哪个就禁用对应服务商的模型 |
 | `KV_REST_API_URL` / `KV_REST_API_TOKEN` 或 `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Vercel Marketplace 装 Upstash Redis 后自动注入，用于全局限流与翻译缓存 L2；未配置时回退进程内（仅本地开发可接受） |
 
 - **API Key 禁止加 `NEXT_PUBLIC_` 前缀下发前端。**
@@ -38,7 +38,7 @@ bun run sync:preview      # 手动同步 preview 数据（需 ADC + PROD_USER_UI
 ```
 
 - 根脚本通过 `bun run --filter '*' <script>` 转发到各 workspace。
-- `apps/web/.env.local` 提供 Firebase 变量（不入库）；`DEEPSEEK_API_KEY` 可选，无 key 时翻译/造句接口返回 500。
+- `apps/web/.env.local` 提供 Firebase 变量（不入库）；AI 服务的 API Key 可选，无 key 时对应服务商的模型不可选，仅剩的服务商也无 key 时翻译/造句接口返回 500。
 - 本机没有 terraform/firebase CLI，infra 变更只能靠 CI 的 plan/apply 验证。
 
 ## 熟练度校准（导出与拟合）

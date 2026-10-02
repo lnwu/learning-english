@@ -1,6 +1,8 @@
 import { describe, it, expect } from "bun:test";
 import {
+  aiModelIdList,
   badRequest,
+  optionalAiModelId,
   optionalText,
   optionalWordToken,
   parseBody,
@@ -237,5 +239,60 @@ describe("parseBody", () => {
     });
     const result = parseBody<{ note: string }>({ note: optionalText(5) })(null);
     expect(result).toEqual({ ok: true, body: { note: "" } });
+  });
+});
+
+describe("optionalAiModelId", () => {
+  const parser = optionalAiModelId();
+
+  it("缺省与空串解析为空", () => {
+    expect(parser(undefined)).toEqual({ ok: true, value: "" });
+    expect(parser("")).toEqual({ ok: true, value: "" });
+  });
+
+  it("注册表中的模型解析通过", () => {
+    expect(parser("deepseek/deepseek-flash")).toEqual({
+      ok: true,
+      value: "deepseek/deepseek-flash",
+    });
+  });
+
+  it("未知模型报错", () => {
+    expect(parser("unknown/model").ok).toBe(false);
+    expect(parser(123).ok).toBe(false);
+  });
+});
+
+describe("aiModelIdList", () => {
+  const parser = aiModelIdList({ maxItems: 4 });
+
+  it("去重并保留合法模型", () => {
+    expect(
+      parser(["mimo/mimo-v2.6-flash", "mimo/mimo-v2.6-flash", "deepseek/deepseek-flash"]),
+    ).toEqual({
+      ok: true,
+      value: ["mimo/mimo-v2.6-flash", "deepseek/deepseek-flash"],
+    });
+  });
+
+  it("空数组与非数组报错", () => {
+    expect(parser([]).ok).toBe(false);
+    expect(parser("mimo/mimo-v2.6-flash").ok).toBe(false);
+  });
+
+  it("包含未知模型报错", () => {
+    expect(parser(["mimo/mimo-v2.6-flash", "unknown/model"]).ok).toBe(false);
+  });
+
+  it("超量报错", () => {
+    expect(
+      parser([
+        "deepseek/deepseek-flash",
+        "mimo/mimo-v2.6-flash",
+        "mimo/mimo-v2.6-pro",
+        "opencode/gemini-3.8-flash",
+        "opencode/claude-opus-5-5",
+      ]).ok,
+    ).toBe(false);
   });
 });
