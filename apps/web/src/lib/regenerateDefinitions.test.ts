@@ -1,4 +1,5 @@
 import { describe, it, expect } from "bun:test";
+import { SENSE_SELECTION_RULE } from "./aiPrompts";
 import { buildRegenerateMessages, parseRegenerateResults } from "./regenerateDefinitions";
 import { MAX_SENSES } from "./wordSenses";
 
@@ -9,6 +10,10 @@ describe("buildRegenerateMessages", () => {
     expect(messages[0].role).toBe("system");
     expect(messages[1].role).toBe("user");
     expect(messages[1].content).toBe("apple, banana");
+  });
+
+  it("共用 aiPrompts 的义项选择约束", () => {
+    expect(buildRegenerateMessages(["mouth"])[0].content).toContain(SENSE_SELECTION_RULE);
   });
 });
 
