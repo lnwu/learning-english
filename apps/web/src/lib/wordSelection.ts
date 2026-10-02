@@ -1,4 +1,4 @@
-export const MAX_ADD_WORD_LENGTH = 50;
+import { isValidWordToken } from "@/lib/lemma";
 
 const WORD_RUN_PATTERN = /[a-zA-Z]+/;
 
@@ -7,8 +7,7 @@ export const extractWordFromSelection = (text: string): string | null => {
   const match = text.match(WORD_RUN_PATTERN);
   if (!match) return null;
   const word = match[0].toLowerCase();
-  if (word.length > MAX_ADD_WORD_LENGTH) return null;
-  return word;
+  return isValidWordToken(word) ? word : null;
 };
 
 export type WordAddableStatus = "ok" | "exists" | "invalid";
@@ -18,8 +17,5 @@ export const checkWordAddable = (
   word: string,
 ): WordAddableStatus => {
   if (isKnown(word)) return "exists";
-  if (!/^[a-zA-Z]+$/.test(word) || word.length > MAX_ADD_WORD_LENGTH) {
-    return "invalid";
-  }
-  return "ok";
+  return isValidWordToken(word) ? "ok" : "invalid";
 };

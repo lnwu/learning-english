@@ -4,22 +4,3 @@ export const formatLocalPracticeDate = (date: Date) => {
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 };
-
-export const getLocalPracticeDate = (practiceDate: string) => {
-  // 已是本地日期格式（YYYY-MM-DD），直接返回，避免 new Date 在负时区解析偏移
-  if (/^\d{4}-\d{2}-\d{2}$/.test(practiceDate)) {
-    return practiceDate;
-  }
-  const date = new Date(practiceDate);
-  return Number.isNaN(date.getTime()) ? practiceDate : formatLocalPracticeDate(date);
-};
-
-export const getLocalDateStartMs = (practiceDate: string): number | null => {
-  const localDate = getLocalPracticeDate(practiceDate);
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(localDate);
-  if (!match) {
-    return null;
-  }
-  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
-  return Number.isNaN(date.getTime()) ? null : date.getTime();
-};

@@ -50,13 +50,13 @@
 
 ### 必须保持的行为
 
-- `useFirestoreWords()` 只返回稳定 context；高频变化的 `syncing` 与 `pendingCount` 只通过 `useSyncStatus()` 暴露。`Words` 的 `wordData` / `userInputs` 是私有字段，外部一律走 `wordCount`、`knownWords()`、`hasWord()`、`wordEntries()`、`getWordData()`（只读 `WordData`）以及 `getUserInput()`、`setUserInput()`、`clearUserInputs()`；字段使用 TypeScript `private`，不要使用 `#private`，否则 MobX observer 可能无法响应变化。
+- `useFirestoreWords()` 只返回稳定 context；高频变化的 `syncing` 与 `pendingCount` 只通过 `useSyncStatus()` 暴露。`Words` 的 `wordData` / `userInputs` 是私有字段，外部一律走 `wordCount`、`knownWords()`、`hasWord()`、`getWordData()`（只读 `WordData`）以及 `getUserInput()`、`setUserInput()`、`clearUserInputs()`；字段使用 TypeScript `private`，不要使用 `#private`，否则 MobX observer 可能无法响应变化。
 - 同步指示器在根 `layout.tsx` 内只渲染一次，组件（`components/ui/sync-indicator.tsx`）自行订阅 `useSyncStatus()` 并取 `syncToFirestore`；有待同步或正在同步时在所有页面显示，页面不要各自渲染。
 - 派生数据使用 `Words` computed getter；写入口只通过 `Words` 的具名命令修改数据。练习数据重置走 `resetPracticeRecords()`，由 store 完成重置并返回待落库清单，不要在调用方原地修改 `WordData`。
 - `mergeSnapshotIntoStore` 必须保持增量合并及现有支配判定，不得改成全量替换 store 内容；支配判定按 `memory.lastReviewAt`，stale 判定统一使用 `collectStaleQueueItemIds(merged, queue)`，不要混用快照与 `byId` 视图。
 - 复习时间取客户端真实时刻写入 `memory.lastReviewAt`，不得改用同步时刻。
 - 分片提交使用 `commitInChunks`（纯执行器，`chunkSize` 取自 `WordsRepo.batchLimit`），Firestore 写入统一走 `lib/wordsRepo.ts` 的 `commitWordOperations`（按 `batchLimit` 分片、一次调用一个批次序列，保住归一化的原子性）；同步载荷、失败分类、过期队列和队列处置集中在 `lib/wordSync.ts` 的 `runWordSync`，由 `WordsLedger.sync()` 调用，不要内联回 hook。队列超过重试上限必须跨片汇总后只提示一次 `sync.dataLost`（ledger 递增 `dataLostCount`，provider 提示），localStorage 写失败回退内存必须提示 `sync.storageFailed`（存储适配器暴露 `usingMemoryFallback`，ledger 置 `storageFailed`）。
-- `normalizeWordForms` 先 `syncToFirestore()` 并按计划落库，Firestore 成功后才更新 store；调整合并或上限语义时同步 `Words.MAX_*`。`updateTranslations` 先即时更新 store，再 batch 写 `translation`，由 `onSnapshot` 幂等合并兜底。
+- `normalizeWordForms` 先 `syncToFirestore()` 并按计划落库，Firestore 成功后才更新 store；调整合并或上限语义时同步 `lib/masteryModel.ts` 中的上限常量。`updateTranslations` 先即时更新 store，再 batch 写 `translation`，由 `onSnapshot` 幂等合并兜底。
 - 练习页输入判定使用 `lib/practiceInput.ts` 与单个 `inputStatesRef`：只有计时有效的逐字输入由 `resolveReview` 写入复习，粘贴/联想补全不产生复习；`WordRow` 保持独立 observer，父组件渲染路径不读 `words.userInputs`。
 - `PracticeHeatmap` 保持 `memo`、只接收 `practiceTime`，网格构建使用 `useMemo`；纯网格、分档与记账逻辑（`PracticeTimeRecorder`）都位于 `lib/practiceTime.ts`。
 - 练习时间由 `lib/practiceTime.ts` 的 `PracticeTimeRecorder` 记账（注入 `writeSeconds` 与时钟）：只在 visible + focus 时累计，每 60 秒把整秒用 `increment` 写入 `practiceTime/{YYYY-MM-DD}` 的 `seconds`，失败时把秒数放回池中重试，不足一秒的结余留到下次；`usePracticeTimeTracker` 只接线事件与定时器。

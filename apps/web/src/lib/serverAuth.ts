@@ -7,26 +7,26 @@ const CACHE_SKEW_MS = 60 * 1000;
 const MAX_TOKEN_CACHE_ENTRIES = 1000;
 const tokenCache = new Map<string, number>();
 
-function decodeTokenPayload(token: string): Record<string, unknown> | null {
+const unauthorized = (message: string): NextResponse =>
+  NextResponse.json({ error: message }, { status: 401 });
+
+const decodeTokenClaims = (token: string): { uid: string; expiry: number | null } | null => {
   try {
     const parts = token.split(".");
     if (parts.length !== 3) return null;
-    return JSON.parse(Buffer.from(parts[1], "base64url").toString("utf8"));
+    const payload = JSON.parse(Buffer.from(parts[1], "base64url").toString("utf8")) as {
+      user_id?: unknown;
+      exp?: unknown;
+    };
+    const uid = typeof payload.user_id === "string" && payload.user_id ? payload.user_id : null;
+    if (!uid) return null;
+    const expiry =
+      typeof payload.exp === "number" && Number.isFinite(payload.exp) ? payload.exp * 1000 : null;
+    return { uid, expiry };
   } catch {
     return null;
   }
-}
-
-function decodeTokenExpiry(token: string): number | null {
-  const exp = decodeTokenPayload(token)?.exp;
-  if (typeof exp !== "number" || !Number.isFinite(exp)) return null;
-  return exp * 1000;
-}
-
-function decodeTokenUid(token: string): string | null {
-  const uid = decodeTokenPayload(token)?.user_id;
-  return typeof uid === "string" && uid ? uid : null;
-}
+};
 
 function evictExpiredTokens() {
   const now = Date.now();
@@ -44,14 +44,13 @@ export async function verifyFirebaseIdToken(
     : null;
 
   if (!idToken) {
-    return NextResponse.json({ error: "用户未登录" }, { status: 401 });
+    return unauthorized("用户未登录");
   }
 
+  const claims = decodeTokenClaims(idToken);
   const cachedExpiry = tokenCache.get(idToken);
   if (cachedExpiry && cachedExpiry > Date.now()) {
-    const uid = decodeTokenUid(idToken);
-    if (uid) return { uid };
-    return NextResponse.json({ error: "登录状态无效" }, { status: 401 });
+    return claims ? { uid: claims.uid } : unauthorized("登录状态无效");
   }
 
   const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
@@ -67,18 +66,18 @@ export async function verifyFirebaseIdToken(
     });
 
     if (!response.ok) {
-      return NextResponse.json({ error: "登录状态无效" }, { status: 401 });
+      return unauthorized("登录状态无效");
     }
 
     const payload = (await response.json()) as {
       users?: Array<{ localId?: string }>;
     };
-    const uid = payload.users?.[0]?.localId ?? decodeTokenUid(idToken);
+    const uid = payload.users?.[0]?.localId ?? claims?.uid;
     if (!uid) {
-      return NextResponse.json({ error: "登录状态无效" }, { status: 401 });
+      return unauthorized("登录状态无效");
     }
 
-    const expiry = decodeTokenExpiry(idToken) ?? Date.now() + DEFAULT_TOKEN_TTL_MS;
+    const expiry = claims?.expiry ?? Date.now() + DEFAULT_TOKEN_TTL_MS;
     const ttl = expiry - Date.now() - CACHE_SKEW_MS;
     if (ttl > 0) {
       if (tokenCache.size >= MAX_TOKEN_CACHE_ENTRIES) {
@@ -94,6 +93,6 @@ export async function verifyFirebaseIdToken(
 
     return { uid };
   } catch {
-    return NextResponse.json({ error: "身份验证失败" }, { status: 401 });
+    return unauthorized("身份验证失败");
   }
 }

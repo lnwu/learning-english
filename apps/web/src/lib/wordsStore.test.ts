@@ -15,6 +15,7 @@ import {
   type WordMemory,
   type WordStats,
 } from "./masteryModel";
+import { getMasteryLevelIndex } from "./masteryLevels";
 
 const memory = (overrides: Partial<WordMemory> = {}): WordMemory => ({
   ...initialMemory(0),
@@ -175,7 +176,7 @@ describe("熟练度分数", () => {
     store.recordReview("apple", 3, { now: day1 });
     const afterFirst = store.getMasteryScore("apple");
     expect(afterFirst).toBeGreaterThan(0);
-    expect(store.getMasteryLevelIndex("apple")).toBe(1);
+    expect(getMasteryLevelIndex(afterFirst)).toBe(1);
 
     store.recordReview("apple", 3, { now: day1 + DAY_MS });
     expect(store.getMasteryScore("apple")).toBeGreaterThan(afterFirst);

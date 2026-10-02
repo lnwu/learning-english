@@ -1,9 +1,7 @@
 import { makeAutoObservable } from "mobx";
 import type { DocumentData } from "firebase/firestore";
-import { getMasteryLevelIndex } from "@/lib/masteryLevels";
 import { formatLocalPracticeDate } from "@/lib/practiceDate";
 import {
-  DAILY_REVIEW_LIMIT,
   MAX_INPUT_TIMES,
   MAX_REVIEWS,
   MAX_ROUND_WORDS,
@@ -147,12 +145,6 @@ const mergeInputTimes = (a: readonly number[], b: readonly number[]): number[] =
   [...a, ...b].slice(-MAX_INPUT_TIMES);
 
 export class Words {
-  static MAX_RANDOM_WORDS = MAX_ROUND_WORDS;
-  static MAX_NEW_WORDS_PER_ROUND = NEW_WORDS_PER_ROUND;
-  static MAX_INPUT_TIMES = MAX_INPUT_TIMES;
-  static MAX_REVIEWS = MAX_REVIEWS;
-  static DAILY_REVIEW_LIMIT = DAILY_REVIEW_LIMIT;
-
   private wordData: Map<string, WordData> = new Map();
   private userInputs: Map<string, string> = new Map();
 
@@ -174,10 +166,6 @@ export class Words {
 
   hasWord(word: string): boolean {
     return this.wordData.has(word);
-  }
-
-  wordEntries(): Array<[string, Readonly<WordData>]> {
-    return Array.from(this.wordData.entries());
   }
 
   resetPracticeRecords(): Readonly<WordData>[] {
@@ -262,10 +250,6 @@ export class Words {
     return masteryScoreFor(data.memory, data.stats);
   }
 
-  getMasteryLevelIndex(word: string): number {
-    return getMasteryLevelIndex(this.getMasteryScore(word));
-  }
-
   get overallAverageInputTime(): number | null {
     const allTimes: number[] = [];
     this.wordData.forEach((data) => {
@@ -280,13 +264,6 @@ export class Words {
 
   get inputTimeBaselineByLengthCategory(): (number | null)[] {
     return computeBaselinesByLengthCategory(this.wordData.entries());
-  }
-
-  getFluencyScore(word: string): number | null {
-    const data = this.wordData.get(word);
-    if (!data) return null;
-    const baseline = computeBaselineForWord(this.wordData.entries(), word);
-    return calculateFluencyScore(data.inputTimes, baseline);
   }
 
   getWordData(word: string): Readonly<WordData> | undefined {
@@ -313,7 +290,7 @@ export class Words {
     this.userInputs.clear();
   }
 
-  getRandomWords(max: number = Words.MAX_RANDOM_WORDS): [string, string][] {
+  getRandomWords(max: number = MAX_ROUND_WORDS): [string, string][] {
     const now = Date.now();
     const today = formatLocalPracticeDate(new Date(now));
     const items = Array.from(this.wordData.entries()).map(([word, data]) => ({

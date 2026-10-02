@@ -76,28 +76,22 @@ export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
     const timer = setInterval(() => {
       void ledger.sync();
     }, SYNC_INTERVAL_MS);
-    return () => clearInterval(timer);
-  }, [repo, ledger]);
 
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        void ledger.sync();
-      }
+    const syncWhenVisible = () => {
+      if (document.visibilityState === "visible") void ledger.sync();
     };
-
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
-  }, [ledger]);
-
-  useEffect(() => {
-    const handleOnline = () => {
+    const syncWhenOnline = () => {
       void ledger.sync();
     };
 
-    window.addEventListener("online", handleOnline);
-    return () => window.removeEventListener("online", handleOnline);
-  }, [ledger]);
+    document.addEventListener("visibilitychange", syncWhenVisible);
+    window.addEventListener("online", syncWhenOnline);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", syncWhenVisible);
+      window.removeEventListener("online", syncWhenOnline);
+    };
+  }, [repo, ledger]);
 
   const storageWarnedRef = useRef(false);
   useEffect(() => {

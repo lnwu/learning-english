@@ -15,7 +15,7 @@
 - `WordsLedger.start()` 登录后只做一次 `onSnapshot`（全集合）：多处订阅会对同一集合重复收快照、重复触发合并。
 - `mergeSnapshotIntoStore` **增量**合并：只更新有变化的词、只对变化词触发 store 更新。全量替换会让所有 observer 组件无谓重渲染（WordRow 一行一组件，词库几百条时明显）。
 - 快照合并会叠加本地同步队列的 pending 数据，动机是**防止未同步的复习被旧快照回退**：远端 `memory.lastReviewAt` 晚于队列时才用远端，否则把队列数据合并进 store（记忆状态按 `lastReviewAt`、统计逐项取大、复习日志按 id 并集）。返回值里的 `byId` 是不叠加队列的远端原始数据，供队列 stale 判定使用——两个视图不要合并：stale 判定统一走 `collectStaleQueueItemIds(merged, queue)`，由函数内部取 `byId`，调用方无法传错视图。
-- `Words` 的 `wordData`/`userInputs` 是私有字段（TS `private`，不能是 `#`，否则 MobX 观测不到），对外只暴露只读查询（`wordCount`/`knownWords()`/`hasWord()`/`wordEntries()`/`getWordData()`）与具名命令（`setWordData`/`moveWord`/`setUserInput`/`clearUserInputs`）；练习数据重置在 `resetPracticeRecords()` 内完成并返回待落库清单。
+- `Words` 的 `wordData`/`userInputs` 是私有字段（TS `private`，不能是 `#`，否则 MobX 观测不到），对外只暴露只读查询（`wordCount`/`knownWords()`/`hasWord()`/`getWordData()`）与具名命令（`setWordData`/`moveWord`/`setUserInput`/`clearUserInputs`）；练习数据重置在 `resetPracticeRecords()` 内完成并返回待落库清单。
 - 队列 stale 判定（`isQueueItemStale`）：远端 `memory.lastReviewAt` 更晚，或远端与队列的可同步数据完全相等，说明远端已包含这次复习 → 清掉队列条目；本地更新时保留。
 
 ## 同步队列
