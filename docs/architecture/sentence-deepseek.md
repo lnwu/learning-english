@@ -24,7 +24,7 @@
 - 义项校验统一 `sanitizeWordSenses`（`lib/wordSenses.ts`），`/api/translate` 与 `regenerate-definitions` 共用，防止模型输出超长字段撑大文档（写入前的第一道清洗）。`WordSense` 类型与 `translation` 字符串的编解码（`encodeSenses`/`decodeSenses`）同在 `lib/wordSenses.ts`；写路径由 `lib/wordDoc.ts` 的 `translationFields` 统一编码，调用方与组件只传结构化义项。
 - translate 的 prompt 与解析在 `lib/wordLookup.ts`：`parseWordLookupResult` 负责 lemma 清洗、义项清洗与非单词判定（`senses: null`），`isWord` 为真但义项全非法时抛 502；路由只做取参与缓存读写。
 - 翻译缓存（`translationCache.ts`）：L1 进程内 LRU + L2 Redis（30 天，key 前缀 `translation:v3`），只存 `senses` 非空的成功结果。**改 translate 的 prompt 或默认模型必须 bump 前缀**，否则旧释义会在缓存里长期复用。
-- 前端 `encodeSenses` 把 `senses` 拼成「词性+中文 — 英文」逐行存入 `translation`（写路径经 `translationFields`）；`decodeSenses` 兼容旧格式（首行英文、其余中文），旧数据无需迁移。
+- 前端 `encodeSenses` 把 `senses` 拼成「词性+中文 — 英文」逐行存入 `translation`（写路径经 `translationFields`）；`decodeSenses` 逐行解析回结构化义项。
 
 ## 造句交互设计（有意为之，别改）
 

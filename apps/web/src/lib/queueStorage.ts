@@ -77,30 +77,7 @@ export const createNoopQueueStorage = (): QueueStorage => ({
 
 export const createLocalStorageQueueStorage = (userId: string): QueueStorage => {
   const itemKeyPrefix = `${STORAGE_KEY_PREFIX}:${userId}:`;
-  const legacyItemKey = `${STORAGE_KEY_PREFIX}:${userId}`;
   let memoryItems: SyncQueueItem[] | null = null;
-  let migrated = false;
-
-  const ensureMigrated = (): void => {
-    if (migrated) return;
-    migrated = true;
-    migrateLegacyQueue();
-    pruneInvalidItems();
-  };
-
-  const pruneInvalidItems = (): void => {
-    try {
-      const invalidKeys: string[] = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (!key || !key.startsWith(itemKeyPrefix)) continue;
-        if (!parseItem(localStorage.getItem(key))) invalidKeys.push(key);
-      }
-      invalidKeys.forEach((key) => localStorage.removeItem(key));
-    } catch (error) {
-      console.error("Failed to prune invalid sync queue items:", error);
-    }
-  };
 
   const readAll = (): SyncQueueItem[] => {
     const items: SyncQueueItem[] = [];
@@ -133,55 +110,16 @@ export const createLocalStorageQueueStorage = (userId: string): QueueStorage => 
     return keys;
   };
 
-  const migrateLegacyQueue = (): void => {
-    let migrationFailed = false;
-    try {
-      const legacyContents = [
-        localStorage.getItem(STORAGE_KEY_PREFIX),
-        localStorage.getItem(legacyItemKey),
-      ];
-
-      for (const raw of legacyContents) {
-        if (!raw) continue;
-        let items: unknown;
-        try {
-          items = JSON.parse(raw);
-        } catch {
-          continue;
-        }
-        if (!Array.isArray(items)) continue;
-        items.forEach((item) => {
-          if (!item || typeof item.wordId !== "string") return;
-          try {
-            localStorage.setItem(`${itemKeyPrefix}${item.wordId}`, JSON.stringify(item));
-          } catch (error) {
-            migrationFailed = true;
-            console.error("Failed to migrate sync queue item:", error);
-          }
-        });
-      }
-
-      if (!migrationFailed) {
-        localStorage.removeItem(STORAGE_KEY_PREFIX);
-        localStorage.removeItem(legacyItemKey);
-      }
-    } catch (error) {
-      console.error("Failed to migrate legacy sync queue:", error);
-    }
-  };
-
   return {
     get usingMemoryFallback() {
       return memoryItems !== null;
     },
 
     load() {
-      ensureMigrated();
       return memoryItems ? [...memoryItems] : readAll();
     },
 
     get(wordId) {
-      ensureMigrated();
       if (memoryItems) {
         return memoryItems.find((item) => item.wordId === wordId) ?? null;
       }
@@ -194,7 +132,6 @@ export const createLocalStorageQueueStorage = (userId: string): QueueStorage => 
     },
 
     save(item) {
-      ensureMigrated();
       if (memoryItems) {
         memoryItems = [...memoryItems.filter((entry) => entry.wordId !== item.wordId), item];
         return;
@@ -209,7 +146,6 @@ export const createLocalStorageQueueStorage = (userId: string): QueueStorage => 
 
     removeByIds(ids) {
       if (ids.length === 0) return;
-      ensureMigrated();
       const idSet = new Set(ids);
 
       if (memoryItems) {
@@ -224,7 +160,6 @@ export const createLocalStorageQueueStorage = (userId: string): QueueStorage => 
     },
 
     clear() {
-      ensureMigrated();
       memoryItems = null;
       try {
         const keys: string[] = [];
@@ -233,7 +168,6 @@ export const createLocalStorageQueueStorage = (userId: string): QueueStorage => 
           if (key && key.startsWith(itemKeyPrefix)) keys.push(key);
         }
         keys.forEach((key) => localStorage.removeItem(key));
-        localStorage.removeItem(legacyItemKey);
       } catch (error) {
         console.error("Failed to clear sync queue:", error);
       }

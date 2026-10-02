@@ -20,7 +20,7 @@
 
 ## 同步队列
 
-- localStorage 按 `sync_queue:{uid}:{wordId}` 每词独立存一条（旧的整体数组格式由 `createLocalStorageQueueStorage` 在首次访问时惰性迁移）。动机：多标签页同时练习时，整体数组方案会 read-modify-write 互相覆盖丢条目。
+- localStorage 按 `sync_queue:{uid}:{wordId}` 每词独立存一条。动机：多标签页同时练习时，整体数组方案会 read-modify-write 互相覆盖丢条目。
 - 同一 wordId 入队时覆盖为最新；但已有条目的 `memory.lastReviewAt` 更晚时忽略旧写入，防止旧标签页把练习进度回退。
 - 复习时间取客户端真实时刻并写入 `memory.lastReviewAt`，不用同步时刻，避免同步延迟造成系统性偏移。
 - 失败策略：

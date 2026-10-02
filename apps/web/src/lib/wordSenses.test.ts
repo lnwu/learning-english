@@ -57,32 +57,9 @@ describe("decodeSenses", () => {
     ]);
   });
 
-  it("旧格式：首行为英文释义，其余为中文翻译", () => {
-    expect(decodeSenses("a round fruit\n苹果")).toEqual([
-      { pos: "", chinese: "苹果", english: "a round fruit" },
-    ]);
-  });
-
-  it("旧格式：多行中文合并到同一义项", () => {
-    expect(decodeSenses("a round fruit\n苹果\n一种水果")).toEqual([
-      { pos: "", chinese: "苹果\n一种水果", english: "a round fruit" },
-    ]);
-  });
-
-  it("单行中文作为中文翻译", () => {
-    expect(decodeSenses("苹果")).toEqual([{ pos: "", chinese: "苹果", english: "" }]);
-  });
-
-  it("单行英文作为英文释义", () => {
-    expect(decodeSenses("a round fruit")).toEqual([
-      { pos: "", chinese: "", english: "a round fruit" },
-    ]);
-  });
-
   it("去除多余空白", () => {
-    expect(decodeSenses("  v. 吐  — to spit \n 苹果 ")).toEqual([
+    expect(decodeSenses("  v. 吐  — to spit ")).toEqual([
       { pos: "v.", chinese: "吐", english: "to spit" },
-      { pos: "", chinese: "苹果", english: "" },
     ]);
   });
 });
