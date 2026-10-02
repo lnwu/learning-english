@@ -16,7 +16,7 @@
 1. 安装依赖：`bun install`
 2. 在 `apps/web` 下创建 `.env.local`，参照 `apps/web/.env.example` 填写：
    - Firebase 配置项全部必须带 `NEXT_PUBLIC_` 前缀，缺任何一个应用启动会直接报错
-   - `DEEPSEEK_API_KEY` 等仅服务端使用，禁止加 `NEXT_PUBLIC_` 前缀
+   - `DEEPSEEK_API_KEY`、`OPENCODE_API_KEY`、`MIMO_API_KEY` 等仅服务端使用，禁止加 `NEXT_PUBLIC_` 前缀
 3. 启动开发服务器：`bun run dev`（会先执行 `vercel link` 关联 Vercel 项目）
 
 常用命令（仓库根目录）：

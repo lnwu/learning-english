@@ -1,5 +1,5 @@
 import { LEMMA_EXCEPTION_RULE, LEMMA_REDUCTION_RULE, SENSE_FIELD_LINES } from "@/lib/aiPrompts";
-import { chatCompletionJson, DeepSeekError, type ChatMessage } from "@/lib/deepseek";
+import { chatCompletionJson, AiServiceError, type ChatMessage } from "@/lib/aiClient";
 import { sanitizeLemma } from "@/lib/lemma";
 import { sanitizeWordSenses, type WordSense } from "@/lib/wordSenses";
 import type { TranslationCacheEntry } from "@/lib/translationCache";
@@ -36,16 +36,17 @@ export const parseWordLookupResult = (raw: unknown, word: string): TranslationCa
 
   const senses = sanitizeWordSenses(result.senses);
   if (senses.length === 0) {
-    throw new DeepSeekError("AI 服务返回内容异常", 502);
+    throw new AiServiceError("AI 服务返回内容异常", 502);
   }
 
   return { lemma, senses };
 };
 
-export const lookupWord = async (word: string): Promise<TranslationCacheEntry> =>
+export const lookupWord = async (word: string, model?: string): Promise<TranslationCacheEntry> =>
   parseWordLookupResult(
     await chatCompletionJson<unknown>(buildWordLookupMessages(word), {
       temperature: 0.2,
+      model,
     }),
     word,
   );

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { verifyFirebaseIdToken } from "@/lib/serverAuth";
 import { checkRateLimit } from "@/lib/rateLimit";
-import { DeepSeekError } from "@/lib/deepseek";
+import { AiServiceError } from "@/lib/aiClient";
 
 export interface ApiPolicy {
   name: string;
@@ -13,6 +13,7 @@ export type ApiParseResult<T> = { ok: true; body: T } | { ok: false; response: N
 
 export const API_RATE_LIMITS = {
   translate: { name: "translate", limit: 30 },
+  translateCompare: { name: "translate/compare", limit: 10 },
   normalizeWords: { name: "normalize", limit: 60 },
   regenerateDefinitions: { name: "regenerate", limit: 60 },
   confusables: { name: "confusables", limit: 20 },
@@ -26,7 +27,7 @@ export const mapApiError = (
   error: unknown,
   fallbackError: string,
 ): { status: number; error: string } =>
-  error instanceof DeepSeekError
+  error instanceof AiServiceError
     ? { status: error.status, error: error.message }
     : { status: 500, error: fallbackError };
 

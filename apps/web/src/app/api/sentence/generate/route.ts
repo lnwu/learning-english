@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
 import { API_RATE_LIMITS, withApiPost } from "@/lib/apiRoute";
-import { badRequest, parseBody, sentenceWordList, type SentenceWordInput } from "@/lib/apiInput";
-import { chatCompletionJson } from "@/lib/deepseek";
+import {
+  badRequest,
+  optionalAiModelId,
+  parseBody,
+  sentenceWordList,
+  type SentenceWordInput,
+} from "@/lib/apiInput";
+import { chatCompletionJson } from "@/lib/aiClient";
 import { MAX_LEMMA_LENGTH } from "@/lib/lemma";
 import {
   buildGenerateMessages,
@@ -10,12 +16,13 @@ import {
 } from "@/lib/sentenceMessages";
 import { MIN_SENTENCE_WORDS, SENTENCE_WORD_POOL_SIZE } from "@/lib/sentenceWords";
 
-const parseWords = parseBody<{ words: SentenceWordInput[] }>({
+const parseWords = parseBody<{ words: SentenceWordInput[]; model: string }>({
   words: sentenceWordList({
     maxItems: SENTENCE_WORD_POOL_SIZE,
     maxWordLength: MAX_LEMMA_LENGTH,
     maxTranslationLength: MAX_TRANSLATION_LENGTH,
   }),
+  model: optionalAiModelId(),
 });
 
 const parse = (raw: unknown) => {
@@ -35,9 +42,9 @@ export async function POST(request: Request) {
       fallbackError: "生成失败，请稍后重试",
     },
     parse,
-    async ({ words }) => {
+    async ({ words, model }) => {
       const result = parseGenerateResult(
-        await chatCompletionJson<unknown>(buildGenerateMessages(words)),
+        await chatCompletionJson<unknown>(buildGenerateMessages(words), { model }),
         words.map((item) => item.word),
       );
 

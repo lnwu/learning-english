@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, spyOn } from "bun:test";
 import { NextResponse } from "next/server";
-import { DeepSeekError } from "./deepseek";
+import { AiServiceError } from "./aiClient";
 import { mapApiError, withApiPost } from "./apiRoute";
 import { makeToken, useEnvVar, useNoRedisEnv, useRestoredFetch } from "./testSupport";
 
@@ -19,8 +19,8 @@ const okParse = (raw: unknown) => ({
 const okHandle = async () => NextResponse.json({ ok: true });
 
 describe("mapApiError", () => {
-  it("DeepSeekError 透传状态码与消息", () => {
-    expect(mapApiError(new DeepSeekError("超时", 504), "兜底")).toEqual({
+  it("AiServiceError 透传状态码与消息", () => {
+    expect(mapApiError(new AiServiceError("超时", 504), "兜底")).toEqual({
       status: 504,
       error: "超时",
     });
@@ -129,14 +129,14 @@ describe("withApiPost", () => {
     expect(await response.json()).toEqual({ ok: true });
   });
 
-  it("handle 抛出 DeepSeekError 时映射状态码与消息", async () => {
+  it("handle 抛出 AiServiceError 时映射状态码与消息", async () => {
     mockFetch(true);
     const response = await withApiPost(
-      makeRequest("{}", makeToken("uid-deepseek")),
-      { name: "handle-deepseek", limit: 10, fallbackError: "兜底" },
+      makeRequest("{}", makeToken("uid-ai-service")),
+      { name: "handle-ai-service", limit: 10, fallbackError: "兜底" },
       okParse,
       async () => {
-        throw new DeepSeekError("AI 服务返回错误，请稍后重试", 502);
+        throw new AiServiceError("AI 服务返回错误，请稍后重试", 502);
       },
     );
 

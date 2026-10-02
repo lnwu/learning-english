@@ -1,5 +1,5 @@
 import type { SentenceWordInput } from "@/lib/apiInput";
-import type { ChatMessage } from "@/lib/deepseek";
+import type { ChatMessage } from "@/lib/aiClient";
 import { normalizeForComparison } from "@/lib/sentenceCompare";
 import { MAX_SENTENCE_WORDS, MIN_SENTENCE_WORDS } from "@/lib/sentenceWords";
 

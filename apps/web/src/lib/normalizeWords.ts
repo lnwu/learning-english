@@ -1,4 +1,4 @@
-import { extractResultItems, type ChatMessage } from "@/lib/deepseek";
+import { extractResultItems, type ChatMessage } from "@/lib/aiClient";
 import { LEMMA_EXCEPTION_RULE, LEMMA_REDUCTION_RULE } from "@/lib/aiPrompts";
 import { sanitizeLemma } from "@/lib/lemma";
 

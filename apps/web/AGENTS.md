@@ -1,6 +1,6 @@
 # Learning English Web
 
-本文件包含 `apps/web` 范围内必须遵守的规则与架构入口。深入设计见仓库根目录 `docs/`：`architecture/word-sync.md`（词库同步）、`architecture/sentence-deepseek.md`（造句/DeepSeek）、`WORD_FAMILIARITY_ALGORITHM.md`（熟练度）、`DEPLOYMENT.md`（部署与环境变量）。
+本文件包含 `apps/web` 范围内必须遵守的规则与架构入口。深入设计见仓库根目录 `docs/`：`architecture/word-sync.md`（词库同步）、`architecture/sentence-ai.md`（造句/AI 集成）、`WORD_FAMILIARITY_ALGORITHM.md`（熟练度）、`DEPLOYMENT.md`（部署与环境变量）。
 
 本文中的 `app/`、`components/`、`hooks/`、`lib/` 等源码路径默认相对 `apps/web/src/`；其他路径均相对仓库根目录。仅当公共行为、数据格式、架构约束或项目不变量变化时，同步更新相关设计文档与本文件，纯实现细节调整无需机械更新。
 
@@ -8,7 +8,7 @@
 
 - API Key 只允许在服务端使用，禁止加 `NEXT_PUBLIC_` 前缀或下发到前端。
 - `NEXT_PUBLIC_*` 必须用字面量 `process.env.NEXT_PUBLIC_X` 读取，不要用 `process.env[name]` 动态访问：Next 只在构建期内联字面量，动态访问在浏览器端恒为 undefined。
-- 新增 `/api/*` 统一走 `lib/apiRoute.ts` 的 `withApiPost`（内部依次完成 `serverAuth`、`await checkRateLimit`、JSON 解析与 DeepSeek 错误映射），限额加进 `API_RATE_LIMITS`；输入校验用 `lib/apiInput.ts` 的 `parseBody` + 字段解析器（`requiredText`/`optionalText`/`wordToken`/`wordTokenList`/`wordList`/`sentenceWordList`）声明式描述形状与上限，缺省文案由 `badRequest` 统一生成；不要手写守卫三段、取字段/过滤/限长或错误尾巴。
+- 新增 `/api/*` 统一走 `lib/apiRoute.ts` 的 `withApiPost`（内部依次完成 `serverAuth`、`await checkRateLimit`、JSON 解析与 AI 错误映射），限额加进 `API_RATE_LIMITS`；输入校验用 `lib/apiInput.ts` 的 `parseBody` + 字段解析器（`requiredText`/`optionalText`/`wordToken`/`wordTokenList`/`wordList`/`sentenceWordList`/`optionalAiModelId`/`aiModelIdList`）声明式描述形状与上限，缺省文案由 `badRequest` 统一生成；不要手写守卫三段、取字段/过滤/限长或错误尾巴。
 - 带登录态调用 `/api/*` 统一使用 `lib/apiClient.ts` 的 `postJson<T>(url, payload, fallbackError)`，不要手写 token 与 fetch。
 - Firestore 客户端访问统一经 `lib/wordsRepo.ts`（`WordsProvider` 按 effective uid 构造并注入），页面与组件不直接 import `firebase/firestore`；订阅仍只在 `WordsProvider` 中发生一次。
 - 练习计时不能伪造：只有拼写练习写入记忆模型，粘贴或联想补全等整段插入的输入因计时失效不产生复习；造句不写入熟练度数据。统计用的本地日期按客户端时区生成 `YYYY-MM-DD`，不存 ISO 时间戳。
@@ -81,12 +81,15 @@
 - locale 持久化在 `locale=zh|en` cookie；`layout.tsx` 服务端读取 cookie，缺失时回退 `accept-language`，再通过 `LocaleProvider` 下发初始值。`useLocale` 的 `getServerSnapshot` 使用同一值保证 SSR/客户端一致，不使用 localStorage。
 - `useLocale` 返回的 `t(key, params)` 支持占位符插值；locale 版本签名为 `t(key, locale, params)`。
 
-## 造句与 DeepSeek
+## 造句与 AI 集成
 
-- 浏览器只请求本站 `/api/*`，由服务端代理 DeepSeek；`serverAuth` token 缓存、`await checkRateLimit` 与 `lib/deepseek.ts` 的重试/错误映射语义受测试保护，修改时同步测试。
+- 浏览器只请求本站 `/api/*`，由服务端代理调用各模型服务商；`serverAuth` token 缓存、`await checkRateLimit` 与 `lib/aiClient.ts` 的重试/错误映射语义受测试保护，修改时同步测试。
+- 模型清单、baseUrl 与协议（`openai-compatible`/`anthropic`/`google`）都属于代码里的常量（`lib/aiProviders.ts`），环境变量只提供 API Key；不要为 baseUrl 或模型列表新增环境变量，也不要把 Key 下发到前端。
+- 新增模型一律先加进 `lib/aiProviders.ts` 的注册表（复合 ID `provider/model`），不是先改路由；未配置 Key 的服务商在页面上不出现在可选列表，直接用它的模型 ID 请求返回 500。
+- 用户选定模型存在 Firestore `users/{uid}` 文档的 `aiModel` 字段，已启用模型的清单由根 layout 服务端计算并经 `hooks/useAiModel.tsx` 下发；`postJson` 自动注入 `model` 字段，各路由用 `optionalAiModelId()` 解析，不要在各调用点手写模型参数。
 - 路由骨架统一 `withApiPost`；translate 的 prompt 与解析在 `lib/wordLookup.ts`，造句生成/批改的 prompt 与解析在 `lib/sentenceMessages.ts`（生成响应会校验目标词为候选词子集并限制数量，批改响应会夹取 `score`、截断超长字段、过滤 `issues`），批改结果（含「完全相同直接满分」快路径）都由该文件构造，路由只做取参与返回。
 - 造句抽词为从词库中均匀随机抽取至多 `SENTENCE_WORD_POOL_SIZE` 个候选词，由模型从中挑出 2-3 个能自然共现的词作为本题目标词并随响应返回，逻辑在 `lib/sentenceWords.ts`（纯函数 + 测试）；单词数下限统一用 `MIN_SENTENCE_WORDS`，不足时 hook 置 `insufficientWords` 布尔状态，错误文案走 `tNow`。
-- 翻译、归一化、重新生成释义共用的 prompt 片段（lemma 还原规则、义项字段说明）在 `lib/aiPrompts.ts`，修改片段等同修改 translate prompt，需提升缓存 key 前缀；进程内有上限的缓存/计数 Map 统一用 `lib/boundedMap.ts` 的 `setBounded` 淘汰。
+- 翻译、归一化、重新生成释义共用的 prompt 片段（lemma 还原规则、义项字段说明）在 `lib/aiPrompts.ts`，修改片段等同修改 translate prompt，需提升缓存 key 前缀；翻译缓存按模型区分（默认模型沿用原前缀，其他模型在 key 中带模型 ID），不要把不同模型的结果写进同一个 key；进程内有上限的缓存/计数 Map 统一用 `lib/boundedMap.ts` 的 `setBounded` 淘汰。
 - 限流与缓存的 Redis 客户端统一使用 `lib/redis.ts` 的 `getRedis()`；未配置 Upstash 时仅在本地开发回退进程内实现。
 - 义项清洗统一使用 `lib/wordSenses.ts` 的 `sanitizeWordSenses`，由翻译与重新生成释义接口共用；`WordSense` 类型、编码（`encodeSenses`）与解析（`decodeSenses`）也都在这个文件。
 - 批改前判等与满分快路径统一走 `lib/sentenceMessages.ts` 的 `isExactMatchAnswer` + `buildExactMatchResult`（内部复用 `lib/sentenceCompare.ts` 的 `normalizeForComparison`），与模型批改路径产出同一份 `CheckResult`。
