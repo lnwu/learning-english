@@ -11,6 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui";
+import { Fragment } from "react";
 import { useAiModel, useLocale, toast } from "@/hooks";
 import { SettingRow } from "./SettingRow";
 
@@ -35,24 +36,24 @@ export const ProfileAiModelRow = () => {
           {current ? current.label : aiModel}
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-64">
-          {providers.map((provider, index) => {
-            const group = models.filter((model) => model.provider === provider);
-            return (
-              <div key={provider}>
-                {index > 0 && <DropdownMenuSeparator />}
-                <DropdownMenuGroup>
-                  <DropdownMenuLabel>{group[0]?.providerName}</DropdownMenuLabel>
-                  <DropdownMenuRadioGroup value={aiModel} onValueChange={handleChange}>
+          <DropdownMenuRadioGroup value={aiModel} onValueChange={handleChange}>
+            {providers.map((provider, index) => {
+              const group = models.filter((model) => model.provider === provider);
+              return (
+                <Fragment key={provider}>
+                  {index > 0 && <DropdownMenuSeparator />}
+                  <DropdownMenuGroup>
+                    <DropdownMenuLabel>{group[0]?.providerName}</DropdownMenuLabel>
                     {group.map((model) => (
                       <DropdownMenuRadioItem key={model.id} value={model.id}>
                         {model.label}
                       </DropdownMenuRadioItem>
                     ))}
-                  </DropdownMenuRadioGroup>
-                </DropdownMenuGroup>
-              </div>
-            );
-          })}
+                  </DropdownMenuGroup>
+                </Fragment>
+              );
+            })}
+          </DropdownMenuRadioGroup>
         </DropdownMenuContent>
       </DropdownMenu>
     </SettingRow>
