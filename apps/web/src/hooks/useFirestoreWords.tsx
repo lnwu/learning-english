@@ -131,7 +131,21 @@ export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
       );
 
       const updates = results ?? [];
-      await ledger.updateConfusables(updates);
+      const updatedWords = new Set(updates.map((item) => item.word));
+      const cleared = focus
+        ? []
+        : list
+            .filter(
+              ({ word, senses }) =>
+                !updatedWords.has(word) &&
+                (words.getConfusables(word).length > 0 || senses.some((sense) => sense.note)),
+            )
+            .map(({ word, senses }) => ({
+              word,
+              senses: senses.map(({ pos, chinese, english }) => ({ pos, chinese, english })),
+              confusables: [],
+            }));
+      await ledger.updateConfusables([...updates, ...cleared]);
       return updates.length;
     },
     [ledger],

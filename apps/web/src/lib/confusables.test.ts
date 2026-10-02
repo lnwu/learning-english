@@ -33,6 +33,18 @@ describe("buildConfusablesMessages", () => {
     expect(user?.content).not.toContain("definition of medicine");
   });
 
+  it("送去模型的 chinese 去掉尾部括号限定语", () => {
+    const messages = buildConfusablesMessages([
+      input("quality", "质量（好坏程度）"),
+      input("receive", "接收(信号)（信号）"),
+      input("college", "（英国）公学"),
+    ]);
+
+    expect(messages[1]?.content).toContain('"chinese":"质量"');
+    expect(messages[1]?.content).toContain('"chinese":"接收"');
+    expect(messages[1]?.content).toContain('"chinese":"（英国）公学"');
+  });
+
   it("focus 模式在系统提示中点名目标单词，用户内容仍是全部单词", () => {
     const messages = buildConfusablesMessages(book, "medication");
 

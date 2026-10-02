@@ -73,7 +73,7 @@
 - `profile/page.tsx` 只保留账号、语言、热力图、统计、熟练度、单词列表及删除/重置确认；批量 AI 操作放在 `profile/ProfileAiSection.tsx`。
 - 归一化链路为 `/api/normalize-words`（每批不超过 50）→ `resolveRenamePlan` → `normalizeWordForms`；消息构造与解析位于 `lib/normalizeWords.ts`，lemma 清洗复用 `lib/lemma.ts`。
 - 重新生成释义调用 `/api/regenerate-definitions`（每批不超过 50）；`senses: null` 的词保留原释义，只通过 `updateTranslations` 修改 `translation`，不触碰练习数据；前端串行分批并显示进度。translate 与 regenerate 只产生 `pos`/`chinese`/`english`（共用 `lib/aiPrompts.ts` 的 `SENSE_FIELD_LINES`），区分说明 `note` 只由 `/api/confusables` 产生。
-- 区分易混词调用 `/api/confusables`（单次请求，词数上限 `MAX_CONFUSABLES_WORDS`）：prompt 与解析在 `lib/confusables.ts`，只与词库内已有的词对比，同组词由解析层对称化（不做传递闭包），提到词库外单词或提到自身的 `note` 被丢弃；写入口是 `useFirestoreWords` 的 `refreshConfusables`（全量刷新传全部单词，添加新词传 `focus`），落库经 `updateConfusables`，只增不删。
+- 区分易混词调用 `/api/confusables`（单次请求，词数上限 `MAX_CONFUSABLES_WORDS`）：prompt 与解析在 `lib/confusables.ts`，只与词库内已有的词对比，同组词由解析层对称化（不做传递闭包），提到词库外单词或提到自身的 `note` 被丢弃；写入口是 `useFirestoreWords` 的 `refreshConfusables`（全量区分做完整重算，添加新词传 `focus` 只更新新词与同组词），落库经 `updateConfusables`；送模型的 `chinese` 先去掉尾部括号限定语。
 - 两条批量流程共用 `lib/batchAiTask.ts` 的 `runBatchedAiTask`（串行分批、进度回调、单批失败不中断），失败单词数用 `countFailedWords` 统计；部分批次失败必须提示（`profile.regeneratePartial` / `profile.normalizePartial`），不要静默当成全部成功。熟练度均值与分布用 `lib/masteryStats.ts`，热力图月份文案用 `lib/practiceTime.ts` 的 `formatPracticeMonthLabel`。
 
 ## 多语言
