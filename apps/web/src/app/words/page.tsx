@@ -85,7 +85,7 @@ const WordRow = observer(
                         — {sense.english}
                       </span>
                     )}
-                    {sense.note && (
+                    {sense.note && sense.note !== senses[index - 1]?.note && (
                       <span className="block text-sm font-normal text-muted-foreground">
                         {SENSE_NOTE_PREFIX}
                         {sense.note}
