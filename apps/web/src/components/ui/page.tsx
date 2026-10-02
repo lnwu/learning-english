@@ -104,4 +104,4 @@ function LoadingState({
   );
 }
 
-export { PageContainer, PageHeader, StatTile, LoadingState, pageWidths };
+export { PageContainer, PageHeader, StatTile, LoadingState };

@@ -1,4 +1,3 @@
-import * as React from "react";
 import { cn } from "@/lib/utils";
 import { useLocale } from "@/hooks";
 import {
@@ -30,39 +29,34 @@ interface MasteryBarProps {
   showLabel?: boolean;
 }
 
-const MasteryBar = React.forwardRef<HTMLDivElement, MasteryBarProps>(
-  ({ score, className, showLabel = true }, ref) => {
-    const { t } = useLocale();
-    const level = getMasteryLevel(score);
-    const levelIndex = getMasteryLevelIndex(score);
+const MasteryBar = ({ score, className, showLabel = true }: MasteryBarProps) => {
+  const { t } = useLocale();
+  const level = getMasteryLevel(score);
+  const levelIndex = getMasteryLevelIndex(score);
 
-    return (
-      <div
-        ref={ref}
-        className={cn("flex items-center gap-2", className)}
-        title={`${t("profile.mastery")}: ${t(MASTERY_LABEL_KEYS[level])} (${score}%)`}
-      >
-        <div className="flex gap-1">
-          {MASTERY_LEVEL_ORDER.map((barLevel, barIndex) => (
-            <div
-              key={barLevel}
-              className={cn(
-                "w-4 h-3 rounded-sm transition-all duration-300",
-                barIndex <= levelIndex ? MASTERY_BAR_COLORS[barLevel] : "bg-muted",
-              )}
-            />
-          ))}
-        </div>
-        {showLabel && (
-          <span className="w-16 text-left text-xs whitespace-nowrap text-muted-foreground">
-            {t(MASTERY_LABEL_KEYS[level])}
-          </span>
-        )}
+  return (
+    <div
+      className={cn("flex items-center gap-2", className)}
+      title={`${t("profile.mastery")}: ${t(MASTERY_LABEL_KEYS[level])} (${score}%)`}
+    >
+      <div className="flex gap-1">
+        {MASTERY_LEVEL_ORDER.map((barLevel, barIndex) => (
+          <div
+            key={barLevel}
+            className={cn(
+              "w-4 h-3 rounded-sm transition-all duration-300",
+              barIndex <= levelIndex ? MASTERY_BAR_COLORS[barLevel] : "bg-muted",
+            )}
+          />
+        ))}
       </div>
-    );
-  },
-);
-
-MasteryBar.displayName = "MasteryBar";
+      {showLabel && (
+        <span className="w-16 text-left text-xs whitespace-nowrap text-muted-foreground">
+          {t(MASTERY_LABEL_KEYS[level])}
+        </span>
+      )}
+    </div>
+  );
+};
 
 export { MasteryBar };
