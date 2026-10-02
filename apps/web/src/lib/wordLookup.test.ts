@@ -10,6 +10,7 @@ describe("buildWordLookupMessages", () => {
     expect(messages[0].role).toBe("system");
     expect(messages[0].content).toContain("isWord");
     expect(messages[0].content).toContain("lemma");
+    expect(messages[0].content).toContain("note");
     expect(messages[1]).toEqual({ role: "user", content: "running" });
   });
 });
@@ -29,6 +30,33 @@ describe("parseWordLookupResult", () => {
       lemma: "run",
       senses: [{ pos: "v.", chinese: "跑", english: "to move quickly" }],
     });
+  });
+
+  it("保留合法辨析", () => {
+    const result = parseWordLookupResult(
+      {
+        isWord: true,
+        lemma: "duplicate",
+        senses: [
+          {
+            pos: "v.",
+            chinese: "复制",
+            english: "to make an exact copy",
+            note: "多用于文件或记录，强调与原物完全一致",
+          },
+        ],
+      },
+      "duplicate",
+    );
+
+    expect(result.senses).toEqual([
+      {
+        pos: "v.",
+        chinese: "复制",
+        english: "to make an exact copy",
+        note: "多用于文件或记录，强调与原物完全一致",
+      },
+    ]);
   });
 
   it("非单词返回 senses: null 并回退 lemma", () => {

@@ -26,7 +26,7 @@ import {
 import { observer } from "mobx-react-lite";
 import Link from "next/link";
 import { useFirestoreWords, useLocale, usePracticeTimeTracker } from "@/hooks";
-import { decodeSenses } from "@/lib/wordSenses";
+import { decodeSenses, SENSE_NOTE_PREFIX } from "@/lib/wordSenses";
 import {
   createPracticeInputState,
   evaluatePracticeInput,
@@ -82,6 +82,12 @@ const WordRow = observer(
                       <span className="text-sm font-normal text-muted-foreground">
                         {" "}
                         — {sense.english}
+                      </span>
+                    )}
+                    {sense.note && (
+                      <span className="block text-sm font-normal text-muted-foreground">
+                        {SENSE_NOTE_PREFIX}
+                        {sense.note}
                       </span>
                     )}
                   </span>
