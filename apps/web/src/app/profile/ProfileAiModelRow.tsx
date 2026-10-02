@@ -4,6 +4,7 @@ import {
   Button,
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
@@ -39,14 +40,16 @@ export const ProfileAiModelRow = () => {
             return (
               <div key={provider}>
                 {index > 0 && <DropdownMenuSeparator />}
-                <DropdownMenuLabel>{group[0]?.providerName}</DropdownMenuLabel>
-                <DropdownMenuRadioGroup value={aiModel} onValueChange={handleChange}>
-                  {group.map((model) => (
-                    <DropdownMenuRadioItem key={model.id} value={model.id}>
-                      {model.label}
-                    </DropdownMenuRadioItem>
-                  ))}
-                </DropdownMenuRadioGroup>
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel>{group[0]?.providerName}</DropdownMenuLabel>
+                  <DropdownMenuRadioGroup value={aiModel} onValueChange={handleChange}>
+                    {group.map((model) => (
+                      <DropdownMenuRadioItem key={model.id} value={model.id}>
+                        {model.label}
+                      </DropdownMenuRadioItem>
+                    ))}
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuGroup>
               </div>
             );
           })}
