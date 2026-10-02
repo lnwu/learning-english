@@ -6,7 +6,7 @@ export * from "./confirm-dialog";
 export * from "./dialog";
 export * from "./dropdown-menu";
 export * from "./empty";
-export * from "./frequency-bar";
+export * from "./mastery-bar";
 export * from "./input";
 export * from "./page";
 export * from "./separator";

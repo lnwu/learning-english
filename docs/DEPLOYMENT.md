@@ -32,7 +32,7 @@
 ```bash
 bun install               # 根目录
 bun run dev               # 自动 vercel link（缺失时）+ 启动 Next dev
-bun run check             # lint + typecheck + test
+bun run check             # lint + format:check + typecheck + test
 bun run build             # 构建
 bun run sync:preview      # 手动同步 preview 数据（需 ADC + PROD_USER_UID）
 ```

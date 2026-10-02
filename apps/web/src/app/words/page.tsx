@@ -51,6 +51,9 @@ interface RoundAttempt {
   hintUsed: boolean;
 }
 
+const allInputsCorrect = (randomWords: [string, string][], words: Words): boolean =>
+  randomWords.length > 0 && randomWords.every(([word]) => words.getUserInput(word) === word);
+
 const WordRow = observer(
   ({ word, translation, words, onInputChange, onHintReveal, inputRefs, t }: WordRowProps) => {
     const inputValue = words.getUserInput(word);
@@ -153,8 +156,7 @@ const SubmitButton = observer(
     words: Words;
     label: string;
   }) => {
-    const allCorrect =
-      randomWords.length > 0 && randomWords.every(([word]) => words.getUserInput(word) === word);
+    const allCorrect = allInputsCorrect(randomWords, words);
     return (
       <Button type="submit" disabled={!allCorrect}>
         {label}
@@ -256,9 +258,7 @@ const WordsPractice = observer(() => {
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const allCorrect =
-      randomWords.length > 0 && randomWords.every(([word]) => words.getUserInput(word) === word);
-    if (!allCorrect) {
+    if (!allInputsCorrect(randomWords, words)) {
       return;
     }
 
