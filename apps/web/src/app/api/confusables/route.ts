@@ -16,7 +16,7 @@ const parse = parseBody<{ words: WordSensesInput[]; focus: string }>({
 export async function POST(request: Request) {
   return withApiPost(
     request,
-    { ...API_RATE_LIMITS.confusables, fallbackError: "生成易混词辨析失败，请稍后重试" },
+    { ...API_RATE_LIMITS.confusables, fallbackError: "区分易混词失败，请稍后重试" },
     parse,
     async ({ words, focus }) => {
       if (focus && !words.some((item) => item.word === focus)) {

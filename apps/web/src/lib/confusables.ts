@@ -20,7 +20,7 @@ const REWRITE_RULES = [
   "1. 保持原有含义、义项顺序与词性 pos 不变；",
   "2. chinese 在不改变原意的前提下改写，使同组词的中文译名明确可区分，可用括号注明侧重点、搭配对象或语境（不超过 20 个字）；",
   "3. english 重新生成一句学习型词典风格的简短英文释义，不超过 15 个单词；",
-  "4. note 必填：一句中文（不超过 40 个字），说明该词与同组其他词的用法差别，必须点名词组内的对比词（英文原词），但不要出现该单词本身；",
+  "4. note 必填：一句中文（不超过 40 个字），只用同组的其他词与它对比，说明用法差别；不得提及词库外的单词，也不要出现该单词本身；",
   "5. confusables 列出同组的其他单词，必须来自输入的单词列表。",
 ];
 
@@ -60,6 +60,20 @@ export const buildConfusablesMessages = (
   { role: "user", content: compactWords(words) },
 ];
 
+const sanitizeNote = (
+  note: string | undefined,
+  word: string,
+  allowed: ReadonlySet<string>,
+): string | undefined => {
+  if (!note) return undefined;
+  const mentioned = note.match(/[A-Za-z]{2,}/g) ?? [];
+  const onlyBookWords = mentioned.every((token) => {
+    const lower = token.toLowerCase();
+    return lower !== word && allowed.has(lower);
+  });
+  return onlyBookWords ? note : undefined;
+};
+
 export const parseConfusablesResults = (
   raw: unknown,
   allowedWords: readonly string[],
@@ -71,7 +85,10 @@ export const parseConfusablesResults = (
     const word = typeof record.word === "string" ? record.word.trim().toLowerCase() : "";
     if (!word || !allowed.has(word) || byWord.has(word)) continue;
 
-    const senses = sanitizeWordSenses(record.senses);
+    const senses = sanitizeWordSenses(record.senses).map(({ pos, chinese, english, note }) => {
+      const kept = sanitizeNote(note, word, allowed);
+      return kept ? { pos, chinese, english, note: kept } : { pos, chinese, english };
+    });
     if (senses.length === 0) continue;
 
     const confusables = (Array.isArray(record.confusables) ? record.confusables : [])

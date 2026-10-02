@@ -9,7 +9,7 @@ export interface TranslationCacheEntry {
 
 const MAX_CACHE_ENTRIES = 1000;
 const CACHE_TTL_SECONDS = 60 * 60 * 24 * 30;
-const CACHE_KEY_PREFIX = "translation:v4";
+const CACHE_KEY_PREFIX = "translation:v5";
 
 const memoryCache = new Map<string, TranslationCacheEntry>();
 

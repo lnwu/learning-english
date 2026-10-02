@@ -18,7 +18,7 @@ export const buildRegenerateMessages = (words: string[]): ChatMessage[] => [
       ...SENSE_FIELD_LINES,
       "如果某个单词不是有效英文单词（拼写错误或生造词），senses 为 null。",
       "必须为列表中的每个单词都返回一条结果，不要遗漏任何单词。",
-      '只返回 JSON，不要添加其它字段或解释：{"results": [{"word": "...", "senses": [{"pos": "...", "chinese": "...", "english": "...", "note": "..."}]}]}',
+      '只返回 JSON，不要添加其它字段或解释：{"results": [{"word": "...", "senses": [{"pos": "...", "chinese": "...", "english": "..."}]}]}',
     ].join("\n"),
   },
   { role: "user", content: words.join(", ") },

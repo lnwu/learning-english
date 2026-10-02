@@ -11,7 +11,8 @@ const MAX_POS_LENGTH = 10;
 const MAX_DEFINITION_LENGTH = 150;
 const MAX_TRANSLATION_LENGTH = 50;
 
-export const SENSE_NOTE_PREFIX = "辨析：";
+export const SENSE_NOTE_PREFIX = "区分：";
+const SENSE_NOTE_PATTERN = /^(?:区分|辨析)：/;
 const SENSE_LINE_PATTERN = /^([a-zA-Z]+\.)\s+(.+?)\s*—\s*(.+)$/;
 
 const cleanNote = (value: unknown): string | undefined => {
@@ -64,9 +65,10 @@ export const decodeSenses = (translation: string): WordSense[] => {
 
   for (const line of translation.split("\n")) {
     const trimmed = line.trim();
-    if (trimmed.startsWith(SENSE_NOTE_PREFIX)) {
+    const noteMatch = SENSE_NOTE_PATTERN.exec(trimmed);
+    if (noteMatch) {
       const previous = senses[senses.length - 1];
-      const note = trimmed.slice(SENSE_NOTE_PREFIX.length).trim();
+      const note = trimmed.slice(noteMatch[0].length).trim();
       if (previous && note) previous.note = note;
       continue;
     }
