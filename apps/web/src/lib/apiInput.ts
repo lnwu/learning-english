@@ -96,15 +96,13 @@ export const wordSensesList =
       return { ok: false, error: "单词数量过多" };
     }
 
-    const seen = new Set<string>();
     const words: WordSensesInput[] = [];
     for (const item of raw) {
       const record = (item ?? {}) as { word?: unknown; senses?: unknown };
       const word = typeof record.word === "string" ? record.word.trim().toLowerCase() : "";
-      if (!isValidWordToken(word) || seen.has(word)) continue;
+      if (!isValidWordToken(word)) continue;
       const senses = sanitizeWordSenses(record.senses);
       if (senses.length === 0) continue;
-      seen.add(word);
       words.push({ word, senses });
     }
 

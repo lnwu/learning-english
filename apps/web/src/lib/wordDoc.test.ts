@@ -131,11 +131,11 @@ describe("parseWordDoc", () => {
     expect(data.id).toBe("id-1");
   });
 
-  it("解析易混词并过滤无效项与自身", () => {
+  it("解析易混词并丢弃非字符串项", () => {
     const data = parseWordDoc("id-1", {
       word: "medicine",
       translation: "药",
-      confusables: ["Medication", "medication", "medicine", 5, "not a word!"],
+      confusables: ["medication", 5],
     });
 
     expect(data.confusables).toEqual(["medication"]);

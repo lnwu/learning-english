@@ -2,9 +2,9 @@ import { describe, it, expect } from "bun:test";
 import {
   buildConfusablesMessages,
   parseConfusablesResults,
+  MAX_CONFUSABLES_PER_WORD,
   type ConfusableWordInput,
 } from "./confusables";
-import { MAX_CONFUSABLES_PER_WORD } from "./wordDoc";
 
 const input = (word: string, chinese: string): ConfusableWordInput => ({
   word,
@@ -33,16 +33,12 @@ describe("buildConfusablesMessages", () => {
     expect(user?.content).not.toContain("definition of medicine");
   });
 
-  it("focus 模式区分目标单词与其他单词", () => {
+  it("focus 模式在系统提示中点名目标单词，用户内容仍是全部单词", () => {
     const messages = buildConfusablesMessages(book, "medication");
-    const user = messages[1];
 
-    expect(user?.content).toContain("目标单词：");
-    expect(user?.content).toContain("其他单词：");
-    const [targetPart, othersPart] = user?.content.split("\n其他单词：") ?? [];
-    expect(targetPart).toContain('"medication"');
-    expect(targetPart).not.toContain('"medicine"');
-    expect(othersPart).toContain('"medicine"');
+    expect(messages[0]?.content).toContain("与目标单词 medication 易混");
+    expect(messages[1]?.content).toContain('"word":"medication"');
+    expect(messages[1]?.content).toContain('"word":"medicine"');
   });
 });
 
@@ -119,7 +115,7 @@ describe("parseConfusablesResults", () => {
     expect(results.find((item) => item.word === "duplicate")?.confusables).toEqual(["replicate"]);
   });
 
-  it("传递闭包聚成一组", () => {
+  it("只对称化声明的边，不把链上的词传递成一组", () => {
     const raw = {
       results: [
         {
@@ -141,12 +137,11 @@ describe("parseConfusablesResults", () => {
     };
 
     const results = parseConfusablesResults(raw, allowedWords);
+    const confusablesOf = (word: string) => results.find((item) => item.word === word)?.confusables;
 
-    expect(results).toHaveLength(3);
-    expect(results.find((item) => item.word === "medicine")?.confusables).toEqual([
-      "duplicate",
-      "medication",
-    ]);
+    expect(confusablesOf("medicine")).toEqual(["medication"]);
+    expect(confusablesOf("medication")).toEqual(["duplicate", "medicine"]);
+    expect(confusablesOf("duplicate")).toEqual(["medication"]);
   });
 
   it("丢弃未知单词、无效义项与不在组内的结果", () => {

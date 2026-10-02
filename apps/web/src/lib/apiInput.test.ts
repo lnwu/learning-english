@@ -130,13 +130,12 @@ describe("wordSensesList", () => {
     expect(errorOf(parser, [item, item, item])).toBe("单词数量过多");
   });
 
-  it("丢弃无有效义项与重复的单词", () => {
+  it("丢弃无有效义项与非法单词", () => {
     const local = wordSensesList({ maxItems: 4 });
     const senses = [{ pos: "n.", chinese: "药", english: "a drug" }];
     expect(
       valueOf(local, [
         { word: "Medicine", senses },
-        { word: "medicine", senses },
         { word: "medication", senses: [] },
         { word: "b!", senses },
       ]),
