@@ -392,11 +392,7 @@ function readLocaleCookie(): Locale | null {
 
 export function getCurrentLocale(): Locale {
   if (typeof window === "undefined") return "zh";
-  const fromCookie = readLocaleCookie();
-  if (fromCookie) return fromCookie;
-  const legacy = localStorage.getItem(LOCALE_COOKIE);
-  if (legacy === "zh" || legacy === "en") return legacy;
-  return detectBrowserLocale();
+  return readLocaleCookie() ?? detectBrowserLocale();
 }
 
 export function tNow(key: TranslationKey, params?: TranslationParams): string {
@@ -404,9 +400,7 @@ export function tNow(key: TranslationKey, params?: TranslationParams): string {
 }
 
 export function setLocale(locale: Locale): void {
-  if (typeof window !== "undefined") {
-    document.cookie = `${LOCALE_COOKIE}=${locale}; path=/; max-age=31536000; samesite=lax`;
-    localStorage.removeItem(LOCALE_COOKIE);
-    window.dispatchEvent(new Event("localechange"));
-  }
+  if (typeof window === "undefined") return;
+  document.cookie = `${LOCALE_COOKIE}=${locale}; path=/; max-age=31536000; samesite=lax`;
+  window.dispatchEvent(new Event("localechange"));
 }
