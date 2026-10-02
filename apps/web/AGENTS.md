@@ -65,7 +65,7 @@
 ## 双击选词添加
 
 - 任意页面双击英文单词打开 `AddWordDialog`；取词与校验逻辑位于 `lib/wordSelection.ts`。监听跳过 `input` / `textarea` / `select` / `[contenteditable]` 与 `[data-slot="dialog-content"]`，未登录时忽略。
-- `AddWordDialog` 与 `/add-word` 共用，不复制“调用 `/api/translate` + 确认弹窗”流程；调用方先执行 `checkWordAddable`，客户端不推断原形。
+- `AddWordDialog` 与 `/add-word` 共用，不复制“调用 `/api/translate` + 确认弹窗”流程；调用方先通过 `hooks/useAddableWordCheck` 校验（内部用 `checkWordAddable` 并统一弹 toast），客户端不推断原形。
 - 默认保存 `lemma` 原形；切换按钮只在两者不同时出现。原形已存在时进入 `exists` 状态，确认后才调用 `onFinished`；`handleConfirmAdd` 必须按最终选词再次校验。
 
 ## Profile 与批量 AI 操作

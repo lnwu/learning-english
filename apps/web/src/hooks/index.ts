@@ -3,4 +3,5 @@ export { useSentencePractice } from "./useSentencePractice";
 export { useLocale, LocaleProvider } from "./useLocale";
 export { toast } from "./useToast";
 export { useAuth } from "./useAuth";
+export { useAddableWordCheck } from "./useAddableWordCheck";
 export { usePracticeTimeTracker } from "./usePracticeTimeTracker";

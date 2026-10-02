@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useFirestoreWords, useLocale, useAuth, toast } from "@/hooks";
-import { checkWordAddable, extractWordFromSelection } from "@/lib/wordSelection";
+import { useAddableWordCheck, useAuth } from "@/hooks";
+import { extractWordFromSelection } from "@/lib/wordSelection";
 import AddWordDialog from "./AddWordDialog";
 
 const EXCLUDED_SELECTOR =
@@ -10,8 +10,7 @@ const EXCLUDED_SELECTOR =
 
 const WordPicker = () => {
   const { user } = useAuth();
-  const { words } = useFirestoreWords();
-  const { t } = useLocale();
+  const checkAddable = useAddableWordCheck();
   const [word, setWord] = useState<string | null>(null);
   const wordRef = useRef<string | null>(null);
 
@@ -32,28 +31,14 @@ const WordPicker = () => {
       const extracted = extractWordFromSelection(selection?.toString() ?? "");
       if (!extracted) return;
 
-      const status = checkWordAddable((candidate) => words.hasWord(candidate), extracted);
-      if (status === "exists") {
-        toast({
-          title: t("addWord.wordExists", { word: extracted }),
-          variant: "destructive",
-        });
-        return;
-      }
-      if (status === "invalid") {
-        toast({
-          title: t("addWord.invalidChars", { word: extracted }),
-          variant: "destructive",
-        });
-        return;
-      }
+      if (!checkAddable(extracted)) return;
 
       setWord(extracted);
     };
 
     document.addEventListener("dblclick", handleDoubleClick);
     return () => document.removeEventListener("dblclick", handleDoubleClick);
-  }, [user, words, t]);
+  }, [user, checkAddable]);
 
   return (
     <AddWordDialog word={word} onClose={() => setWord(null)} onFinished={() => setWord(null)} />

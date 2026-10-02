@@ -12,34 +12,98 @@ import { countFailedWords, runBatchedAiTask } from "@/lib/batchAiTask";
 import type { WordSense } from "@/lib/wordSenses";
 import { SettingRow } from "./SettingRow";
 
+const useBatchAiAction = (fallbackError: string) => {
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [running, setRunning] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const runningRef = useRef(false);
+
+  const run = async (task: (onProgress: (completed: number) => void) => Promise<void>) => {
+    if (runningRef.current) return;
+    runningRef.current = true;
+    setRunning(true);
+    setProgress(0);
+
+    try {
+      await task(setProgress);
+    } catch (err) {
+      console.error(fallbackError, err);
+      toast({
+        title: err instanceof Error ? err.message : fallbackError,
+        variant: "destructive",
+      });
+    } finally {
+      runningRef.current = false;
+      setRunning(false);
+      setDialogOpen(false);
+    }
+  };
+
+  return { dialogOpen, setDialogOpen, running, progress, run };
+};
+
+type BatchAiAction = ReturnType<typeof useBatchAiAction>;
+
+interface BatchAiActionRowProps {
+  action: BatchAiAction;
+  totalWords: number;
+  title: string;
+  description: string;
+  buttonLabel: string;
+  confirmTitle: string;
+  confirmDescription: string;
+  onConfirm: () => void;
+}
+
+const BatchAiActionRow = ({
+  action,
+  totalWords,
+  title,
+  description,
+  buttonLabel,
+  confirmTitle,
+  confirmDescription,
+  onConfirm,
+}: BatchAiActionRowProps) => {
+  const { t } = useLocale();
+
+  return (
+    <>
+      <SettingRow title={title} description={description}>
+        <Button
+          variant="outline"
+          onClick={() => action.setDialogOpen(true)}
+          disabled={action.running || totalWords === 0}
+        >
+          {action.running ? `${t("common.loading")} ${action.progress}/${totalWords}` : buttonLabel}
+        </Button>
+      </SettingRow>
+      <ConfirmDialog
+        open={action.dialogOpen}
+        onOpenChange={action.setDialogOpen}
+        title={confirmTitle}
+        description={confirmDescription}
+        confirmText={t("common.confirm")}
+        cancelText={t("common.cancel")}
+        onConfirm={onConfirm}
+      />
+    </>
+  );
+};
+
 export const ProfileAiSection = observer(() => {
   const { words, updateTranslations, normalizeWordForms } = useFirestoreWords();
   const { t } = useLocale();
-  const [showRegenerateDialog, setShowRegenerateDialog] = useState(false);
-  const [regenerating, setRegenerating] = useState(false);
-  const [regenerateProgress, setRegenerateProgress] = useState(0);
-  const regeneratingRef = useRef(false);
-  const [showNormalizeDialog, setShowNormalizeDialog] = useState(false);
-  const [normalizing, setNormalizing] = useState(false);
-  const [normalizeProgress, setNormalizeProgress] = useState(0);
-  const normalizingRef = useRef(false);
+  const regenerate = useBatchAiAction(t("profile.regenerateFailed"));
+  const normalize = useBatchAiAction(t("profile.normalizeFailed"));
 
   const totalWords = words.wordCount;
 
-  const handleRegenerateAll = async () => {
-    if (regeneratingRef.current) return;
-    regeneratingRef.current = true;
-
+  const handleRegenerateAll = () => {
     const allWords = words.knownWords();
-    if (allWords.length === 0) {
-      regeneratingRef.current = false;
-      return;
-    }
+    if (allWords.length === 0) return;
 
-    setRegenerating(true);
-    setRegenerateProgress(0);
-
-    try {
+    return regenerate.run(async (onProgress) => {
       const outcomes = await runBatchedAiTask({
         words: allWords,
         batchSize: MAX_REGENERATE_BATCH_SIZE,
@@ -49,7 +113,7 @@ export const ProfileAiSection = observer(() => {
             { words: batch },
             t("profile.regenerateFailed"),
           ),
-        onProgress: setRegenerateProgress,
+        onProgress,
       });
 
       let success = 0;
@@ -64,10 +128,7 @@ export const ProfileAiSection = observer(() => {
         const updates: Array<{ word: string; senses: WordSense[] }> = [];
         for (const item of outcome.result.results ?? []) {
           if (item.senses && item.senses.length > 0) {
-            updates.push({
-              word: item.word,
-              senses: item.senses,
-            });
+            updates.push({ word: item.word, senses: item.senses });
             success += 1;
           }
         }
@@ -78,48 +139,20 @@ export const ProfileAiSection = observer(() => {
       }
 
       if (countFailedWords(outcomes) === allWords.length) {
-        toast({
-          title: t("profile.regenerateFailed"),
-          variant: "destructive",
-        });
+        toast({ title: t("profile.regenerateFailed"), variant: "destructive" });
       } else if (skipped > 0) {
-        toast({
-          title: t("profile.regeneratePartial", { success, skipped }),
-          variant: "success",
-        });
+        toast({ title: t("profile.regeneratePartial", { success, skipped }), variant: "success" });
       } else {
-        toast({
-          title: t("profile.regenerateSuccess", { success }),
-          variant: "success",
-        });
+        toast({ title: t("profile.regenerateSuccess", { success }), variant: "success" });
       }
-    } catch (err) {
-      console.error("Regenerate all failed:", err);
-      toast({
-        title: err instanceof Error ? err.message : t("profile.regenerateFailed"),
-        variant: "destructive",
-      });
-    } finally {
-      regeneratingRef.current = false;
-      setRegenerating(false);
-      setShowRegenerateDialog(false);
-    }
+    });
   };
 
-  const handleNormalizeWords = async () => {
-    if (normalizingRef.current) return;
-    normalizingRef.current = true;
-
+  const handleNormalizeWords = () => {
     const allWords = words.knownWords();
-    if (allWords.length === 0) {
-      normalizingRef.current = false;
-      return;
-    }
+    if (allWords.length === 0) return;
 
-    setNormalizing(true);
-    setNormalizeProgress(0);
-
-    try {
+    return normalize.run(async (onProgress) => {
       const outcomes = await runBatchedAiTask({
         words: allWords,
         batchSize: MAX_NORMALIZE_BATCH_SIZE,
@@ -129,7 +162,7 @@ export const ProfileAiSection = observer(() => {
             { words: batch },
             t("profile.normalizeFailed"),
           ),
-        onProgress: setNormalizeProgress,
+        onProgress,
       });
 
       const renames: Array<{ from: string; to: string }> = [];
@@ -146,10 +179,7 @@ export const ProfileAiSection = observer(() => {
 
       const failedWords = countFailedWords(outcomes);
       if (failedWords === allWords.length) {
-        toast({
-          title: t("profile.normalizeFailed"),
-          variant: "destructive",
-        });
+        toast({ title: t("profile.normalizeFailed"), variant: "destructive" });
         return;
       }
 
@@ -158,80 +188,38 @@ export const ProfileAiSection = observer(() => {
 
       if (failedWords > 0) {
         toast({
-          title: t("profile.normalizePartial", {
-            renamed,
-            merged,
-            failed: failedWords,
-          }),
+          title: t("profile.normalizePartial", { renamed, merged, failed: failedWords }),
           variant: "destructive",
         });
       } else if (renamed === 0 && merged === 0) {
         toast({ title: t("profile.normalizeNone"), variant: "success" });
       } else {
-        toast({
-          title: t("profile.normalizeSuccess", { renamed, merged }),
-          variant: "success",
-        });
+        toast({ title: t("profile.normalizeSuccess", { renamed, merged }), variant: "success" });
       }
-    } catch (err) {
-      console.error("Normalize all failed:", err);
-      toast({
-        title: err instanceof Error ? err.message : t("profile.normalizeFailed"),
-        variant: "destructive",
-      });
-    } finally {
-      normalizingRef.current = false;
-      setNormalizing(false);
-      setShowNormalizeDialog(false);
-    }
+    });
   };
 
   return (
     <>
-      <SettingRow title={t("profile.regenerateTitle")} description={t("profile.regenerateDesc")}>
-        <Button
-          variant="outline"
-          onClick={() => setShowRegenerateDialog(true)}
-          disabled={regenerating || totalWords === 0}
-        >
-          {regenerating
-            ? `${t("common.loading")} ${regenerateProgress}/${totalWords}`
-            : t("profile.regenerateButton")}
-        </Button>
-      </SettingRow>
-
-      <SettingRow title={t("profile.normalizeTitle")} description={t("profile.normalizeDesc")}>
-        <Button
-          variant="outline"
-          onClick={() => setShowNormalizeDialog(true)}
-          disabled={normalizing || totalWords === 0}
-        >
-          {normalizing
-            ? `${t("common.loading")} ${normalizeProgress}/${totalWords}`
-            : t("profile.normalizeButton")}
-        </Button>
-      </SettingRow>
-
-      <ConfirmDialog
-        open={showRegenerateDialog}
-        onOpenChange={setShowRegenerateDialog}
-        title={t("profile.regenerateConfirm")}
-        description={t("profile.regenerateConfirmDesc")}
-        confirmText={t("common.confirm")}
-        cancelText={t("common.cancel")}
+      <BatchAiActionRow
+        action={regenerate}
+        totalWords={totalWords}
+        title={t("profile.regenerateTitle")}
+        description={t("profile.regenerateDesc")}
+        buttonLabel={t("profile.regenerateButton")}
+        confirmTitle={t("profile.regenerateConfirm")}
+        confirmDescription={t("profile.regenerateConfirmDesc")}
         onConfirm={handleRegenerateAll}
-        variant="default"
       />
-
-      <ConfirmDialog
-        open={showNormalizeDialog}
-        onOpenChange={setShowNormalizeDialog}
-        title={t("profile.normalizeConfirm")}
-        description={t("profile.normalizeConfirmDesc")}
-        confirmText={t("common.confirm")}
-        cancelText={t("common.cancel")}
+      <BatchAiActionRow
+        action={normalize}
+        totalWords={totalWords}
+        title={t("profile.normalizeTitle")}
+        description={t("profile.normalizeDesc")}
+        buttonLabel={t("profile.normalizeButton")}
+        confirmTitle={t("profile.normalizeConfirm")}
+        confirmDescription={t("profile.normalizeConfirmDesc")}
         onConfirm={handleNormalizeWords}
-        variant="default"
       />
     </>
   );
