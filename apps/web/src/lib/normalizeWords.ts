@@ -13,12 +13,12 @@ export const buildNormalizeMessages = (words: string[]): ChatMessage[] => [
   {
     role: "system",
     content: [
-      "你是一位英语词典编辑。用户会给出若干英文单词，请为每个单词给出它的词典原形 lemma。",
-      `还原规则：${LEMMA_REDUCTION_RULE}`,
+      "You are a bilingual English–Chinese dictionary editor. The user gives you a list of English words; return the dictionary headword (lemma) of each word.",
+      `Reduction rules: ${LEMMA_REDUCTION_RULE}`,
       LEMMA_EXCEPTION_RULE,
-      "无法判断或不是有效英文单词时，lemma 返回原词。",
-      "必须为列表中的每个单词都返回一条结果，不要遗漏任何单词。",
-      '只返回 JSON，不要添加其它字段或解释：{"results": [{"word": "...", "lemma": "..."}]}',
+      "When you cannot decide, or the word is not a real English word, return the word itself as lemma.",
+      "Return one result for every word in the list, without omitting any.",
+      'Return JSON only, with no other fields or explanations: {"results": [{"word": "...", "lemma": "..."}]}',
     ].join("\n"),
   },
   { role: "user", content: words.join(", ") },

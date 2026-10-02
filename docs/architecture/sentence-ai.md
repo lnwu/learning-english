@@ -24,7 +24,7 @@
 
 ## 翻译与释义
 
-- `/api/translate` 一次调用同时返回 `lemma`（词典原形）与结构化 `senses`（2~4 个义项，最常用在前）。不使用 Google Translate/Datamuse 等免费源作回退：质量与可用性不稳定。模型判定非有效单词时 `senses: null`（前端提示、不落库）；调用失败返回错误且前端不落库。
+- `/api/translate` 一次调用同时返回 `lemma`（词典原形）与结构化 `senses`（只列学习者日常会遇到的常用义项，按使用频率从高到低，最常用在前）。释义与归一化的 prompt 用英文写给模型（面向模型的指令统一用英文，中文只作为 `chinese` 字段的值），含义项选择的约束在 `lib/aiPrompts.ts` 的 `SENSE_SELECTION_RULE`，translate 与 regenerate 共用。不使用 Google Translate/Datamuse 等免费源作回退：质量与可用性不稳定。模型判定非有效单词时 `senses: null`（前端提示、不落库）；调用失败返回错误且前端不落库。
 - 义项校验统一 `sanitizeWordSenses`（`lib/wordSenses.ts`），`/api/translate` 与 `regenerate-definitions` 共用，防止模型输出超长字段撑大文档（写入前的第一道清洗）。`WordSense` 类型与 `translation` 字符串的编解码（`encodeSenses`/`decodeSenses`）同在 `lib/wordSenses.ts`；写路径由 `lib/wordDoc.ts` 的 `translationFields` 统一编码，调用方与组件只传结构化义项。
 - translate 的 prompt 与解析在 `lib/wordLookup.ts`：`parseWordLookupResult` 负责 lemma 清洗、义项清洗与非单词判定（`senses: null`），`isWord` 为真但义项全非法时抛 502；路由只做取参与缓存读写。
 - 翻译缓存（`translationCache.ts`）：L1 进程内 LRU + L2 Redis（30 天，key 前缀 `translation:v5`），只存 `senses` 非空的成功结果。默认模型（`deepseek/deepseek-flash`）用原前缀，其他模型在 key 里带上模型 ID，避免不同模型互相污染。**改 translate 的 prompt 或默认模型必须 bump 前缀**，否则旧释义会在缓存里长期复用。

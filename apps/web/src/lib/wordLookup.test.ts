@@ -1,5 +1,6 @@
 import { describe, it, expect } from "bun:test";
 import { AiServiceError } from "./aiClient";
+import { SENSE_SELECTION_RULE } from "./aiPrompts";
 import { buildWordLookupMessages, parseWordLookupResult } from "./wordLookup";
 
 describe("buildWordLookupMessages", () => {
@@ -12,6 +13,11 @@ describe("buildWordLookupMessages", () => {
     expect(messages[0].content).toContain("lemma");
     expect(messages[0].content).not.toContain("note");
     expect(messages[1]).toEqual({ role: "user", content: "running" });
+  });
+
+  it("共用 aiPrompts 的义项选择约束", () => {
+    const content = buildWordLookupMessages("mouth")[0].content;
+    expect(content).toContain(SENSE_SELECTION_RULE);
   });
 });
 

@@ -1,5 +1,5 @@
 import { extractResultItems, type ChatMessage } from "@/lib/aiClient";
-import { SENSE_FIELD_LINES } from "@/lib/aiPrompts";
+import { SENSE_FIELD_LINES, SENSE_SELECTION_RULE } from "@/lib/aiPrompts";
 import { sanitizeWordSenses, type WordSense } from "@/lib/wordSenses";
 
 export const MAX_REGENERATE_BATCH_SIZE = 50;
@@ -13,12 +13,13 @@ export const buildRegenerateMessages = (words: string[]): ChatMessage[] => [
   {
     role: "system",
     content: [
-      "你是一位英语词典编辑。用户会给出若干英文单词，请为它们重新生成词典释义。",
-      "对每个单词，senses 为该词最常见到较常见的多个义项（通常 2-4 个），最常用的排在最前面；每个义项包含：",
+      "You are a bilingual English–Chinese dictionary editor. The user gives you a list of English words; regenerate the dictionary senses of each word.",
+      SENSE_SELECTION_RULE,
+      "Each sense has:",
       ...SENSE_FIELD_LINES,
-      "如果某个单词不是有效英文单词（拼写错误或生造词），senses 为 null。",
-      "必须为列表中的每个单词都返回一条结果，不要遗漏任何单词。",
-      '只返回 JSON，不要添加其它字段或解释：{"results": [{"word": "...", "senses": [{"pos": "...", "chinese": "...", "english": "..."}]}]}',
+      "If a word is not a real English word (a misspelling or an invented word), its senses is null.",
+      "Return one result for every word in the list, without omitting any.",
+      'Return JSON only, with no other fields or explanations: {"results": [{"word": "...", "senses": [{"pos": "...", "chinese": "...", "english": "..."}]}]}',
     ].join("\n"),
   },
   { role: "user", content: words.join(", ") },
