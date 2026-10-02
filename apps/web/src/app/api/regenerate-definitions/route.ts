@@ -26,7 +26,7 @@ export async function POST(request: Request) {
     async ({ words, model }) => {
       const raw = await chatCompletionJson<unknown>(buildRegenerateMessages(words), {
         temperature: 0.2,
-        maxOutputTokens: 4096,
+        maxOutputTokens: 8192,
         timeoutMs: TIMEOUT_MS,
         model,
       });
