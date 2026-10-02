@@ -1,5 +1,6 @@
 import { describe, it, expect } from "bun:test";
 import {
+  MAX_NOTE_LENGTH,
   MAX_SENSES,
   decodeSenses,
   encodeSenses,
@@ -38,6 +39,43 @@ describe("sanitizeWordSenses", () => {
     expect(sanitizeWordSenses(null)).toEqual([]);
     expect(sanitizeWordSenses("bad")).toEqual([]);
   });
+
+  it("保留合法辨析并折叠空白", () => {
+    const senses = sanitizeWordSenses([
+      {
+        pos: "v.",
+        chinese: "复制",
+        english: "to make a copy",
+        note: "  多用于文件或记录，\n强调与原物完全一致  ",
+      },
+    ]);
+
+    expect(senses).toEqual([
+      {
+        pos: "v.",
+        chinese: "复制",
+        english: "to make a copy",
+        note: "多用于文件或记录， 强调与原物完全一致",
+      },
+    ]);
+  });
+
+  it("超长或空辨析只丢弃辨析，保留义项", () => {
+    const senses = sanitizeWordSenses([
+      {
+        pos: "v.",
+        chinese: "复制",
+        english: "to make a copy",
+        note: "x".repeat(MAX_NOTE_LENGTH + 1),
+      },
+      { pos: "n.", chinese: "副本", english: "a copy", note: "   " },
+    ]);
+
+    expect(senses).toEqual([
+      { pos: "v.", chinese: "复制", english: "to make a copy" },
+      { pos: "n.", chinese: "副本", english: "a copy" },
+    ]);
+  });
 });
 
 describe("decodeSenses", () => {
@@ -59,6 +97,26 @@ describe("decodeSenses", () => {
 
   it("去除多余空白", () => {
     expect(decodeSenses("  v. 吐  — to spit ")).toEqual([
+      { pos: "v.", chinese: "吐", english: "to spit" },
+    ]);
+  });
+
+  it("辨析行归属于上一个义项", () => {
+    expect(
+      decodeSenses("v. 复制 — to make a copy\n辨析：多用于文件，强调与原物一致\nn. 副本 — a copy"),
+    ).toEqual([
+      {
+        pos: "v.",
+        chinese: "复制",
+        english: "to make a copy",
+        note: "多用于文件，强调与原物一致",
+      },
+      { pos: "n.", chinese: "副本", english: "a copy" },
+    ]);
+  });
+
+  it("没有前置义项的辨析行被忽略", () => {
+    expect(decodeSenses("辨析：孤立说明\nv. 吐 — to spit")).toEqual([
       { pos: "v.", chinese: "吐", english: "to spit" },
     ]);
   });
@@ -95,6 +153,23 @@ describe("encodeSenses", () => {
       { pos: "v.", chinese: "吐（口水）；喷出", english: "to force liquid from the mouth" },
       { pos: "n.", chinese: "口水；唾沫", english: "liquid in the mouth" },
     ];
+    expect(decodeSenses(encodeSenses(senses))).toEqual(senses);
+  });
+
+  it("有辨析时在义项下另起一行，且可无损还原", () => {
+    const senses: WordSense[] = [
+      {
+        pos: "v.",
+        chinese: "复制",
+        english: "to make an exact copy",
+        note: "多用于文件或记录，强调与原物完全一致",
+      },
+      { pos: "n.", chinese: "副本", english: "a copy" },
+    ];
+
+    expect(encodeSenses(senses)).toBe(
+      "v. 复制 — to make an exact copy\n辨析：多用于文件或记录，强调与原物完全一致\nn. 副本 — a copy",
+    );
     expect(decodeSenses(encodeSenses(senses))).toEqual(senses);
   });
 });

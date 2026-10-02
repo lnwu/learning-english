@@ -2,14 +2,24 @@ export interface WordSense {
   pos: string;
   chinese: string;
   english: string;
+  note?: string;
 }
 
 export const MAX_SENSES = 4;
+export const MAX_NOTE_LENGTH = 60;
 const MAX_POS_LENGTH = 10;
 const MAX_DEFINITION_LENGTH = 150;
 const MAX_TRANSLATION_LENGTH = 50;
 
+export const SENSE_NOTE_PREFIX = "辨析：";
 const SENSE_LINE_PATTERN = /^([a-zA-Z]+\.)\s+(.+?)\s*—\s*(.+)$/;
+
+const cleanNote = (value: unknown): string | undefined => {
+  if (typeof value !== "string") return undefined;
+  const note = value.replace(/\s+/g, " ").trim();
+  if (!note || note.length > MAX_NOTE_LENGTH) return undefined;
+  return note;
+};
 
 export const sanitizeWordSenses = (value: unknown): WordSense[] => {
   if (!Array.isArray(value)) return [];
@@ -29,7 +39,10 @@ export const sanitizeWordSenses = (value: unknown): WordSense[] => {
       english &&
       english.length <= MAX_DEFINITION_LENGTH
     ) {
-      senses.push({ pos, chinese, english });
+      const sense: WordSense = { pos, chinese, english };
+      const note = cleanNote(record.note);
+      if (note) sense.note = note;
+      senses.push(sense);
     }
   }
 
@@ -41,13 +54,25 @@ export const encodeSenses = (senses: WordSense[]): string =>
     .map((sense) => {
       const head = [sense.pos, sense.chinese].filter(Boolean).join(" ");
       const english = sense.english ? (head ? ` — ${sense.english}` : sense.english) : "";
-      return `${head}${english}`.trim();
+      const line = `${head}${english}`.trim();
+      return sense.note ? `${line}\n${SENSE_NOTE_PREFIX}${sense.note}` : line;
     })
     .join("\n");
 
-export const decodeSenses = (translation: string): WordSense[] =>
-  translation
-    .split("\n")
-    .map((line) => SENSE_LINE_PATTERN.exec(line.trim()))
-    .filter((match): match is RegExpExecArray => match !== null)
-    .map((match) => ({ pos: match[1], chinese: match[2], english: match[3] }));
+export const decodeSenses = (translation: string): WordSense[] => {
+  const senses: WordSense[] = [];
+
+  for (const line of translation.split("\n")) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith(SENSE_NOTE_PREFIX)) {
+      const previous = senses[senses.length - 1];
+      const note = trimmed.slice(SENSE_NOTE_PREFIX.length).trim();
+      if (previous && note) previous.note = note;
+      continue;
+    }
+    const match = SENSE_LINE_PATTERN.exec(trimmed);
+    if (match) senses.push({ pos: match[1], chinese: match[2], english: match[3] });
+  }
+
+  return senses;
+};
