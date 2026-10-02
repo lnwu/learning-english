@@ -1,6 +1,5 @@
 import { describe, expect, it } from "bun:test";
 import {
-  DAY_MS,
   brierScore,
   buildCalibrationReport,
   buildCalibrationSamples,
@@ -8,8 +7,7 @@ import {
   rocAuc,
   type ReviewLogLike,
 } from "@/lib/calibrationMetrics";
-
-const MINUTE_MS = 60 * 1000;
+import { DAY_MS, MINUTE_MS } from "@/lib/time";
 
 const card = (reviews: Array<Partial<ReviewLogLike> & { at: number }>): ReviewLogLike[] =>
   reviews.map((review) => ({

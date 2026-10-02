@@ -1,3 +1,5 @@
+import { DAY_MS } from "@/lib/time";
+
 export interface ReviewLogLike {
   at: number;
   g: 1 | 2 | 3;
@@ -29,7 +31,6 @@ export interface CalibrationReport {
   meetsThreshold: boolean;
 }
 
-export const DAY_MS = 86_400_000;
 export const CALIBRATION_MIN_SAMPLES = 500;
 const DEFAULT_BUCKET_EDGES: readonly number[] = [0, 0.6, 0.7, 0.8, 0.9, 0.95, 1.000001];
 

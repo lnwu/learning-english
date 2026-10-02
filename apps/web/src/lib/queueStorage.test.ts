@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, spyOn } from "bun:test";
 import {
   createLocalStorageQueueStorage,
-  createMemoryQueueStorage,
   createNoopQueueStorage,
   type SyncQueueItem,
 } from "./queueStorage";
@@ -74,23 +73,6 @@ describe("createNoopQueueStorage", () => {
     expect(storage.load()).toEqual([]);
     expect(storage.get("id-apple")).toBeNull();
     expect(storage.usingMemoryFallback).toBe(false);
-  });
-});
-
-describe("createMemoryQueueStorage", () => {
-  it("以 wordId 为键 upsert，并按 id 移除", () => {
-    const storage = createMemoryQueueStorage();
-    storage.save(makeItem("id-apple", "apple"));
-    storage.save(makeItem("id-apple", "apple", { id: "q-newer" }));
-    expect(storage.load()).toHaveLength(1);
-    expect(storage.get("id-apple")?.id).toBe("q-newer");
-
-    storage.save(makeItem("id-banana", "banana"));
-    storage.removeByIds(["q-newer"]);
-    expect(storage.load().map((item) => item.word)).toEqual(["banana"]);
-
-    storage.clear();
-    expect(storage.load()).toEqual([]);
   });
 });
 

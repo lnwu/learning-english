@@ -6,6 +6,7 @@ import {
   type WordMemory,
   type WordStats,
 } from "@/lib/masteryModel";
+import type { QueueStorage, SyncQueueItem } from "@/lib/queueStorage";
 
 export const makeMemory = (overrides: Partial<WordMemory> = {}): WordMemory => ({
   ...initialMemory(0),
@@ -103,4 +104,25 @@ export const useRestoredFetch = (): void => {
   afterEach(() => {
     globalThis.fetch = original;
   });
+};
+
+export const createMemoryQueueStorage = (): QueueStorage => {
+  let items: SyncQueueItem[] = [];
+
+  return {
+    load: () => [...items],
+    get: (wordId) => items.find((item) => item.wordId === wordId) ?? null,
+    save: (item) => {
+      items = [...items.filter((entry) => entry.wordId !== item.wordId), item];
+    },
+    removeByIds: (ids) => {
+      if (ids.length === 0) return;
+      const idSet = new Set(ids);
+      items = items.filter((item) => !idSet.has(item.id));
+    },
+    clear: () => {
+      items = [];
+    },
+    usingMemoryFallback: false,
+  };
 };

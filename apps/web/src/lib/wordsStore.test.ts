@@ -6,7 +6,8 @@ import {
   mergeWordData,
   type WordData,
 } from "./wordsStore";
-import { DAY_MS, MAX_INPUT_TIMES, MAX_REVIEWS, type WordMemory } from "./masteryModel";
+import { MAX_INPUT_TIMES, MAX_REVIEWS, type WordMemory } from "./masteryModel";
+import { DAY_MS } from "./time";
 import { getMasteryLevelIndex } from "./masteryLevels";
 import { formatLocalPracticeDate } from "./practiceDate";
 import { makeMemory as memory, makeStats as stats } from "./testSupport";

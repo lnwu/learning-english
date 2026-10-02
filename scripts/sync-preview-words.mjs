@@ -1,7 +1,5 @@
-import { applicationDefault, initializeApp } from "firebase-admin/app";
-import { getFirestore } from "firebase-admin/firestore";
+import { initAdmin } from "./lib/admin.mjs";
 
-const PROJECT_ID = "learning-english-477407";
 const PREVIEW_USER_ID = "preview";
 const SUBCOLLECTIONS = ["words", "practiceTime"];
 const BATCH_SIZE = 500;
@@ -13,12 +11,7 @@ if (!prodUserId) {
   process.exit(1);
 }
 
-const app = initializeApp({
-  credential: applicationDefault(),
-  projectId: PROJECT_ID,
-});
-
-const db = getFirestore();
+const { app, db } = initAdmin();
 
 const stableStringify = (value) => {
   if (value === null) return "null";

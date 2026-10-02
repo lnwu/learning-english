@@ -1,8 +1,5 @@
 import { mkdir, writeFile } from "node:fs/promises";
-import { applicationDefault, initializeApp } from "firebase-admin/app";
-import { getFirestore } from "firebase-admin/firestore";
-
-const PROJECT_ID = "learning-english-477407";
+import { initAdmin } from "./lib/admin.mjs";
 
 const args = process.argv.slice(2);
 const uidArgIndex = args.indexOf("--uid");
@@ -15,11 +12,7 @@ if (!uid) {
   process.exit(1);
 }
 
-const app = initializeApp({
-  credential: applicationDefault(),
-  projectId: PROJECT_ID,
-});
-const db = getFirestore();
+const { app, db } = initAdmin();
 
 const snapshot = await db.collection("users").doc(uid).collection("words").get();
 

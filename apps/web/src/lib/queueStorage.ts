@@ -45,27 +45,6 @@ const parseItem = (raw: string | null): SyncQueueItem | null => {
   }
 };
 
-export const createMemoryQueueStorage = (): QueueStorage => {
-  let items: SyncQueueItem[] = [];
-
-  return {
-    load: () => [...items],
-    get: (wordId) => items.find((item) => item.wordId === wordId) ?? null,
-    save: (item) => {
-      items = [...items.filter((entry) => entry.wordId !== item.wordId), item];
-    },
-    removeByIds: (ids) => {
-      if (ids.length === 0) return;
-      const idSet = new Set(ids);
-      items = items.filter((item) => !idSet.has(item.id));
-    },
-    clear: () => {
-      items = [];
-    },
-    usingMemoryFallback: false,
-  };
-};
-
 export const createNoopQueueStorage = (): QueueStorage => ({
   load: () => [],
   get: () => null,
