@@ -3,8 +3,7 @@ import { readFileSync } from "node:fs";
 import { CALIBRATION_MIN_SAMPLES } from "../apps/web/src/lib/calibrationMetrics.ts";
 
 const args = process.argv.slice(2);
-const input =
-  args.find((arg) => !arg.startsWith("-")) ?? "calibration-out/report.json";
+const input = args.find((arg) => !arg.startsWith("-")) ?? "calibration-out/report.json";
 const dryRun = args.includes("--dry-run");
 const runUrlIndex = args.indexOf("--run-url");
 const runUrl = runUrlIndex >= 0 ? args[runUrlIndex + 1] : null;
@@ -14,9 +13,7 @@ const TITLE = "熟练度校准样本已达标";
 const report = JSON.parse(readFileSync(input, "utf8"));
 
 if (!report.meetsThreshold) {
-  console.log(
-    `[issue] 可校准样本 ${report.samples} 未达门槛（${CALIBRATION_MIN_SAMPLES}），跳过`
-  );
+  console.log(`[issue] 可校准样本 ${report.samples} 未达门槛（${CALIBRATION_MIN_SAMPLES}），跳过`);
   process.exit(0);
 }
 
@@ -26,7 +23,7 @@ const formatNumber = (value, digits = 4) =>
 const bucketRows = report.buckets
   .map(
     (bucket) =>
-      `| ${bucket.from.toFixed(2)}–${bucket.to.toFixed(2)} | ${bucket.count} | ${bucket.meanPredicted.toFixed(3)} | ${bucket.observedRecall.toFixed(3)} | ${bucket.gap >= 0 ? "+" : ""}${bucket.gap.toFixed(3)} |`
+      `| ${bucket.from.toFixed(2)}–${bucket.to.toFixed(2)} | ${bucket.count} | ${bucket.meanPredicted.toFixed(3)} | ${bucket.observedRecall.toFixed(3)} | ${bucket.gap >= 0 ? "+" : ""}${bucket.gap.toFixed(3)} |`,
   )
   .join("\n");
 
@@ -59,25 +56,14 @@ if (dryRun) {
 
 execFileSync(
   "gh",
-  [
-    "label",
-    "create",
-    LABEL,
-    "--description",
-    "熟练度校准提醒",
-    "--color",
-    "1D76DB",
-    "--force",
-  ],
-  { stdio: "inherit" }
+  ["label", "create", LABEL, "--description", "熟练度校准提醒", "--color", "1D76DB", "--force"],
+  { stdio: "inherit" },
 );
 
 const existing = JSON.parse(
-  execFileSync(
-    "gh",
-    ["issue", "list", "--label", LABEL, "--state", "open", "--json", "number"],
-    { encoding: "utf8" }
-  )
+  execFileSync("gh", ["issue", "list", "--label", LABEL, "--state", "open", "--json", "number"], {
+    encoding: "utf8",
+  }),
 );
 
 if (existing.length > 0) {
@@ -97,6 +83,6 @@ execFileSync(
     "--body",
     body,
   ],
-  { stdio: "inherit" }
+  { stdio: "inherit" },
 );
 console.log("[issue] 已创建校准提醒 Issue");

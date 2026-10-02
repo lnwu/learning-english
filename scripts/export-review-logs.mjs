@@ -21,11 +21,7 @@ const app = initializeApp({
 });
 const db = getFirestore();
 
-const snapshot = await db
-  .collection("users")
-  .doc(uid)
-  .collection("words")
-  .get();
+const snapshot = await db.collection("users").doc(uid).collection("words").get();
 
 const cards = [];
 const rows = [];
@@ -38,7 +34,7 @@ for (const doc of snapshot.docs) {
       (review) =>
         review &&
         typeof review.at === "number" &&
-        (review.g === 1 || review.g === 2 || review.g === 3)
+        (review.g === 1 || review.g === 2 || review.g === 3),
     )
     .map((review) => ({
       at: review.at,
@@ -56,24 +52,19 @@ for (const doc of snapshot.docs) {
   }
 }
 
-rows.sort((a, b) =>
-  a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : a[1] - b[1]
-);
+rows.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : a[1] - b[1]));
 
-const csv = [
-  "card_id,review_time,review_rating",
-  ...rows.map((row) => row.join(",")),
-].join("\n");
+const csv = ["card_id,review_time,review_rating", ...rows.map((row) => row.join(","))].join("\n");
 
 await mkdir(outDir, { recursive: true });
 await writeFile(`${outDir}/revlog.csv`, `${csv}\n`);
 await writeFile(
   `${outDir}/reviews.json`,
-  JSON.stringify({ userId: uid, exportedAt: Date.now(), cards }, null, 2)
+  JSON.stringify({ userId: uid, exportedAt: Date.now(), cards }, null, 2),
 );
 
 console.log(
-  `[export] user ${uid}: ${snapshot.size} words, ${cards.length} cards with reviews, ${rows.length} review rows`
+  `[export] user ${uid}: ${snapshot.size} words, ${cards.length} cards with reviews, ${rows.length} review rows`,
 );
 console.log(`[export] wrote ${outDir}/revlog.csv and ${outDir}/reviews.json`);
 console.log(`[export] 下一步：bun run calibrate:report ${outDir}/reviews.json`);
