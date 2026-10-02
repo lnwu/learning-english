@@ -81,6 +81,8 @@ const AI_MODELS: AiModelSpec[] = [
 
 export const DEFAULT_AI_MODEL_ID = "deepseek/deepseek-flash";
 
+export const AI_MODEL_COUNT = AI_MODELS.length;
+
 const byId = new Map(AI_MODELS.map((spec) => [spec.id, spec]));
 
 export const isAiModelId = (value: string): boolean => byId.has(value);

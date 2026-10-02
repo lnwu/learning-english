@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 import { API_RATE_LIMITS, withApiPost } from "@/lib/apiRoute";
 import { aiModelIdList, parseBody, wordToken } from "@/lib/apiInput";
-import { isAiModelEnabled, resolveAiModel } from "@/lib/aiProviders";
+import { AI_MODEL_COUNT, isAiModelEnabled, resolveAiModel } from "@/lib/aiProviders";
 import { AiServiceError } from "@/lib/aiClient";
 import { lookupWord } from "@/lib/wordLookup";
-import { MAX_COMPARE_MODELS, type TranslateCompareResult } from "@/lib/translateCompare";
+import type { TranslateCompareResult } from "@/lib/translateCompare";
 
 const parse = parseBody<{ word: string; models: string[] }>({
   word: wordToken(),
-  models: aiModelIdList({ maxItems: MAX_COMPARE_MODELS }),
+  models: aiModelIdList({ maxItems: AI_MODEL_COUNT }),
 });
 
 export async function POST(request: Request) {

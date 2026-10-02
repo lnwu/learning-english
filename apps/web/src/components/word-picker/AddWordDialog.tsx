@@ -12,7 +12,7 @@ import { useEffect, useEffectEvent, useState } from "react";
 import { useFirestoreWords, useLocale, toast, useAiModel } from "@/hooks";
 import { postJson } from "@/lib/apiClient";
 import { encodeSenses, type WordSense } from "@/lib/wordSenses";
-import { MAX_COMPARE_MODELS, type TranslateCompareResult } from "@/lib/translateCompare";
+import { type TranslateCompareResult } from "@/lib/translateCompare";
 
 interface AddWordDialogProps {
   word: string | null;
@@ -165,12 +165,7 @@ const AddWordDialog = ({ word, onClose, onFinished }: AddWordDialogProps) => {
   const handleOpenCompare = () => {
     setCompareOpen(true);
     setCompareResults(null);
-    setCompareSelection(
-      models
-        .filter((model) => model.id !== aiModel)
-        .slice(0, MAX_COMPARE_MODELS)
-        .map((model) => model.id),
-    );
+    setCompareSelection(models.filter((model) => model.id !== aiModel).map((model) => model.id));
   };
 
   const toggleCompareModel = (id: string) => {
@@ -285,7 +280,6 @@ const AddWordDialog = ({ word, onClose, onFinished }: AddWordDialogProps) => {
                         key={model.id}
                         size="sm"
                         variant={selected ? "default" : "outline"}
-                        disabled={!selected && compareSelection.length >= MAX_COMPARE_MODELS}
                         onClick={() => toggleCompareModel(model.id)}
                       >
                         {model.label}

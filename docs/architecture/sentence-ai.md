@@ -28,7 +28,7 @@
 - 义项校验统一 `sanitizeWordSenses`（`lib/wordSenses.ts`），`/api/translate` 与 `regenerate-definitions` 共用，防止模型输出超长字段撑大文档（写入前的第一道清洗）。`WordSense` 类型与 `translation` 字符串的编解码（`encodeSenses`/`decodeSenses`）同在 `lib/wordSenses.ts`；写路径由 `lib/wordDoc.ts` 的 `translationFields` 统一编码，调用方与组件只传结构化义项。
 - translate 的 prompt 与解析在 `lib/wordLookup.ts`：`parseWordLookupResult` 负责 lemma 清洗、义项清洗与非单词判定（`senses: null`），`isWord` 为真但义项全非法时抛 502；路由只做取参与缓存读写。
 - 翻译缓存（`translationCache.ts`）：L1 进程内 LRU + L2 Redis（30 天，key 前缀 `translation:v5`），只存 `senses` 非空的成功结果。默认模型（`deepseek/deepseek-flash`）用原前缀，其他模型在 key 里带上模型 ID，避免不同模型互相污染。**改 translate 的 prompt 或默认模型必须 bump 前缀**，否则旧释义会在缓存里长期复用。
-- `/api/translate/compare` 一次请求最多 4 个模型并行取释义，供添加单词时并排对比：逐模型返回 `{ model, lemma, senses }` 或错误（单个模型失败不影响其他模型）。对比是挑选动作，**不读写翻译缓存**；选定后由前端走常规添加流程落库。
+- `/api/translate/compare` 一次请求并行取多个模型的释义（上限为注册表里的模型总数，不会超过一排可选模型），供添加单词时并排对比：逐模型返回 `{ model, lemma, senses }` 或错误（单个模型失败不影响其他模型）。对比是挑选动作，**不读写翻译缓存**；选定后由前端走常规添加流程落库。
 - 前端 `encodeSenses` 把 `senses` 拼成「词性+中文 — 英文」逐行存入 `translation`（写路径经 `translationFields`）；`decodeSenses` 逐行解析回结构化义项。
 - 易混近义词的区分说明（`WordSense.note`，可选）：`duplicate`/`replicate` 这类词的中文译法几乎相同，只看释义时无法判断该拼哪个词，所以在确认词库里确实存在易混词之后，用一句中文说明两者用法差别。`note` 只由 `/api/confusables` 产生（translate 与 regenerate 不产生它），编码为义项下一行 `区分：...`；prompt 要求只用同组的其他词做对比、不得提及词库外的单词，也不得出现该词本身（避免泄漏答案），解析层会丢弃违反这两条的说明。
 - 全量区分是完整重算，不是叠加：一次扫描后，词库的易混状态就等于这次扫描的结果，模型不再判为易混的词会连释义里的说明一起清掉（只清配对会留下没有对手的说明）。为了让重跑稳定，送模型的 `chinese` 会先去掉**尾部**括号限定语（限定语由本流程自己写在末尾，前置括号的历史释义保持原样）：上一轮改写出的「质量（好坏程度）」在下一轮会被当成已经区分开的释义，从而漏判原本的易混对。
