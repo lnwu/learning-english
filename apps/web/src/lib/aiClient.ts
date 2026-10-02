@@ -107,10 +107,22 @@ export interface ChatCompletionOptions {
   temperature?: number;
   maxOutputTokens?: number;
   timeoutMs?: number;
-  providerOptions?: AiProviderOptions;
+  disableThinking?: boolean;
 }
 
-export type AiProviderOptions = NonNullable<Parameters<typeof generateText>[0]["providerOptions"]>;
+type AiProviderOptions = NonNullable<Parameters<typeof generateText>[0]["providerOptions"]>;
+
+const THINKING_DISABLED_OPTIONS: Record<string, AiProviderOptions[string]> = {
+  deepseek: { thinking: { type: "disabled" } },
+};
+
+const providerOptionsFor = (
+  spec: AiModelSpec,
+  disableThinking: boolean | undefined,
+): AiProviderOptions | undefined => {
+  const options = disableThinking ? THINKING_DISABLED_OPTIONS[spec.provider] : undefined;
+  return options ? { [spec.provider]: options } : undefined;
+};
 
 interface RequestSettings {
   temperature: number;
@@ -180,7 +192,7 @@ export async function chatCompletionJson<T>(
     temperature: options?.temperature ?? 0.7,
     maxOutputTokens: options?.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS,
     timeoutMs: options?.timeoutMs ?? REQUEST_TIMEOUT_MS,
-    providerOptions: options?.providerOptions,
+    providerOptions: providerOptionsFor(spec, options?.disableThinking),
   });
 
   if (!text.trim()) {

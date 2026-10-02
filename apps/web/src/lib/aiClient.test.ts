@@ -200,6 +200,19 @@ describe("模型路由", () => {
     expect(captured.url).toBe("https://opencode.ai/zen/v1/models/gemini-3.8-flash:generateContent");
     expect(result.ok).toBe(true);
   });
+
+  it("disableThinking 只关掉 DeepSeek 的思考", async () => {
+    const deepseekRequest = captureRequest(openAiResponse('{"ok":true}'));
+    await chatCompletionJson(messages, { disableThinking: true });
+    expect(JSON.parse(String(deepseekRequest.init?.body)).thinking).toEqual({ type: "disabled" });
+
+    const claudeRequest = captureRequest(anthropicResponse('{"ok":true}'));
+    await chatCompletionJson(messages, {
+      model: "opencode/claude-sonnet-5-5",
+      disableThinking: true,
+    });
+    expect(JSON.parse(String(claudeRequest.init?.body))).not.toHaveProperty("thinking");
+  });
 });
 
 describe("extractJson", () => {
