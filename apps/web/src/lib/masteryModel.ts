@@ -1,5 +1,6 @@
 import { MASTERY_LEVELS, MASTERY_LEVEL_ORDER, type MasteryLevel } from "@/lib/masteryLevels";
 import { formatLocalPracticeDate } from "@/lib/practiceDate";
+import { DAY_MS, MINUTE_MS } from "@/lib/time";
 
 export type Rating = 1 | 2 | 3;
 type MemoryState = "new" | "learning" | "review" | "relearning";
@@ -35,7 +36,6 @@ export interface ReviewLogEntry {
 }
 
 export const MODEL_VERSION = "fsrs-6";
-export const DAY_MS = 1000 * 60 * 60 * 24;
 const MIN_STABILITY = 0.001;
 const MAX_STABILITY = 36500;
 const REQUEST_RETENTION = 0.9;
@@ -58,7 +58,6 @@ const W = [
 
 const DECAY = -W[20];
 const FACTOR = 0.9 ** (1 / DECAY) - 1;
-const MINUTE_MS = 60 * 1000;
 const LEARNING_STEP_MINUTES = [1, 10] as const;
 const RELEARNING_STEP_MINUTES = 10;
 const HARD_LEARNING_MINUTES = Math.round((LEARNING_STEP_MINUTES[0] + LEARNING_STEP_MINUTES[1]) / 2);
@@ -98,12 +97,15 @@ export const getLastReviewAt = (memory: WordMemory): number => memory.lastReview
 export const isNewMemory = (memory: WordMemory): boolean =>
   memory.state === "new" || memory.reps === 0;
 
+const recallProbability = (memory: WordMemory, elapsedDays: number): number =>
+  (1 + (FACTOR * elapsedDays) / memory.stability) ** DECAY;
+
 export const retrievability = (memory: WordMemory, now: number): number | null => {
   if (isNewMemory(memory) || memory.stability <= 0) return null;
   if (memory.lastReviewAt === null) return null;
   const elapsedDays = Math.floor((now - memory.lastReviewAt) / DAY_MS);
   if (elapsedDays <= 0) return 1;
-  return roundTo((1 + (FACTOR * elapsedDays) / memory.stability) ** DECAY, 8);
+  return roundTo(recallProbability(memory, elapsedDays), 8);
 };
 
 const getElapsedDays = (memory: WordMemory, now: number): number => {
@@ -167,7 +169,7 @@ export const intervalDays = (stability: number): number => {
 export const reviewMemory = (memory: WordMemory, rating: Rating, now: number): WordMemory => {
   const isNew = isNewMemory(memory);
   const elapsedDays = getElapsedDays(memory, now);
-  const retrievabilityBefore = isNew ? 0 : (1 + (FACTOR * elapsedDays) / memory.stability) ** DECAY;
+  const retrievabilityBefore = isNew ? 0 : recallProbability(memory, elapsedDays);
   const stability = isNew
     ? initialStability(rating)
     : elapsedDays === 0

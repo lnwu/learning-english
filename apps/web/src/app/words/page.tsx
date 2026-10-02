@@ -59,6 +59,11 @@ const WordRow = observer(
     const inputValue = words.getUserInput(word);
     const senses = useMemo(() => decodeSenses(translation), [translation]);
     const hasSense = senses.some((sense) => sense.chinese);
+    const revealHintWhileTyping = () => {
+      if (inputValue !== "" && inputValue !== word) {
+        onHintReveal(word);
+      }
+    };
 
     return (
       <li className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-6 gap-y-2 py-4 first:pt-0">
@@ -109,16 +114,8 @@ const WordRow = observer(
               inputValue !== word &&
                 "cursor-pointer focus-visible:ring-3 focus-visible:ring-ring/50",
             )}
-            onMouseEnter={() => {
-              if (inputValue !== "" && inputValue !== word) {
-                onHintReveal(word);
-              }
-            }}
-            onFocus={() => {
-              if (inputValue !== "" && inputValue !== word) {
-                onHintReveal(word);
-              }
-            }}
+            onMouseEnter={revealHintWhileTyping}
+            onFocus={revealHintWhileTyping}
             onClick={() => {
               if (inputValue !== word) {
                 onHintReveal(word);
@@ -181,7 +178,6 @@ const WordsPractice = observer(() => {
     setIsClient(true);
   }, []);
 
-  // Initialize random words when words are loaded
   useEffect(() => {
     if (loading || words.wordCount === 0) {
       return;

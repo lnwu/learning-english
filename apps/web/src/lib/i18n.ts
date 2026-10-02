@@ -1,5 +1,3 @@
-// 多语言支持
-
 export type Locale = "zh" | "en";
 
 export function localeToHtmlLang(locale: Locale): string {
@@ -22,24 +20,20 @@ function detectBrowserLocale(): Locale {
 }
 
 const zh = {
-  // Common
   "common.loading": "加载中...",
   "common.error": "错误",
   "common.confirm": "确认",
   "common.cancel": "取消",
   "common.user": "用户",
 
-  // Header/Menu
   "menu.profile": "个人资料",
   "menu.logout": "退出登录",
 
-  // Login page
   "login.title": "Learning English",
   "login.subtitle": "登录以访问您的词汇库",
   "login.signInWithGoogle": "使用 Google 登录",
   "login.dataSaveNote": "您的词汇数据将保存到您的 Google 账户",
 
-  // Error messages
   "error.loadWordsFailed": "从云端加载单词失败",
   "error.authFailed": "Firebase 认证失败",
   "error.notAuthenticated": "用户未登录",
@@ -50,12 +44,10 @@ const zh = {
   "error.wordNotFound": "未找到单词",
   "error.requestFailed": "请求失败，请稍后重试",
 
-  // Home page
   "home.refresh": "刷新单词",
   "home.hint": "提示",
   "home.noTranslation": "暂无中文翻译",
 
-  // Sentence practice
   "sentence.title": "造句练习",
   "sentence.generating": "正在生成题目...",
   "sentence.checking": "批改中...",
@@ -72,7 +64,6 @@ const zh = {
   "sentence.generateFailed": "生成失败，请稍后重试",
   "sentence.checkFailed": "批改失败，请稍后重试",
 
-  // Practice hub (home)
   "practiceHub.title": "练习中心",
   "practiceHub.subtitle": "选择一种练习方式开始学习",
   "practiceHub.words.title": "单词练习",
@@ -85,7 +76,6 @@ const zh = {
   "words.allReviewedTitle": "今天的复习已完成",
   "words.allReviewedDescription": "所有单词今天都已复习或达到上限，明天再来继续。",
 
-  // Profile page
   "profile.title": "用户资料",
   "profile.loading": "加载您的资料...",
   "profile.accountInfo": "账户信息",
@@ -155,7 +145,6 @@ const zh = {
   "profile.practiceTimeLess": "少",
   "profile.practiceTimeMore": "多",
 
-  // Add Word page
   "addWord.title": "添加单词",
   "addWord.word": "单词",
   "addWord.add": "添加",
@@ -174,14 +163,12 @@ const zh = {
   "addWord.baseExists": "「{word}」的原形「{lemma}」已在词库中，无需重复添加。",
   "addWord.gotIt": "知道了",
 
-  // Sync indicator
   "sync.pending": "个单词待同步",
   "sync.syncing": "同步中...",
   "sync.syncNow": "立即同步",
   "sync.dataLost": "部分练习记录多次同步失败，已丢失",
   "sync.storageFailed": "本地存储写入失败，练习记录暂存于本页内存中，请立即同步以免丢失",
 
-  // Mastery levels
   "mastery.new": "新单词",
   "mastery.learning": "学习中",
   "mastery.familiar": "熟悉",
@@ -192,24 +179,20 @@ const zh = {
 export type TranslationKey = keyof typeof zh;
 
 const en: Record<TranslationKey, string> = {
-  // Common
   "common.loading": "Loading...",
   "common.error": "Error",
   "common.confirm": "Confirm",
   "common.cancel": "Cancel",
   "common.user": "User",
 
-  // Header/Menu
   "menu.profile": "Profile",
   "menu.logout": "Logout",
 
-  // Login page
   "login.title": "Learning English",
   "login.subtitle": "Sign in to access your vocabulary",
   "login.signInWithGoogle": "Sign in with Google",
   "login.dataSaveNote": "Your vocabulary data will be saved to your Google account",
 
-  // Error messages
   "error.loadWordsFailed": "Failed to load words from cloud",
   "error.authFailed": "Failed to authenticate with Firebase",
   "error.notAuthenticated": "User not authenticated",
@@ -220,12 +203,10 @@ const en: Record<TranslationKey, string> = {
   "error.wordNotFound": "Word not found",
   "error.requestFailed": "Request failed, please try again later",
 
-  // Home page
   "home.refresh": "Refresh Words",
   "home.hint": "Hint",
   "home.noTranslation": "No Chinese translation",
 
-  // Sentence practice
   "sentence.title": "Sentence Practice",
   "sentence.generating": "Generating question...",
   "sentence.checking": "Checking...",
@@ -242,7 +223,6 @@ const en: Record<TranslationKey, string> = {
   "sentence.generateFailed": "Failed to generate the question, please try again",
   "sentence.checkFailed": "Failed to check the answer, please try again",
 
-  // Practice hub (home)
   "practiceHub.title": "Practice Hub",
   "practiceHub.subtitle": "Choose a practice mode to start learning",
   "practiceHub.words.title": "Word Practice",
@@ -256,7 +236,6 @@ const en: Record<TranslationKey, string> = {
   "words.allReviewedDescription":
     "Every word has been reviewed or hit the daily limit. Come back tomorrow.",
 
-  // Profile page
   "profile.title": "User Profile",
   "profile.loading": "Loading your profile...",
   "profile.accountInfo": "Account Information",
@@ -331,7 +310,6 @@ const en: Record<TranslationKey, string> = {
   "profile.practiceTimeLess": "Less",
   "profile.practiceTimeMore": "More",
 
-  // Add Word page
   "addWord.title": "Add Word",
   "addWord.word": "Word",
   "addWord.add": "Add",
@@ -350,7 +328,6 @@ const en: Record<TranslationKey, string> = {
   "addWord.baseExists": 'The base form of "{word}" is "{lemma}", which is already in your list.',
   "addWord.gotIt": "Got it",
 
-  // Sync indicator
   "sync.pending": "words pending",
   "sync.syncing": "Syncing...",
   "sync.syncNow": "Sync Now",
@@ -358,7 +335,6 @@ const en: Record<TranslationKey, string> = {
   "sync.storageFailed":
     "Local storage write failed. Practice records are kept in memory on this page only — sync now to avoid losing them.",
 
-  // Mastery levels
   "mastery.new": "New",
   "mastery.learning": "Learning",
   "mastery.familiar": "Familiar",
@@ -376,7 +352,6 @@ export function formatMessage(template: string, params: TranslationParams): stri
   );
 }
 
-// 获取翻译文本
 export function t(key: TranslationKey, locale: Locale = "zh", params?: TranslationParams): string {
   const text = translations[locale][key] ?? translations.zh[key];
   return params ? formatMessage(text, params) : text;

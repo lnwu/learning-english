@@ -1,6 +1,5 @@
 import { describe, expect, it } from "bun:test";
 import {
-  DAY_MS,
   calculateFluencyScore,
   effectiveLevel,
   initialMemory,
@@ -11,8 +10,7 @@ import {
   reviewMemory,
   type WordMemory,
 } from "@/lib/masteryModel";
-
-const MINUTE_MS = 60 * 1000;
+import { DAY_MS, MINUTE_MS } from "@/lib/time";
 
 const memoryWith = (
   stability: number,

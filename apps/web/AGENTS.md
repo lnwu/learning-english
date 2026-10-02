@@ -28,7 +28,7 @@
 
 - `apps/web/components.json` 是 shadcn/ui 配置来源；标准组件优先通过 `bun x shadcn@latest add <组件>` 添加，项目自有组件保留现有 API。添加后检查 import 使用 `@/lib/utils`、依赖 diff 与非标准改动，不把 CLI 的临时修补当作长期约定。
 - Base UI 多态使用 `render` prop，不用 `asChild`；render 到非 button 元素时传 `nativeButton={false}`；动画使用 `data-open:animate-in` / `data-closed:animate-out`。
-- toast 统一通过 `hooks/useToast.tsx` 的 `toast({ title, variant })`；`<Toaster>` 保持经 `components/ui/toaster.tsx` 惰性加载，`WordPicker` 保持经 `word-picker/WordPickerLazy.tsx` 惰性加载。
+- toast 统一通过 `hooks/useToast.ts` 的 `toast({ title, variant })`；`<Toaster>` 保持经 `components/ui/toaster.tsx` 惰性加载，`WordPicker` 保持经 `word-picker/WordPickerLazy.tsx` 惰性加载。
 - 非组件代码需要当前 locale 文案时，使用 `lib/i18n.ts` 的 `tNow(key, params)`。
 
 ## UI 风格
@@ -44,7 +44,7 @@
 
 - `lib/wordsLedger.ts` 的 `WordsLedger` 是练习旅程的唯一写入口：记分入队、快照合并、过期清理、分片提交、增删改/归一化/重置与同步状态都在这里；构造时注入模块级 `words` 单例、按 effective uid 构造的 `WordsRepo` 与 `QueueStorage`，不依赖 React 即可测试。
 - `hooks/useFirestoreWords.tsx` 是 context 组合层：构造 ledger、用 `useSyncExternalStore` 订阅其状态、接线 30s 定时 / `visibilitychange` / `online` 触发与 toast，提供 `WordsProvider`、`useFirestoreWords`、`useSyncStatus`、`useWordsRepo`。
-- `lib/queueStorage.ts` 是同步队列的存储端口（`load`/`get`/`save`/`removeByIds`/`clear`）：`createLocalStorageQueueStorage` 按 `sync_queue:{uid}:{wordId}` 每词一条，`createMemoryQueueStorage` 供测试，`createNoopQueueStorage` 供未登录。去重、重试上限与过期判定属于 ledger 的策略，不要下沉进存储适配器。
+- `lib/queueStorage.ts` 是同步队列的存储端口（`load`/`get`/`save`/`removeByIds`/`clear`）：`createLocalStorageQueueStorage` 按 `sync_queue:{uid}:{wordId}` 每词一条，`createNoopQueueStorage` 供未登录。去重、重试上限与过期判定属于 ledger 的策略，不要下沉进存储适配器。
 - 纯逻辑位于 `lib/wordsStore.ts`、`lib/wordSync.ts`、`lib/wordNormalization.ts`、`lib/chunkedCommit.ts` 并配有测试；`lib/wordsRepo.ts` 是唯一接触 Firestore SDK 的模块（订阅、批量写、practiceTime），按 effective uid 构造并通过 `batchLimit` 暴露单次批量上限，`lib/firebase.ts` 惰性创建 app/db/auth（`getDb()`/`getAuthInstance()`）。动机与细节见 `docs/architecture/word-sync.md`。
 - 单词文档的字段投影与解析集中在 `lib/wordDoc.ts`（`translationFields`/`newWordDocFields`/`practiceFields`/`attemptUpdateFields`/`resetPracticeFields`/`parseWordDoc`）：新增同步字段时只改 `WordData`、`SyncableWordData` 与这个文件，不要在调用方内联字段清单。`translation` 的字符串形态由 `lib/wordSenses.ts` 的 `encodeSenses`/`decodeSenses` 负责，写路径经 `translationFields` 编码，调用方只传结构化 `WordSense[]`。
 

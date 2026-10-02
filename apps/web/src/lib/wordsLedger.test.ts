@@ -1,14 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach, spyOn } from "bun:test";
 import { WordsLedger } from "./wordsLedger";
 import { Words, type WordData } from "./wordsStore";
-import {
-  createMemoryQueueStorage,
-  createNoopQueueStorage,
-  type QueueStorage,
-  type SyncQueueItem,
-} from "./queueStorage";
+import { createNoopQueueStorage, type QueueStorage, type SyncQueueItem } from "./queueStorage";
 import { initialMemory, initialStats, type WordMemory } from "./masteryModel";
-import { makeMemory as memory, reviewEntry } from "./testSupport";
+import { createMemoryQueueStorage, makeMemory as memory, reviewEntry } from "./testSupport";
 import type { WordSense } from "./wordSenses";
 import type { WordDocSnapshot, WordOperation, WordsRepo } from "./wordsRepo";
 
