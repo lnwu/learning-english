@@ -1,0 +1,23 @@
+name: Setup Bun
+description: 安装 Bun、恢复依赖缓存并安装依赖
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Bun
+      uses: oven-sh/setup-bun@v2
+      with:
+        bun-version: 1.4.2
+
+    - name: Cache Bun dependencies
+      uses: actions/cache@v6
+      with:
+        path: ~/.bun/install/cache
+        key: bun-${{ runner.os }}-1.4.2-${{ hashFiles('bun.lock') }}
+        restore-keys: |
+          bun-${{ runner.os }}-1.4.2-
+          bun-${{ runner.os }}-
+
+    - name: Install dependencies
+      shell: bash
+      run: bun install --frozen-lockfile

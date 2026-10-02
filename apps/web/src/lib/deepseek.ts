@@ -133,3 +133,13 @@ export async function chatCompletionJson<T>(
     throw new DeepSeekError("AI 服务返回格式无法解析", 502);
   }
 }
+
+export const extractResultItems = (raw: unknown): Record<string, unknown>[] => {
+  const results =
+    typeof raw === "object" && raw !== null ? (raw as { results?: unknown }).results : null;
+  return Array.isArray(results)
+    ? results.filter(
+        (item): item is Record<string, unknown> => typeof item === "object" && item !== null,
+      )
+    : [];
+};

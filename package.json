@@ -4,9 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "test -d apps/web/.vercel || bun x vercel link --cwd apps/web; bun run --filter '*' dev",
-    "lint": "bun run --filter '*' lint",
-    "format": "bun run --filter '*' format",
-    "format:check": "bun run --filter '*' format:check",
+    "lint": "bun run --filter '*' lint && bun run --cwd apps/web oxlint --config .oxlintrc.json \"$PWD/scripts\"",
+    "format": "bun run --filter '*' format && bun run --cwd apps/web oxfmt --config .oxfmtrc.jsonc \"$PWD/scripts\"",
+    "format:check": "bun run --filter '*' format:check && bun run --cwd apps/web oxfmt --config .oxfmtrc.jsonc --check \"$PWD/scripts\"",
     "typecheck": "bun run --filter '*' typecheck",
     "test": "bun run --filter '*' test",
     "build": "bun run --filter '*' build",

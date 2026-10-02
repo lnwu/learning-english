@@ -1,3 +1,4 @@
+import { setBounded } from "@/lib/boundedMap";
 import { getRedis } from "@/lib/redis";
 import type { WordSense } from "@/lib/wordSenses";
 
@@ -31,11 +32,7 @@ const writeMemory = (word: string, entry: TranslationCacheEntry): void => {
   if (!entry.senses || entry.senses.length === 0 || memoryCache.has(word)) {
     return;
   }
-  if (memoryCache.size >= MAX_CACHE_ENTRIES) {
-    const oldest = memoryCache.keys().next().value;
-    if (oldest !== undefined) memoryCache.delete(oldest);
-  }
-  memoryCache.set(word, entry);
+  setBounded(memoryCache, word, entry, MAX_CACHE_ENTRIES);
 };
 
 export const getCachedTranslation = async (

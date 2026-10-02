@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { setBounded } from "@/lib/boundedMap";
 
 const ACCOUNTS_LOOKUP_URL = "https://identitytoolkit.googleapis.com/v1/accounts:lookup";
 
@@ -27,13 +28,6 @@ const decodeTokenClaims = (token: string): { uid: string; expiry: number | null 
     return null;
   }
 };
-
-function evictExpiredTokens() {
-  const now = Date.now();
-  for (const [token, expiry] of tokenCache) {
-    if (expiry <= now) tokenCache.delete(token);
-  }
-}
 
 export async function verifyFirebaseIdToken(
   request: Request,
@@ -80,15 +74,14 @@ export async function verifyFirebaseIdToken(
     const expiry = claims?.expiry ?? Date.now() + DEFAULT_TOKEN_TTL_MS;
     const ttl = expiry - Date.now() - CACHE_SKEW_MS;
     if (ttl > 0) {
-      if (tokenCache.size >= MAX_TOKEN_CACHE_ENTRIES) {
-        evictExpiredTokens();
-      }
-      while (tokenCache.size >= MAX_TOKEN_CACHE_ENTRIES) {
-        const oldest = tokenCache.keys().next().value;
-        if (oldest === undefined) break;
-        tokenCache.delete(oldest);
-      }
-      tokenCache.set(idToken, Date.now() + ttl);
+      const now = Date.now();
+      setBounded(
+        tokenCache,
+        idToken,
+        now + ttl,
+        MAX_TOKEN_CACHE_ENTRIES,
+        (expiry) => expiry <= now,
+      );
     }
 
     return { uid };

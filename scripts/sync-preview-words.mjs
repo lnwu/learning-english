@@ -55,14 +55,8 @@ const commitWithRetry = async (batch) => {
 };
 
 const syncCollection = async (name) => {
-  const sourceCollection = db
-    .collection("users")
-    .doc(prodUserId)
-    .collection(name);
-  const targetCollection = db
-    .collection("users")
-    .doc(PREVIEW_USER_ID)
-    .collection(name);
+  const sourceCollection = db.collection("users").doc(prodUserId).collection(name);
+  const targetCollection = db.collection("users").doc(PREVIEW_USER_ID).collection(name);
 
   const [sourceSnapshot, targetSnapshot] = await Promise.all([
     sourceCollection.get(),
@@ -72,12 +66,8 @@ const syncCollection = async (name) => {
     `[${name}] Fetched ${sourceSnapshot.size} prod docs, ${targetSnapshot.size} preview docs`,
   );
 
-  const sourceData = new Map(
-    sourceSnapshot.docs.map((doc) => [doc.id, doc.data()]),
-  );
-  const targetData = new Map(
-    targetSnapshot.docs.map((doc) => [doc.id, doc.data()]),
-  );
+  const sourceData = new Map(sourceSnapshot.docs.map((doc) => [doc.id, doc.data()]));
+  const targetData = new Map(targetSnapshot.docs.map((doc) => [doc.id, doc.data()]));
 
   const toWrite = [];
   const toDelete = [];
@@ -95,9 +85,7 @@ const syncCollection = async (name) => {
     }
   }
 
-  console.log(
-    `[${name}] Diff: ${toWrite.length} to write, ${toDelete.length} to delete`,
-  );
+  console.log(`[${name}] Diff: ${toWrite.length} to write, ${toDelete.length} to delete`);
 
   const operations = [
     ...toWrite.map(
@@ -120,9 +108,7 @@ const syncCollection = async (name) => {
   }
 };
 
-const results = await Promise.allSettled(
-  SUBCOLLECTIONS.map(syncCollection),
-);
+const results = await Promise.allSettled(SUBCOLLECTIONS.map(syncCollection));
 const failures = results.filter((result) => result.status === "rejected");
 for (const failure of failures) {
   console.error(failure.reason?.stack ?? String(failure.reason));
