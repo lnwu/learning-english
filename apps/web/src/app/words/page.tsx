@@ -26,10 +26,11 @@ import {
 import { observer } from "mobx-react-lite";
 import Link from "next/link";
 import { useFirestoreWords, useLocale, usePracticeTimeTracker } from "@/hooks";
-import { decodeSenses, SENSE_NOTE_PREFIX } from "@/lib/wordSenses";
+import { decodeSenses } from "@/lib/wordSenses";
 import {
   createPracticeInputState,
   evaluatePracticeInput,
+  isOtherLibraryWord,
   resolveReview,
   type PracticeInputState,
 } from "@/lib/practiceInput";
@@ -59,7 +60,9 @@ const WordRow = observer(
     const inputValue = words.getUserInput(word);
     const senses = useMemo(() => decodeSenses(translation), [translation]);
     const hasSense = senses.some((sense) => sense.chinese);
-    const confusableMatch = inputValue !== "" && words.getConfusables(word).includes(inputValue);
+    const libraryWordMatch = isOtherLibraryWord(word, inputValue, (candidate) =>
+      words.hasWord(candidate),
+    );
     const revealHintWhileTyping = () => {
       if (inputValue !== "" && inputValue !== word) {
         onHintReveal(word);
@@ -85,12 +88,6 @@ const WordRow = observer(
                         — {sense.english}
                       </span>
                     )}
-                    {sense.note && sense.note !== senses[index - 1]?.note && (
-                      <span className="block text-sm font-normal text-muted-foreground">
-                        {SENSE_NOTE_PREFIX}
-                        {sense.note}
-                      </span>
-                    )}
                   </span>
                 ))
               : t("home.noTranslation")}
@@ -112,7 +109,7 @@ const WordRow = observer(
               onChange={(e) => onInputChange(word, e.target.value.toLowerCase())}
               value={inputValue}
             />
-            {confusableMatch && (
+            {libraryWordMatch && (
               <p className="text-xs text-muted-foreground">
                 {t("words.confusableHint", { word: inputValue })}
               </p>
@@ -236,15 +233,14 @@ const WordsPractice = observer(() => {
 
   const handleInputChange = useCallback(
     (word: string, value: string) => {
-      const confusables = words.getConfusables(word);
       const previous = inputStatesRef.current.get(word) ?? createPracticeInputState();
-      const decision = evaluatePracticeInput(previous, word, value, Date.now(), confusables);
+      const decision = evaluatePracticeInput(previous, word, value, Date.now());
       inputStatesRef.current.set(word, decision);
 
       words.setUserInput(word, value);
 
       const attempt = getAttemptState(word);
-      if (confusables.includes(value)) {
+      if (isOtherLibraryWord(word, value, (candidate) => words.hasWord(candidate))) {
         attempt.hintUsed = true;
       }
       if (attempt.reviewed) {

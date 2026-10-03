@@ -45,7 +45,7 @@ const toTranslateResult = (
 };
 
 const AddWordDialog = ({ word, onClose, onFinished }: AddWordDialogProps) => {
-  const { words, addWord, refreshConfusables } = useFirestoreWords();
+  const { words, addWord } = useFirestoreWords();
   const { t } = useLocale();
   const { aiModel, models } = useAiModel();
   const [translated, setTranslated] = useState<TranslateResult | null>(null);
@@ -138,21 +138,6 @@ const AddWordDialog = ({ word, onClose, onFinished }: AddWordDialogProps) => {
       await addWord(finalWord, current.senses);
       toast({ title: t("addWord.addSuccess"), variant: "success" });
       onFinished?.();
-      void refreshConfusables({ focus: { word: finalWord, senses: current.senses } })
-        .then(({ updated, failed }) => {
-          if (updated > 0) {
-            toast({
-              title: t("addWord.confusablesUpdated", { count: updated }),
-              variant: "success",
-            });
-          } else if (failed > 0) {
-            toast({ title: t("addWord.confusablesFailed"), variant: "destructive" });
-          }
-        })
-        .catch((error) => {
-          console.error("Failed to refresh confusables:", error);
-          toast({ title: t("addWord.confusablesFailed"), variant: "destructive" });
-        });
     } catch (error) {
       console.error("Failed to add word:", error);
       toast({

@@ -2,7 +2,6 @@
 
 import {
   useMemo,
-  useCallback,
   useContext,
   createContext,
   useEffect,
@@ -19,27 +18,11 @@ import { WordsLedger } from "@/lib/wordsLedger";
 import { createLocalStorageQueueStorage, createNoopQueueStorage } from "@/lib/queueStorage";
 import { tNow } from "@/lib/i18n";
 import { toast } from "@/hooks/useToast";
-import { postJson } from "@/lib/apiClient";
-import { decodeSenses, type WordSense } from "@/lib/wordSenses";
-import { countFailedWords, runAiBatches } from "@/lib/batchAiTask";
-import type { ConfusableSenses } from "@/lib/confusables";
+import type { WordSense } from "@/lib/wordSenses";
 import type { Rating } from "@/lib/masteryModel";
 
 const words = new Words();
 const SYNC_INTERVAL_MS = 30 * 1000;
-
-export interface ConfusablesRefreshResult {
-  updated: number;
-  failed: number;
-}
-
-interface RefreshConfusablesOptions {
-  focus?: { word: string; senses: WordSense[] };
-  onProgress?: (completed: number) => void;
-}
-
-const withoutNotes = (senses: WordSense[]): WordSense[] =>
-  senses.map(({ pos, chinese, english }) => ({ pos, chinese, english }));
 
 interface WordsContextValue {
   words: Words;
@@ -53,7 +36,6 @@ interface WordsContextValue {
   syncToFirestore: () => Promise<void>;
   resetPracticeRecords: () => Promise<void>;
   updateTranslations: (updates: Array<{ word: string; senses: WordSense[] }>) => Promise<void>;
-  refreshConfusables: (options?: RefreshConfusablesOptions) => Promise<ConfusablesRefreshResult>;
   loading: boolean;
   error: string | null;
 }
@@ -122,83 +104,6 @@ export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
     toast({ title: tNow("sync.dataLost"), variant: "destructive" });
   }, [status.dataLostCount]);
 
-  const refreshConfusables = useCallback(
-    async (options?: RefreshConfusablesOptions): Promise<ConfusablesRefreshResult> => {
-      const inputs = new Map<string, WordSense[]>();
-      for (const word of words.knownWords()) {
-        const senses = decodeSenses(words.getTranslation(word) ?? "");
-        if (senses.length > 0) inputs.set(word, senses);
-      }
-      const focus = options?.focus;
-      if (focus && focus.senses.length > 0) {
-        inputs.set(focus.word, focus.senses);
-      }
-      if (inputs.size < 2) return { updated: 0, failed: 0 };
-
-      const list = Array.from(inputs, ([word, senses]) => ({ word, senses }));
-      const sensesOf = new Map(list.map((item) => [item.word, item.senses]));
-
-      const { groups: detected } = await postJson<{ groups?: string[][] }>(
-        "/api/confusables/groups",
-        { words: list },
-        tNow("error.updateConfusablesFailed"),
-      );
-      const groups = (detected ?? []).filter((group) => !focus || group.includes(focus.word));
-
-      const outcomes = await runAiBatches<ConfusableSenses[]>({
-        batches: groups,
-        onProgress: options?.onProgress,
-        runBatch: (group) =>
-          postJson<{ results?: ConfusableSenses[] }>(
-            "/api/confusables",
-            { words: group.map((word) => ({ word, senses: sensesOf.get(word) ?? [] })) },
-            tNow("error.updateConfusablesFailed"),
-          ).then((data) => data.results ?? []),
-      });
-
-      let updated = 0;
-      const updates: Array<{ word: string; senses: WordSense[]; confusables: string[] }> = [];
-      for (const outcome of outcomes) {
-        if ("error" in outcome) {
-          console.error("Confusable group failed:", outcome.error);
-        }
-        const rewritten =
-          "error" in outcome
-            ? new Map<string, WordSense[]>()
-            : new Map(outcome.result.map((item) => [item.word, item.senses]));
-        for (const word of outcome.words) {
-          const senses = rewritten.get(word);
-          if (senses) updated += 1;
-          updates.push({
-            word,
-            senses: senses ?? withoutNotes(sensesOf.get(word) ?? []),
-            confusables: outcome.words.filter((other) => other !== word),
-          });
-        }
-      }
-
-      const groupWords = new Set(groups.flat());
-      const cleared = focus
-        ? []
-        : list
-            .filter(
-              ({ word, senses }) =>
-                !groupWords.has(word) &&
-                (words.getConfusables(word).length > 0 || senses.some((sense) => sense.note)),
-            )
-            .map(({ word, senses }) => ({
-              word,
-              senses: withoutNotes(senses),
-              confusables: [],
-            }));
-
-      await ledger.updateConfusables([...updates, ...cleared]);
-      options?.onProgress?.(list.length);
-      return { updated, failed: countFailedWords(outcomes) };
-    },
-    [ledger],
-  );
-
   const value = useMemo<WordsContextValue>(
     () => ({
       words,
@@ -208,11 +113,10 @@ export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
       syncToFirestore: ledger.sync,
       resetPracticeRecords: ledger.resetPracticeRecords,
       updateTranslations: ledger.updateTranslations,
-      refreshConfusables,
       loading: status.loading,
       error: status.error,
     }),
-    [ledger, refreshConfusables, status.loading, status.error],
+    [ledger, status.loading, status.error],
   );
 
   const syncStatus = useMemo<SyncStatusValue>(

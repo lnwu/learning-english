@@ -26,7 +26,6 @@ const makeItem = (overrides: Partial<SyncQueueItem> = {}): SyncQueueItem => ({
 const makeWordData = (overrides: Partial<WordData> = {}): WordData => ({
   word: "apple",
   translation: "苹果",
-  confusables: [],
   memory: memoryAt(2000),
   stats: {
     ...initialStats(),

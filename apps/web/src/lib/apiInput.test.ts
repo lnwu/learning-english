@@ -8,7 +8,6 @@ import {
   requiredText,
   sentenceWordList,
   wordList,
-  wordSensesList,
   wordToken,
   wordTokenList,
   type FieldParser,
@@ -98,43 +97,6 @@ describe("wordTokenList", () => {
 
   it("全部非法时返回无效单词列表", () => {
     expect(errorOf(parser, ["b!", 5, ""])).toBe("无效单词列表");
-  });
-});
-
-describe("wordSensesList", () => {
-  const parser = wordSensesList({ maxItems: 2 });
-
-  it("非数组或空数组返回无效单词列表", () => {
-    expect(errorOf(parser, undefined)).toBe("无效单词列表");
-    expect(errorOf(parser, [])).toBe("无效单词列表");
-  });
-
-  it("超过上限返回单词数量过多", () => {
-    const item = { word: "apple", senses: [{ pos: "n.", chinese: "苹果" }] };
-    expect(errorOf(parser, [item, item, item])).toBe("单词数量过多");
-  });
-
-  it("丢弃无有效义项与非法单词", () => {
-    const local = wordSensesList({ maxItems: 4 });
-    const senses = [{ pos: "n.", chinese: "药", english: "a drug" }];
-    expect(
-      valueOf(local, [
-        { word: "Medicine", senses },
-        { word: "medication", senses: [] },
-        { word: "b!", senses },
-      ]),
-    ).toEqual([{ word: "medicine", senses: [{ pos: "n.", chinese: "药", english: "a drug" }] }]);
-  });
-
-  it("清洗义项字段", () => {
-    expect(
-      valueOf(parser, [
-        {
-          word: "apple",
-          senses: [{ pos: "n.", chinese: "  苹果  ", english: "a fruit" }],
-        },
-      ]),
-    ).toEqual([{ word: "apple", senses: [{ pos: "n.", chinese: "苹果", english: "a fruit" }] }]);
   });
 });
 

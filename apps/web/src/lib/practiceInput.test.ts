@@ -2,6 +2,7 @@ import { describe, it, expect } from "bun:test";
 import {
   createPracticeInputState,
   evaluatePracticeInput,
+  isOtherLibraryWord,
   resolveReview,
   type PracticeInputDecision,
   type PracticeInputState,
@@ -118,67 +119,29 @@ describe("evaluatePracticeInput", () => {
     expect(state.inputTimeSeconds).toBe(0);
   });
 
-  it("易混词前缀不记错误", () => {
-    const confusables = ["medication"];
-    let state = evaluatePracticeInput(
-      createPracticeInputState(),
-      "medicine",
-      "m",
-      1000,
-      confusables,
-    );
-    state = evaluatePracticeInput(state, "medicine", "medicati", 1100, confusables);
-    expect(state.recordIncorrect).toBe(false);
-
-    state = evaluatePracticeInput(state, "medicine", "medication", 1200, confusables);
-    expect(state.recordIncorrect).toBe(false);
-    expect(state.errorRecorded).toBe(false);
+  it("输入词库内另一个整词照常记一次错误", () => {
+    let state = evaluate(createPracticeInputState(), "r", 1000, "duplicate");
+    state = evaluate(state, "replicate", 2000, "duplicate");
+    expect(state.recordIncorrect).toBe(true);
     expect(state.completed).toBe(false);
   });
+});
 
-  it("易混词前缀后改回正确单词正常计分", () => {
-    const confusables = ["medication"];
-    const target = "medicine";
-    let state = evaluatePracticeInput(createPracticeInputState(), target, "m", 1000, confusables);
-    const prefix = "medicati";
-    for (let index = 2; index <= prefix.length; index += 1) {
-      state = evaluatePracticeInput(
-        state,
-        target,
-        prefix.slice(0, index),
-        1000 + index * 100,
-        confusables,
-      );
-    }
-    expect(state.recordIncorrect).toBe(false);
+describe("isOtherLibraryWord", () => {
+  const inLibrary = (word: string) => ["apple", "replicate", "art"].includes(word);
 
-    state = evaluatePracticeInput(state, target, "medic", 2000, confusables);
-    for (let index = 6; index <= target.length; index += 1) {
-      state = evaluatePracticeInput(
-        state,
-        target,
-        target.slice(0, index),
-        2000 + index * 100,
-        confusables,
-      );
-    }
-    expect(state.recordCorrect).toBe(true);
-    expect(state.inputTimeSeconds).toBe(1.8);
+  it("输入词库内另一个完整单词时提示", () => {
+    expect(isOtherLibraryWord("duplicate", "replicate", inLibrary)).toBe(true);
   });
 
-  it("易混词前缀抑制后可再次记录真实错误", () => {
-    const confusables = ["medication"];
-    let state = evaluatePracticeInput(
-      createPracticeInputState(),
-      "medicine",
-      "medicati",
-      1000,
-      confusables,
-    );
-    expect(state.errorRecorded).toBe(false);
+  it("输入自己、空值与词库外单词不提示", () => {
+    expect(isOtherLibraryWord("apple", "apple", inLibrary)).toBe(false);
+    expect(isOtherLibraryWord("apple", "", inLibrary)).toBe(false);
+    expect(isOtherLibraryWord("apple", "banana", inLibrary)).toBe(false);
+  });
 
-    state = evaluatePracticeInput(state, "medicine", "medicatix", 1100, confusables);
-    expect(state.recordIncorrect).toBe(true);
+  it("输入是本题单词前缀的词库单词不提示", () => {
+    expect(isOtherLibraryWord("article", "art", inLibrary)).toBe(false);
   });
 });
 
