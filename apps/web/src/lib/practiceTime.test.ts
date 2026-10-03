@@ -1,4 +1,4 @@
-import { describe, it, expect, spyOn } from "bun:test";
+import { describe, it, expect } from "bun:test";
 import {
   PracticeTimeRecorder,
   buildPracticeTimeWeeks,
@@ -7,8 +7,11 @@ import {
   getPracticeTimeLevel,
   getPracticeTimeMonthLabels,
 } from "./practiceTime";
+import { useConsoleSpy } from "./testSupport";
 
 describe("PracticeTimeRecorder", () => {
+  useConsoleSpy("error");
+
   const createRecorder = () => {
     let current = new Date(2026, 7, 19, 10, 0, 0).getTime();
     const writes: Array<{ dateId: string; seconds: number }> = [];
@@ -96,7 +99,6 @@ describe("PracticeTimeRecorder", () => {
   });
 
   it("写出失败时把整秒放回池中，下次 flush 重试", async () => {
-    const errorSpy = spyOn(console, "error").mockImplementation(() => {});
     const { recorder, writes, advance, setFailing } = createRecorder();
     recorder.setActive(true);
     advance(5_000);
@@ -108,7 +110,6 @@ describe("PracticeTimeRecorder", () => {
     setFailing(false);
     await recorder.flush();
     expect(writes).toEqual([{ dateId: "2026-08-19", seconds: 5 }]);
-    errorSpy.mockRestore();
   });
 
   it("flush 使用注入时钟当天的日期", async () => {

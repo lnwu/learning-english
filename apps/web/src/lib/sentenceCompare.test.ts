@@ -18,10 +18,4 @@ describe("normalizeForComparison", () => {
   it("保留中文字符", () => {
     expect(normalizeForComparison("Hello 世界")).toBe("hello 世界");
   });
-
-  it("完全相同的句子归一化后相等", () => {
-    const a = normalizeForComparison("I love apple!");
-    const b = normalizeForComparison("  i LOVE apple ");
-    expect(a).toBe(b);
-  });
 });

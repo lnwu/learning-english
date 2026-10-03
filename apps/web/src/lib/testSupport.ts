@@ -1,4 +1,4 @@
-import { afterAll, afterEach, beforeAll, beforeEach } from "bun:test";
+import { afterAll, afterEach, beforeAll, beforeEach, spyOn } from "bun:test";
 import {
   initialMemory,
   initialStats,
@@ -7,7 +7,8 @@ import {
   type WordStats,
 } from "@/lib/masteryModel";
 import type { QueueStorage, SyncQueueItem } from "@/lib/queueStorage";
-import type { SyncableWordData } from "@/lib/wordsStore";
+import type { WordDocSnapshot } from "@/lib/wordsRepo";
+import type { SyncableWordData, WordData } from "@/lib/wordsStore";
 
 export const makeMemory = (overrides: Partial<WordMemory> = {}): WordMemory => ({
   ...initialMemory(0),
@@ -17,6 +18,35 @@ export const makeMemory = (overrides: Partial<WordMemory> = {}): WordMemory => (
 export const makeStats = (overrides: Partial<WordStats> = {}): WordStats => ({
   ...initialStats(),
   ...overrides,
+});
+
+export const makeWordData = (word: string, overrides: Partial<WordData> = {}): WordData => ({
+  word,
+  translation: `${word}-中文`,
+  memory: makeMemory(),
+  stats: makeStats(),
+  inputTimes: [],
+  reviews: [],
+  createdAt: new Date(0),
+  id: `id-${word}`,
+  ...overrides,
+});
+
+export const makeDoc = (
+  word: string,
+  overrides: Record<string, unknown> = {},
+): WordDocSnapshot => ({
+  id: `id-${word}`,
+  data: () => ({
+    word,
+    translation: `${word}译`,
+    memory: initialMemory(0),
+    stats: initialStats(),
+    inputTimes: [],
+    reviews: [],
+    createdAt: { toDate: () => new Date("2026-01-01T00:00:00") },
+    ...overrides,
+  }),
 });
 
 export const memoryAt = (at: number | null): WordMemory => ({
@@ -53,6 +83,21 @@ export const makeSyncable = (
   },
   inputTimes: [1],
   reviews: [reviewEntry("r1", at)],
+  ...overrides,
+});
+
+export const makeQueueItem = (
+  wordId: string,
+  word: string,
+  overrides: Partial<SyncQueueItem> = {},
+): SyncQueueItem => ({
+  id: `q-${wordId}`,
+  type: "attempt",
+  word,
+  wordId,
+  data: makeSyncable(),
+  timestamp: 1000,
+  retryCount: 0,
   ...overrides,
 });
 
@@ -121,6 +166,38 @@ export const useRestoredFetch = (): void => {
   afterEach(() => {
     globalThis.fetch = original;
   });
+};
+
+export const useConsoleSpy = (method: "error" | "warn"): void => {
+  let spy: ReturnType<typeof spyOn>;
+
+  beforeEach(() => {
+    spy = spyOn(console, method).mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    spy.mockRestore();
+  });
+};
+
+export const mockIdentityToolkitFetch = (
+  options: { ok?: boolean; localId?: string; network?: boolean } = {},
+): { calls: number } => {
+  const { ok = true, localId = "uid-1", network = false } = options;
+  const state = { calls: 0 };
+
+  globalThis.fetch = (async () => {
+    state.calls += 1;
+    if (network) {
+      throw new Error("network down");
+    }
+    return {
+      ok,
+      json: async () => ({ users: ok && localId ? [{ localId }] : [] }),
+    } as unknown as Response;
+  }) as unknown as typeof fetch;
+
+  return state;
 };
 
 export const createMemoryQueueStorage = (): QueueStorage => {

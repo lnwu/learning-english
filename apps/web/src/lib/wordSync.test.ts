@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, spyOn } from "bun:test";
+import { describe, it, expect } from "bun:test";
 import {
   buildWordUpdates,
   classifySyncBatchFailure,
@@ -7,32 +7,18 @@ import {
   type WordSyncQueuePort,
   type WordSyncUpdate,
 } from "./wordSync";
-import type { SyncQueueItem } from "./queueStorage";
-import { initialStats } from "./masteryModel";
-import { memoryAt, makeSyncable } from "./testSupport";
+import { makeQueueItem, makeStats, memoryAt, makeSyncable, useConsoleSpy } from "./testSupport";
 import type { WordData } from "./wordsStore";
-
-const makeItem = (overrides: Partial<SyncQueueItem> = {}): SyncQueueItem => ({
-  id: "q1",
-  type: "attempt",
-  word: "apple",
-  wordId: "id-apple",
-  data: makeSyncable(),
-  timestamp: 1000,
-  retryCount: 0,
-  ...overrides,
-});
 
 const makeWordData = (overrides: Partial<WordData> = {}): WordData => ({
   word: "apple",
   translation: "苹果",
   memory: memoryAt(2000),
-  stats: {
-    ...initialStats(),
+  stats: makeStats({
     reviewDays: 2,
     lastReviewDay: "2026-01-02",
     dailyReviews: 1,
-  },
+  }),
   inputTimes: [1, 2],
   reviews: [
     { id: "r1", at: 1000, g: 3, h: false, r: null, s: 2.3, d: 2.1 },
@@ -46,18 +32,16 @@ const makeWordData = (overrides: Partial<WordData> = {}): WordData => ({
 describe("buildWordUpdates", () => {
   it("按 wordId 取最后一条并保留条目 id", () => {
     const updates = buildWordUpdates([
-      makeItem({
+      makeQueueItem("id-apple", "apple", {
         id: "q1",
         data: makeSyncable(),
       }),
-      makeItem({
+      makeQueueItem("id-apple", "apple", {
         id: "q2",
         data: makeSyncable(2000),
       }),
-      makeItem({
+      makeQueueItem("id-banana", "banana", {
         id: "q3",
-        word: "banana",
-        wordId: "id-banana",
       }),
     ]);
 
@@ -77,7 +61,9 @@ describe("buildWordUpdates", () => {
 describe("collectStaleQueueItemIds", () => {
   it("远端复习更晚时判定为 stale", () => {
     const byId = new Map([["id-apple", makeWordData()]]);
-    const staleIds = collectStaleQueueItemIds({ byId, byWord: byId }, [makeItem()]);
+    const staleIds = collectStaleQueueItemIds({ byId, byWord: byId }, [
+      makeQueueItem("id-apple", "apple", { id: "q1" }),
+    ]);
 
     expect(staleIds).toEqual(["q1"]);
   });
@@ -86,7 +72,8 @@ describe("collectStaleQueueItemIds", () => {
     const firestore = makeWordData();
     const byId = new Map([["id-apple", firestore]]);
     const staleIds = collectStaleQueueItemIds({ byId, byWord: byId }, [
-      makeItem({
+      makeQueueItem("id-apple", "apple", {
+        id: "q1",
         data: {
           memory: firestore.memory,
           stats: firestore.stats,
@@ -102,8 +89,8 @@ describe("collectStaleQueueItemIds", () => {
   it("队列复习更晚或远端无该词时不判定为 stale", () => {
     const byId = new Map([["id-apple", makeWordData({ memory: memoryAt(1000) })]]);
     const staleIds = collectStaleQueueItemIds({ byId, byWord: byId }, [
-      makeItem({ data: makeSyncable(5000) }),
-      makeItem({ id: "q2", wordId: "id-missing" }),
+      makeQueueItem("id-apple", "apple", { data: makeSyncable(5000) }),
+      makeQueueItem("id-missing", "missing", { id: "q2" }),
     ]);
 
     expect(staleIds).toEqual([]);
@@ -186,15 +173,7 @@ const createQueuePort = () => {
 };
 
 describe("runWordSync", () => {
-  let errorSpy: ReturnType<typeof spyOn>;
-
-  beforeEach(() => {
-    errorSpy = spyOn(console, "error").mockImplementation(() => {});
-  });
-
-  afterEach(() => {
-    errorSpy.mockRestore();
-  });
+  useConsoleSpy("error");
 
   it("逐片写入成功后出队，并汇总 committed", async () => {
     const queue = createQueuePort();
