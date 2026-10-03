@@ -74,7 +74,7 @@ const zh = {
   "words.emptyLibraryDescription": "先添加单词，开始拼写练习。",
   "words.allReviewedTitle": "今天的复习已完成",
   "words.allReviewedDescription": "所有单词今天都已复习或达到上限，明天再来继续。",
-  "words.confusableHint": "「{word}」也在词库中，别和本题要拼的词弄混了",
+  "words.libraryWordHint": "「{word}」也在词库中，别和本题要拼的词弄混了",
 
   "profile.title": "用户资料",
   "profile.loading": "加载您的资料...",
@@ -231,7 +231,7 @@ const en: Record<TranslationKey, string> = {
   "words.allReviewedTitle": "All caught up for today",
   "words.allReviewedDescription":
     "Every word has been reviewed or hit the daily limit. Come back tomorrow.",
-  "words.confusableHint": '"{word}" is also in your wordbook — check which word this row asks for',
+  "words.libraryWordHint": '"{word}" is also in your wordbook — check which word this row asks for',
 
   "profile.title": "User Profile",
   "profile.loading": "Loading your profile...",

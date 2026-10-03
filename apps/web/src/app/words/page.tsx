@@ -111,7 +111,7 @@ const WordRow = observer(
             />
             {libraryWordMatch && (
               <p className="text-xs text-muted-foreground">
-                {t("words.confusableHint", { word: inputValue })}
+                {t("words.libraryWordHint", { word: inputValue })}
               </p>
             )}
           </div>
