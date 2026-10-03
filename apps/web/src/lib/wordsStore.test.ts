@@ -4,19 +4,7 @@ import { MAX_INPUT_TIMES, MAX_REVIEWS, type WordMemory } from "./masteryModel";
 import { DAY_MS } from "./time";
 import { getMasteryLevelIndex } from "./masteryLevels";
 import { formatLocalPracticeDate } from "./practiceDate";
-import { makeMemory as memory, makeStats as stats } from "./testSupport";
-
-const makeWordData = (word: string, overrides: Partial<WordData> = {}): WordData => ({
-  word,
-  translation: `${word}-中文`,
-  memory: memory(),
-  stats: stats(),
-  inputTimes: [],
-  reviews: [],
-  createdAt: new Date(0),
-  id: `id-${word}`,
-  ...overrides,
-});
+import { makeDoc, makeMemory as memory, makeStats as stats, makeWordData } from "./testSupport";
 
 const addWord = (store: Words, word: string, overrides: Partial<WordData> = {}) => {
   const data = makeWordData(word, overrides);
@@ -327,10 +315,13 @@ describe("mergeSnapshotIntoStore", () => {
       store,
       {
         docs: [
-          {
-            id: remote.id,
-            data: () => ({ ...remote, createdAt: { toDate: () => remote.createdAt } }),
-          },
+          makeDoc("apple", {
+            translation: remote.translation,
+            memory: remote.memory,
+            stats: remote.stats,
+            inputTimes: remote.inputTimes,
+            reviews: remote.reviews,
+          }),
         ],
       },
       [pending],

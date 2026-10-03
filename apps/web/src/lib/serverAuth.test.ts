@@ -1,9 +1,7 @@
-import { describe, it, expect, beforeEach } from "bun:test";
+import { describe, it, expect } from "bun:test";
 import { NextResponse } from "next/server";
 import { verifyFirebaseIdToken } from "./serverAuth";
-import { makeToken, useEnvVar, useRestoredFetch } from "./testSupport";
-
-const futureExpiry = () => Math.floor(Date.now() / 1000) + 3600;
+import { makeToken, mockIdentityToolkitFetch, useEnvVar, useRestoredFetch } from "./testSupport";
 
 const makeRequest = (token?: string) =>
   new Request("http://localhost/api/test", {
@@ -13,26 +11,6 @@ const makeRequest = (token?: string) =>
 describe("verifyFirebaseIdToken", () => {
   useEnvVar("NEXT_PUBLIC_FIREBASE_API_KEY", "test-key");
   useRestoredFetch();
-  let fetchCalls = 0;
-
-  const mockFetch = (result: { ok: boolean; localId?: string } | "network") => {
-    globalThis.fetch = (async () => {
-      fetchCalls += 1;
-      if (result === "network") {
-        throw new Error("network down");
-      }
-      return {
-        ok: result.ok,
-        json: async () => ({
-          users: result.localId ? [{ localId: result.localId }] : [],
-        }),
-      } as unknown as Response;
-    }) as unknown as typeof fetch;
-  };
-
-  beforeEach(() => {
-    fetchCalls = 0;
-  });
 
   it("缺少 Authorization 时返回 401", async () => {
     const result = await verifyFirebaseIdToken(makeRequest());
@@ -42,52 +20,48 @@ describe("verifyFirebaseIdToken", () => {
 
   it("缺少 API key 时返回 500", async () => {
     delete process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
-    const result = await verifyFirebaseIdToken(
-      makeRequest(makeToken("u-missing-key", futureExpiry())),
-    );
+    const result = await verifyFirebaseIdToken(makeRequest(makeToken("u-missing-key")));
     expect((result as NextResponse).status).toBe(500);
   });
 
   it("Identity Toolkit 拒绝时返回 401", async () => {
-    mockFetch({ ok: false });
-    const result = await verifyFirebaseIdToken(
-      makeRequest(makeToken("u-rejected", futureExpiry())),
-    );
+    mockIdentityToolkitFetch({ ok: false });
+    const result = await verifyFirebaseIdToken(makeRequest(makeToken("u-rejected")));
     expect((result as NextResponse).status).toBe(401);
   });
 
   it("网络错误时返回 401", async () => {
-    mockFetch("network");
-    const result = await verifyFirebaseIdToken(makeRequest(makeToken("u-network", futureExpiry())));
+    mockIdentityToolkitFetch({ network: true });
+    const result = await verifyFirebaseIdToken(makeRequest(makeToken("u-network")));
     expect((result as NextResponse).status).toBe(401);
   });
 
   it("校验通过返回 uid", async () => {
-    mockFetch({ ok: true, localId: "user-1" });
-    const result = await verifyFirebaseIdToken(makeRequest(makeToken("user-1", futureExpiry())));
+    const toolkit = mockIdentityToolkitFetch({ ok: true, localId: "user-1" });
+    const result = await verifyFirebaseIdToken(makeRequest(makeToken("user-1")));
     expect(result).toEqual({ uid: "user-1" });
-    expect(fetchCalls).toBe(1);
+    expect(toolkit.calls).toBe(1);
   });
 
   it("有效 token 命中缓存后不再请求", async () => {
-    const token = makeToken("user-cache", futureExpiry());
-    mockFetch({ ok: true, localId: "user-cache" });
+    const token = makeToken("user-cache");
+    const toolkit = mockIdentityToolkitFetch({ ok: true, localId: "user-cache" });
     await verifyFirebaseIdToken(makeRequest(token));
     await verifyFirebaseIdToken(makeRequest(token));
-    expect(fetchCalls).toBe(1);
+    expect(toolkit.calls).toBe(1);
   });
 
   it("缓存超过上限时淘汰最旧条目", async () => {
-    mockFetch({ ok: true, localId: "user-cap" });
-    const first = makeToken("user-cap", futureExpiry());
+    const toolkit = mockIdentityToolkitFetch({ ok: true, localId: "user-cap" });
+    const first = makeToken("user-cap");
     await verifyFirebaseIdToken(makeRequest(first));
-    expect(fetchCalls).toBe(1);
+    expect(toolkit.calls).toBe(1);
 
     for (let i = 0; i < 1001; i++) {
-      await verifyFirebaseIdToken(makeRequest(makeToken("user-cap", futureExpiry())));
+      await verifyFirebaseIdToken(makeRequest(makeToken("user-cap")));
     }
 
     await verifyFirebaseIdToken(makeRequest(first));
-    expect(fetchCalls).toBe(1003);
+    expect(toolkit.calls).toBe(1003);
   });
 });

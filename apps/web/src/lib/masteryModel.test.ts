@@ -3,7 +3,6 @@ import {
   calculateFluencyScore,
   effectiveLevel,
   initialMemory,
-  initialStats,
   intervalDays,
   masteryScoreFor,
   retrievability,
@@ -11,6 +10,7 @@ import {
   type WordMemory,
 } from "@/lib/masteryModel";
 import { DAY_MS, MINUTE_MS } from "@/lib/time";
+import { makeStats } from "./testSupport";
 
 const memoryWith = (
   stability: number,
@@ -23,11 +23,6 @@ const memoryWith = (
   state,
   reps,
   lastReviewAt: 0,
-});
-
-const statsWith = (reviewDays: number) => ({
-  ...initialStats(),
-  reviewDays,
 });
 
 describe("reviewMemory", () => {
@@ -112,26 +107,26 @@ describe("intervalDays", () => {
 
 describe("等级与分数", () => {
   it("按稳定度档位与复习日解锁取更严格者", () => {
-    expect(effectiveLevel(memoryWith(2.3065), statsWith(1))).toBe("learning");
-    expect(effectiveLevel(memoryWith(2.3065), statsWith(2))).toBe("familiar");
-    expect(effectiveLevel(memoryWith(10.971), statsWith(2))).toBe("familiar");
-    expect(effectiveLevel(memoryWith(10.971), statsWith(3))).toBe("proficient");
-    expect(effectiveLevel(memoryWith(46.317), statsWith(3))).toBe("proficient");
-    expect(effectiveLevel(memoryWith(46.317), statsWith(4))).toBe("mastered");
-    expect(effectiveLevel(initialMemory(0), statsWith(0))).toBe("new");
+    expect(effectiveLevel(memoryWith(2.3065), makeStats({ reviewDays: 1 }))).toBe("learning");
+    expect(effectiveLevel(memoryWith(2.3065), makeStats({ reviewDays: 2 }))).toBe("familiar");
+    expect(effectiveLevel(memoryWith(10.971), makeStats({ reviewDays: 2 }))).toBe("familiar");
+    expect(effectiveLevel(memoryWith(10.971), makeStats({ reviewDays: 3 }))).toBe("proficient");
+    expect(effectiveLevel(memoryWith(46.317), makeStats({ reviewDays: 3 }))).toBe("proficient");
+    expect(effectiveLevel(memoryWith(46.317), makeStats({ reviewDays: 4 }))).toBe("mastered");
+    expect(effectiveLevel(initialMemory(0), makeStats({ reviewDays: 0 }))).toBe("new");
   });
 
   it("分数按有效等级区间单调推进", () => {
-    expect(masteryScoreFor(initialMemory(0), statsWith(0))).toBe(0);
-    expect(masteryScoreFor(memoryWith(0.5), statsWith(1))).toBe(30);
-    expect(masteryScoreFor(memoryWith(2.3065), statsWith(1))).toBe(39);
-    expect(masteryScoreFor(memoryWith(2.3065), statsWith(2))).toBe(44);
-    expect(masteryScoreFor(memoryWith(10.971), statsWith(2))).toBe(59);
-    expect(masteryScoreFor(memoryWith(10.971), statsWith(3))).toBe(63);
-    expect(masteryScoreFor(memoryWith(30), statsWith(4))).toBe(80);
-    expect(masteryScoreFor(memoryWith(100), statsWith(10))).toBe(84);
-    expect(masteryScoreFor(memoryWith(365), statsWith(10))).toBe(100);
-    expect(masteryScoreFor(memoryWith(1.761326), statsWith(10))).toBe(42);
+    expect(masteryScoreFor(initialMemory(0), makeStats({ reviewDays: 0 }))).toBe(0);
+    expect(masteryScoreFor(memoryWith(0.5), makeStats({ reviewDays: 1 }))).toBe(30);
+    expect(masteryScoreFor(memoryWith(2.3065), makeStats({ reviewDays: 1 }))).toBe(39);
+    expect(masteryScoreFor(memoryWith(2.3065), makeStats({ reviewDays: 2 }))).toBe(44);
+    expect(masteryScoreFor(memoryWith(10.971), makeStats({ reviewDays: 2 }))).toBe(59);
+    expect(masteryScoreFor(memoryWith(10.971), makeStats({ reviewDays: 3 }))).toBe(63);
+    expect(masteryScoreFor(memoryWith(30), makeStats({ reviewDays: 4 }))).toBe(80);
+    expect(masteryScoreFor(memoryWith(100), makeStats({ reviewDays: 10 }))).toBe(84);
+    expect(masteryScoreFor(memoryWith(365), makeStats({ reviewDays: 10 }))).toBe(100);
+    expect(masteryScoreFor(memoryWith(1.761326), makeStats({ reviewDays: 10 }))).toBe(42);
   });
 });
 

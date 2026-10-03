@@ -1,9 +1,17 @@
-import { describe, it, expect, beforeEach, afterEach, spyOn } from "bun:test";
+import { describe, it, expect } from "bun:test";
 import { WordsLedger } from "./wordsLedger";
-import { Words, type WordData } from "./wordsStore";
-import { createNoopQueueStorage, type QueueStorage, type SyncQueueItem } from "./queueStorage";
-import { initialMemory, initialStats, type WordMemory } from "./masteryModel";
-import { createMemoryQueueStorage, makeMemory as memory, reviewEntry } from "./testSupport";
+import { Words } from "./wordsStore";
+import { createNoopQueueStorage, type QueueStorage } from "./queueStorage";
+import { type WordMemory } from "./masteryModel";
+import {
+  createMemoryQueueStorage,
+  makeDoc,
+  makeMemory as memory,
+  makeQueueItem,
+  makeStats,
+  makeWordData,
+  useConsoleSpy,
+} from "./testSupport";
 import type { WordSense } from "./wordSenses";
 import type { WordDocSnapshot, WordOperation, WordsRepo } from "./wordsRepo";
 
@@ -53,52 +61,6 @@ class FakeRepo implements WordsRepo {
   }
 }
 
-const makeDoc = (word: string, overrides: Record<string, unknown> = {}): WordDocSnapshot => ({
-  id: `id-${word}`,
-  data: () => ({
-    word,
-    translation: `${word}译`,
-    memory: initialMemory(0),
-    stats: initialStats(),
-    inputTimes: [],
-    reviews: [],
-    createdAt: { toDate: () => new Date("2026-01-01T00:00:00") },
-    ...overrides,
-  }),
-});
-
-const makeWordData = (overrides: Partial<WordData> = {}): WordData => ({
-  word: "apple",
-  translation: "苹果",
-  memory: initialMemory(0),
-  stats: initialStats(),
-  inputTimes: [],
-  reviews: [],
-  createdAt: new Date("2026-01-01T00:00:00"),
-  id: "id-apple",
-  ...overrides,
-});
-
-const makeQueueItem = (
-  wordId: string,
-  word: string,
-  overrides: Partial<SyncQueueItem> = {},
-): SyncQueueItem => ({
-  id: `q-${wordId}`,
-  type: "attempt",
-  word,
-  wordId,
-  data: {
-    memory: memory({ state: "review", stability: 2.3065, lastReviewAt: 1000 }),
-    stats: { ...initialStats(), reviewDays: 1 },
-    inputTimes: [1],
-    reviews: [reviewEntry("r1", 1000)],
-  },
-  timestamp: 1000,
-  retryCount: 0,
-  ...overrides,
-});
-
 const setup = () => {
   const repo = new FakeRepo();
   const queue = createMemoryQueueStorage();
@@ -108,17 +70,9 @@ const setup = () => {
   return { repo, queue, words, ledger };
 };
 
-let errorSpy: ReturnType<typeof spyOn>;
-
-beforeEach(() => {
-  errorSpy = spyOn(console, "error").mockImplementation(() => {});
-});
-
-afterEach(() => {
-  errorSpy.mockRestore();
-});
-
 describe("WordsLedger 记分与快照", () => {
+  useConsoleSpy("error");
+
   it("答对后立即入队并刷新待同步计数", () => {
     const { repo, queue, ledger } = setup();
     repo.emit([makeDoc("apple")]);
@@ -177,7 +131,7 @@ describe("WordsLedger 记分与快照", () => {
           due: Date.now(),
           reps: 5,
         }),
-        stats: { ...initialStats(), reviewDays: 5 },
+        stats: makeStats({ reviewDays: 5 }),
       }),
     ]);
 
@@ -204,7 +158,7 @@ describe("WordsLedger 记分与快照", () => {
 
   it("未登录时清空词库、计数归零且状态不再是加载中", () => {
     const words = new Words();
-    words.setWordData("apple", makeWordData());
+    words.setWordData("apple", makeWordData("apple"));
     const ledger = new WordsLedger({
       words,
       repo: null,
@@ -220,15 +174,8 @@ describe("WordsLedger 记分与快照", () => {
 });
 
 describe("WordsLedger 同步", () => {
-  let warnSpy: ReturnType<typeof spyOn>;
-
-  beforeEach(() => {
-    warnSpy = spyOn(console, "warn").mockImplementation(() => {});
-  });
-
-  afterEach(() => {
-    warnSpy.mockRestore();
-  });
+  useConsoleSpy("error");
+  useConsoleSpy("warn");
 
   it("提交记忆状态与复习日志后出队", async () => {
     const { repo, queue, ledger } = setup();
@@ -334,6 +281,8 @@ describe("WordsLedger 同步", () => {
 });
 
 describe("WordsLedger 存储回退", () => {
+  useConsoleSpy("error");
+
   it("队列存储回退内存时标记 storageFailed", () => {
     const repo = new FakeRepo();
     let fallback = false;
@@ -360,6 +309,8 @@ describe("WordsLedger 存储回退", () => {
 });
 
 describe("WordsLedger 词库命令", () => {
+  useConsoleSpy("error");
+
   it("删除单词时清理其队列条目并刷新计数", async () => {
     const { repo, queue, ledger } = setup();
     repo.emit([makeDoc("apple")]);
