@@ -240,9 +240,6 @@ const WordsPractice = observer(() => {
       words.setUserInput(word, value);
 
       const attempt = getAttemptState(word);
-      if (isOtherLibraryWord(word, value, (candidate) => words.hasWord(candidate))) {
-        attempt.hintUsed = true;
-      }
       if (attempt.reviewed) {
         return;
       }

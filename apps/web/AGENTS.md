@@ -57,7 +57,7 @@
 - 复习时间取客户端真实时刻写入 `memory.lastReviewAt`，不得改用同步时刻。
 - 分片提交使用 `commitInChunks`（纯执行器，`chunkSize` 取自 `WordsRepo.batchLimit`），Firestore 写入统一走 `lib/wordsRepo.ts` 的 `commitWordOperations`（按 `batchLimit` 分片、一次调用一个批次序列）；同步载荷、失败分类、过期队列和队列处置集中在 `lib/wordSync.ts` 的 `runWordSync`，由 `WordsLedger.sync()` 调用，不要内联回 hook。队列超过重试上限必须跨片汇总后只提示一次 `sync.dataLost`（ledger 递增 `dataLostCount`，provider 提示），localStorage 写失败回退内存必须提示 `sync.storageFailed`（存储适配器暴露 `usingMemoryFallback`，ledger 置 `storageFailed`）。
 - 调整快照合并或上限语义时同步 `lib/masteryModel.ts` 中的上限常量。`updateTranslations` 先即时更新 store，再 batch 写 `translation`，由 `onSnapshot` 幂等合并兜底。
-- 练习页输入判定使用 `lib/practiceInput.ts` 与单个 `inputStatesRef`：只有计时有效的逐字输入由 `resolveReview` 写入复习，粘贴/联想补全不产生复习；输入恰好命中词库内另一个单词（`Words.hasWord`，且不是本题单词的前缀，见 `isOtherLibraryWord`）时练习页给出提示并按提示计 Hard，答错照常记 Again；`WordRow` 保持独立 observer，父组件渲染路径不读 `words.userInputs`。
+- 练习页输入判定使用 `lib/practiceInput.ts` 与单个 `inputStatesRef`：只有计时有效的逐字输入由 `resolveReview` 写入复习，粘贴/联想补全不产生复习；输入恰好命中词库内另一个单词（`Words.hasWord`，且不是本题单词的前缀，见 `isOtherLibraryWord`）时练习页只显示提示、不改评分：答错照常记 Again，之后改对仍按独立答对记 Good，只有 `onHintReveal`（悬停或点击提示按钮）才把本轮降为 Hard；`WordRow` 保持独立 observer，父组件渲染路径不读 `words.userInputs`。
 - `PracticeHeatmap` 保持 `memo`、只接收 `practiceTime`，网格构建使用 `useMemo`；纯网格、分档与记账逻辑（`PracticeTimeRecorder`）都位于 `lib/practiceTime.ts`。
 - 练习时间由 `lib/practiceTime.ts` 的 `PracticeTimeRecorder` 记账（注入 `writeSeconds` 与时钟）：只在 visible + focus 时累计，每 60 秒把整秒用 `increment` 写入 `practiceTime/{YYYY-MM-DD}` 的 `seconds`，失败时把秒数放回池中重试，不足一秒的结余留到下次；`usePracticeTimeTracker` 只接线事件与定时器。
 - `lib/firebase.ts` 惰性创建实例（首次 `getDb()`/`getAuthInstance()` 时才校验 env 并初始化），Firestore 使用 `initializeFirestore`、`persistentLocalCache` 与 `persistentMultipleTabManager`；不要在服务端组件直接读写 `db`。
