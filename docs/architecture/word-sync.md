@@ -39,4 +39,4 @@
 ## 日期与历史字段
 
 - `memory.lastReviewAt`/`due` 等时间统一存 epoch 毫秒；统计用的「本地日期」按客户端时区生成 `YYYY-MM-DD`，跨时区不解析 ISO 时间戳。
-- 输入判定（`practiceInput.ts`）：计时从输入第一个字符开始，单次插入多个字符（粘贴、联想补全）使计时失效，退回单字符后重新计时；`resolveReview` 只为可信输入产出复习（错误 → Again、用过提示 → Hard、独立答对 → Good），同一轮后续输入不重复记分。输入恰好命中词库内另一个单词（`practiceInput.ts` 的 `isOtherLibraryWord`：非空、不等于本题单词、不是本题单词的前缀、且 `Words.hasWord` 命中）时，练习页给出提示并按用过提示计 Hard；答错照常记 Again，只由提示影响后续评分。
+- 输入判定（`practiceInput.ts`）：计时从输入第一个字符开始，单次插入多个字符（粘贴、联想补全）使计时失效，退回单字符后重新计时；`resolveReview` 只为可信输入产出复习（错误 → Again、用过提示 → Hard、独立答对 → Good），同一轮后续输入不重复记分。输入恰好命中词库内另一个单词（`practiceInput.ts` 的 `isOtherLibraryWord`：非空、不等于本题单词、不是本题单词的前缀、且 `Words.hasWord` 命中）时，练习页只显示提示、不改评分：答错照常记 Again，之后改对仍按独立答对记 Good，只有 `onHintReveal`（悬停或点击提示按钮）才把本轮降为 Hard。
