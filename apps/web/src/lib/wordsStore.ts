@@ -43,7 +43,6 @@ const hashWord = (value: string): number => {
 export interface WordData {
   word: string;
   translation: string;
-  confusables: string[];
   memory: WordMemory;
   stats: WordStats;
   inputTimes: number[];
@@ -275,10 +274,6 @@ export class Words {
     return this.wordData.get(word)?.translation;
   }
 
-  getConfusables(word: string): string[] {
-    return this.wordData.get(word)?.confusables ?? [];
-  }
-
   setUserInput(word: string, value: string) {
     this.userInputs.set(word, value);
   }
@@ -383,7 +378,6 @@ const isWordDataEqual = (a: Readonly<WordData>, b: Readonly<WordData>): boolean 
   a.id === b.id &&
   a.word === b.word &&
   a.translation === b.translation &&
-  arraysEqual(a.confusables, b.confusables) &&
   a.createdAt.getTime() === b.createdAt.getTime() &&
   memoryEquals(a.memory, b.memory) &&
   statsEquals(a.stats, b.stats) &&

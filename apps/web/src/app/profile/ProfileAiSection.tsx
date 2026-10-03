@@ -94,10 +94,9 @@ const BatchAiActionRow = ({
 };
 
 export const ProfileAiSection = observer(() => {
-  const { words, updateTranslations, refreshConfusables } = useFirestoreWords();
+  const { words, updateTranslations } = useFirestoreWords();
   const { t } = useLocale();
   const regenerate = useBatchAiAction(t("profile.regenerateFailed"));
-  const confusables = useBatchAiAction(t("profile.confusablesFailed"));
 
   const totalWords = words.wordCount;
 
@@ -149,37 +148,8 @@ export const ProfileAiSection = observer(() => {
     });
   };
 
-  const handleConfusables = () =>
-    confusables.run(async (onProgress) => {
-      const { updated, failed } = await refreshConfusables({ onProgress });
-      if (failed > 0) {
-        toast({
-          title: t("profile.confusablesPartial", { success: updated, failed }),
-          variant: "destructive",
-        });
-        return;
-      }
-      toast({
-        title:
-          updated > 0
-            ? t("profile.confusablesSuccess", { count: updated })
-            : t("profile.confusablesNone"),
-        variant: "success",
-      });
-    });
-
   return (
     <>
-      <BatchAiActionRow
-        action={confusables}
-        totalWords={totalWords}
-        title={t("profile.confusablesTitle")}
-        description={t("profile.confusablesDesc")}
-        buttonLabel={t("profile.confusablesButton")}
-        confirmTitle={t("profile.confusablesConfirm")}
-        confirmDescription={t("profile.confusablesConfirmDesc")}
-        onConfirm={handleConfusables}
-      />
       <BatchAiActionRow
         action={regenerate}
         totalWords={totalWords}

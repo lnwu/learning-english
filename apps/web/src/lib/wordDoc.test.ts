@@ -6,7 +6,6 @@ import {
   practiceFields,
   resetPracticeFields,
   translationFields,
-  confusableFields,
 } from "./wordDoc";
 import { MODEL_VERSION, initialMemory, initialStats } from "./masteryModel";
 import type { WordData } from "./wordsStore";
@@ -14,7 +13,6 @@ import type { WordData } from "./wordsStore";
 const makeWordData = (overrides: Partial<WordData> = {}): WordData => ({
   word: "apple",
   translation: "苹果",
-  confusables: [],
   memory: {
     ...initialMemory(1000),
     stability: 2.3065,
@@ -48,20 +46,6 @@ describe("translationFields", () => {
   });
 });
 
-describe("confusableFields", () => {
-  it("同时写入编码释义与易混词列表", () => {
-    expect(
-      confusableFields(
-        [{ pos: "n.", chinese: "药；医学", english: "drugs or the science" }],
-        ["medication"],
-      ),
-    ).toEqual({
-      translation: "n. 药；医学 — drugs or the science",
-      confusables: ["medication"],
-    });
-  });
-});
-
 describe("newWordDocFields", () => {
   it("新词文档带初始记忆状态与创建时间", () => {
     const fields = newWordDocFields("apple", [
@@ -76,7 +60,6 @@ describe("newWordDocFields", () => {
     expect(fields.stats).toEqual(initialStats());
     expect(fields.inputTimes).toEqual([]);
     expect(fields.reviews).toEqual([]);
-    expect(fields.confusables).toEqual([]);
     expect(fields.createdAt).toBeInstanceOf(Date);
   });
 });
@@ -127,18 +110,7 @@ describe("parseWordDoc", () => {
     expect(data.stats).toEqual(initialStats());
     expect(data.inputTimes).toEqual([]);
     expect(data.reviews).toEqual([]);
-    expect(data.confusables).toEqual([]);
     expect(data.id).toBe("id-1");
-  });
-
-  it("解析易混词并丢弃非字符串项", () => {
-    const data = parseWordDoc("id-1", {
-      word: "medicine",
-      translation: "药",
-      confusables: ["medication", 5],
-    });
-
-    expect(data.confusables).toEqual(["medication"]);
   });
 
   it("解析完整记忆状态、统计与复习日志", () => {

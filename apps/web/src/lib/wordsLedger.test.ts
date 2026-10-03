@@ -70,7 +70,6 @@ const makeDoc = (word: string, overrides: Record<string, unknown> = {}): WordDoc
 const makeWordData = (overrides: Partial<WordData> = {}): WordData => ({
   word: "apple",
   translation: "苹果",
-  confusables: [],
   memory: initialMemory(0),
   stats: initialStats(),
   inputTimes: [],
@@ -390,53 +389,6 @@ describe("WordsLedger 词库命令", () => {
         type: "update",
         wordId: "id-apple",
         fields: { translation: "n. 苹果 — a round fruit" },
-      },
-    ]);
-  });
-
-  it("更新易混词时同时写释义与同组词，先改内存再写库", async () => {
-    const { repo, words, ledger } = setup();
-    repo.emit([makeDoc("medicine"), makeDoc("medication")]);
-
-    await ledger.updateConfusables([
-      {
-        word: "medicine",
-        senses: [
-          {
-            pos: "n.",
-            chinese: "药；医学",
-            english: "drugs or the science",
-            note: "与 medication 比",
-          },
-        ],
-        confusables: ["medication"],
-      },
-      {
-        word: "medication",
-        senses: [{ pos: "n.", chinese: "药（处方药）", english: "prescribed drugs" }],
-        confusables: ["medicine"],
-      },
-    ]);
-
-    expect(words.getConfusables("medicine")).toEqual(["medication"]);
-    expect(words.getConfusables("medication")).toEqual(["medicine"]);
-    expect(words.getTranslation("medication")).toBe("n. 药（处方药） — prescribed drugs");
-    expect(repo.operations[0]).toEqual([
-      {
-        type: "update",
-        wordId: "id-medicine",
-        fields: {
-          translation: "n. 药；医学 — drugs or the science\n区分：与 medication 比",
-          confusables: ["medication"],
-        },
-      },
-      {
-        type: "update",
-        wordId: "id-medication",
-        fields: {
-          translation: "n. 药（处方药） — prescribed drugs",
-          confusables: ["medicine"],
-        },
       },
     ]);
   });

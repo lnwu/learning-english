@@ -26,12 +26,17 @@ export const createPracticeInputState = (): PracticeInputState => ({
   lastValueLength: 0,
 });
 
+export const isOtherLibraryWord = (
+  word: string,
+  value: string,
+  hasWord: (candidate: string) => boolean,
+): boolean => value !== "" && value !== word && !word.startsWith(value) && hasWord(value);
+
 export const evaluatePracticeInput = (
   state: PracticeInputState,
   word: string,
   value: string,
   now: number,
-  confusables: readonly string[] = [],
 ): PracticeInputDecision => {
   if (state.completed) {
     return {
@@ -53,15 +58,12 @@ export const evaluatePracticeInput = (
     timerStartedAt = now;
   }
 
-  const isConfusablePrefix =
-    value !== "" && value !== word && confusables.some((sibling) => sibling.startsWith(value));
-
   let errorRecorded = state.errorRecorded;
   let recordIncorrect = false;
-  if (value.length >= word.length && value !== word && !errorRecorded && !isConfusablePrefix) {
+  if (value.length >= word.length && value !== word && !errorRecorded) {
     recordIncorrect = true;
     errorRecorded = true;
-  } else if (value.length < word.length || isConfusablePrefix) {
+  } else if (value.length < word.length) {
     errorRecorded = false;
   }
 
