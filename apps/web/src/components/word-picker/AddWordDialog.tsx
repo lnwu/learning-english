@@ -8,8 +8,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui";
+import { SenseComparePanel } from "@/components/word/SenseComparePanel";
 import { useEffect, useEffectEvent, useState } from "react";
-import { useFirestoreWords, useLocale, toast, useAiModel } from "@/hooks";
+import { useFirestoreWords, useLocale, toast, useAiModel, useSenseCompare } from "@/hooks";
 import { postJson } from "@/lib/apiClient";
 import { encodeSenses, type WordSense } from "@/lib/wordSenses";
 import { type TranslateCompareResult } from "@/lib/translateCompare";
@@ -48,13 +49,11 @@ const AddWordDialog = ({ word, onClose, onFinished }: AddWordDialogProps) => {
   const { words, addWord } = useFirestoreWords();
   const { t } = useLocale();
   const { aiModel, models } = useAiModel();
+  const compare = useSenseCompare();
   const [translated, setTranslated] = useState<TranslateResult | null>(null);
   const [useOriginalFor, setUseOriginalFor] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [compareOpen, setCompareOpen] = useState(false);
-  const [compareSelection, setCompareSelection] = useState<string[]>([]);
-  const [compareResults, setCompareResults] = useState<TranslateCompareResult[] | null>(null);
-  const [comparing, setComparing] = useState(false);
   const [compareWord, setCompareWord] = useState(word);
 
   const notifyFinished = useEffectEvent(() => {
@@ -64,8 +63,6 @@ const AddWordDialog = ({ word, onClose, onFinished }: AddWordDialogProps) => {
   if (compareWord !== word) {
     setCompareWord(word);
     setCompareOpen(false);
-    setCompareResults(null);
-    setComparing(false);
   }
 
   useEffect(() => {
@@ -151,36 +148,7 @@ const AddWordDialog = ({ word, onClose, onFinished }: AddWordDialogProps) => {
 
   const handleOpenCompare = () => {
     setCompareOpen(true);
-    setCompareResults(null);
-    setCompareSelection(models.filter((model) => model.id !== aiModel).map((model) => model.id));
-  };
-
-  const toggleCompareModel = (id: string) => {
-    setCompareSelection((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
-    );
-  };
-
-  const handleCompare = async () => {
-    if (!word || compareSelection.length === 0 || comparing) return;
-    setComparing(true);
-    setCompareResults(null);
-    try {
-      const data = await postJson<{ results?: TranslateCompareResult[] }>(
-        "/api/translate/compare",
-        { word, models: compareSelection },
-        t("addWord.compareFailed"),
-      );
-      setCompareResults(data.results ?? []);
-    } catch (error) {
-      console.error("Failed to compare models:", error);
-      toast({
-        title: error instanceof Error ? error.message : t("addWord.compareFailed"),
-        variant: "destructive",
-      });
-    } finally {
-      setComparing(false);
-    }
+    compare.select(models.filter((model) => model.id !== aiModel).map((model) => model.id));
   };
 
   const handleUseCompareResult = (result: TranslateCompareResult) => {
@@ -190,7 +158,6 @@ const AddWordDialog = ({ word, onClose, onFinished }: AddWordDialogProps) => {
     );
     setUseOriginalFor(null);
     setCompareOpen(false);
-    setCompareResults(null);
   };
 
   const isNormalized = Boolean(word && lemma && lemma !== word);
@@ -254,73 +221,19 @@ const AddWordDialog = ({ word, onClose, onFinished }: AddWordDialogProps) => {
             {!compareOpen ? (
               <div>
                 <Button size="sm" variant="ghost" onClick={handleOpenCompare}>
-                  {t("addWord.compare")}
+                  {t("senses.compare")}
                 </Button>
               </div>
             ) : (
-              <div className="space-y-2 rounded-md border p-3">
-                <div className="flex flex-wrap gap-2">
-                  {models.map((model) => {
-                    const selected = compareSelection.includes(model.id);
-                    return (
-                      <Button
-                        key={model.id}
-                        size="sm"
-                        variant={selected ? "default" : "outline"}
-                        onClick={() => toggleCompareModel(model.id)}
-                      >
-                        {model.label}
-                      </Button>
-                    );
-                  })}
-                </div>
-                <Button
-                  size="sm"
-                  onClick={handleCompare}
-                  disabled={comparing || compareSelection.length === 0}
-                >
-                  {comparing ? t("addWord.comparing") : t("addWord.compareStart")}
-                </Button>
-                {compareResults && (
-                  <div className="space-y-2">
-                    {compareResults.map((result) => {
-                      const label =
-                        models.find((model) => model.id === result.model)?.label ?? result.model;
-                      return (
-                        <div key={result.model} className="rounded-md border p-2 text-sm">
-                          <div className="font-medium">{label}</div>
-                          {result.error ? (
-                            <div className="text-destructive">{result.error}</div>
-                          ) : result.senses && result.senses.length > 0 ? (
-                            <>
-                              {result.lemma && result.lemma !== word && (
-                                <div className="text-muted-foreground">
-                                  {word} → {result.lemma}
-                                </div>
-                              )}
-                              <div className="whitespace-pre-line text-muted-foreground">
-                                {encodeSenses(result.senses)}
-                              </div>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="mt-2"
-                                onClick={() => handleUseCompareResult(result)}
-                              >
-                                {t("addWord.useResult")}
-                              </Button>
-                            </>
-                          ) : (
-                            <div className="text-muted-foreground">
-                              {t("addWord.compareNotRecognized")}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
+              current && (
+                <SenseComparePanel
+                  key={current.word}
+                  word={current.word}
+                  compare={compare}
+                  showLemma
+                  onUseResult={handleUseCompareResult}
+                />
+              )
             )}
           </div>
         )}

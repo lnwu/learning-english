@@ -5,4 +5,5 @@ export { toast } from "./useToast";
 export { useAuth } from "./useAuth";
 export { useAddableWordCheck } from "./useAddableWordCheck";
 export { useAiModel, AiModelsProvider } from "./useAiModel";
+export { useSenseCompare } from "./useSenseCompare";
 export { usePracticeTimeTracker } from "./usePracticeTimeTracker";

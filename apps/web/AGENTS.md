@@ -71,6 +71,7 @@
 ## Profile 与批量 AI 操作
 
 - `profile/page.tsx` 只保留账号、语言、热力图、统计、熟练度、单词列表及删除/重置确认；批量 AI 操作放在 `profile/ProfileAiSection.tsx`。
+- 单词列表（`profile/WordPerformanceSection.tsx`）点击单词打开 `profile/WordDefinitionDialog.tsx` 查看该词义项；弹窗里的「重新生成释义」用 `/api/translate/compare` 对比各已启用模型，选定后经 `updateTranslations` 落库（只改 `translation`，单词 key 不变）。对比面板与 `AddWordDialog` 共用 `components/word/SenseComparePanel.tsx`。
 - 重新生成释义调用 `/api/regenerate-definitions`（每批不超过 `MAX_REGENERATE_BATCH_SIZE` 个词）；`senses: null` 的词保留原释义，只通过 `updateTranslations` 修改 `translation`，不触碰练习数据；前端串行分批并显示进度。translate 与 regenerate 只产生 `pos`/`chinese`/`english`（共用 `lib/aiPrompts.ts` 的 `SENSE_FIELD_LINES`）。
 - 重新生成释义的批量流程使用 `lib/batchAiTask.ts` 的 `chunkItems` 与 `runAiBatches`（串行分批、进度回调、单批失败不中断），失败单词数用 `countFailedWords` 统计；部分批次失败必须提示（`profile.regeneratePartial`），不要静默当成全部成功。熟练度均值与分布用 `lib/masteryStats.ts`，热力图月份文案用 `lib/practiceTime.ts` 的 `formatPracticeMonthLabel`。
 
