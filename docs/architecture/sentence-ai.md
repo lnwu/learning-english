@@ -28,7 +28,7 @@
 - 义项校验统一 `sanitizeWordSenses`（`lib/wordSenses.ts`），`/api/translate` 与 `regenerate-definitions` 共用，防止模型输出超长字段撑大文档（写入前的第一道清洗）。`WordSense` 类型与 `translation` 字符串的编解码（`encodeSenses`/`decodeSenses`）同在 `lib/wordSenses.ts`；写路径由 `lib/wordDoc.ts` 的 `translationFields` 统一编码，调用方与组件只传结构化义项。
 - translate 的 prompt 与解析在 `lib/wordLookup.ts`：`parseWordLookupResult` 负责 lemma 清洗、义项清洗与非单词判定（`senses: null`），`isWord` 为真但义项全非法时抛 502；路由只做取参与缓存读写。
 - 翻译缓存（`translationCache.ts`）：L1 进程内 LRU + L2 Redis（30 天），key 前缀带版本号（见该文件的 `CACHE_KEY_PREFIX`，不在文档里复述具体版本），只存 `senses` 非空的成功结果。默认模型（`deepseek/deepseek-flash`）用无模型后缀的 key，其他模型在 key 里带上模型 ID，避免不同模型互相污染。**改 translate 的 prompt 或默认模型必须 bump 前缀**，否则旧释义会在缓存里长期复用。
-- `/api/translate/compare` 一次请求并行取多个模型的释义（上限为注册表里的模型总数，不会超过一排可选模型），供添加单词时并排对比：逐模型返回 `{ model, lemma, senses }` 或错误（单个模型失败不影响其他模型）。对比是挑选动作，**不读写翻译缓存**；选定后由前端走常规添加流程落库。
+- `/api/translate/compare` 一次请求并行取多个模型的释义（上限为注册表里的模型总数，不会超过一排可选模型），供添加单词与 Profile 释义弹窗并排对比：逐模型返回 `{ model, lemma, senses }` 或错误（单个模型失败不影响其他模型）。对比是挑选动作，**不读写翻译缓存**；选定后由前端落库（添加单词走添加流程，释义弹窗走 `updateTranslations`）。
 - 前端 `encodeSenses` 把 `senses` 拼成「词性+中文 — 英文」逐行存入 `translation`（写路径经 `translationFields`）；`decodeSenses` 逐行解析回结构化义项。
 
 ## 造句交互设计（有意为之，别改）
@@ -45,6 +45,7 @@
 ## 批量重新生成释义
 
 - `/api/regenerate-definitions`：每批 ≤10（`MAX_REGENERATE_BATCH_SIZE`，与 60s 超时预算对齐：50 个词一次调用生成不完）、服务端过滤非小写字母/超长词并去重；一次调用返回逐词 `senses`，`null` 表示未识别（前端保留原释义）。前端串行分批并显示进度，通过 `updateTranslations` 落库——只改 `translation`，不碰练习数据。
+- 单个单词的重新生成在 Profile 释义弹窗（`app/profile/WordDefinitionDialog.tsx`）里做：调 `/api/translate/compare` 一次取多个模型的义项，用户选定后 `updateTranslations` 落库。与批量流程一样只改 `translation`；单词 key 不变，比较结果里的 `lemma` 不参与落库。
 
 ## 模型选择
 

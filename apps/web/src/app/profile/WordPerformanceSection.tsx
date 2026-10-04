@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { observer } from "mobx-react-lite";
 import {
   Button,
@@ -11,9 +11,11 @@ import {
   Input,
   MasteryBar,
 } from "@/components/ui";
+import { BookOpenIcon } from "lucide-react";
 import type { TranslationKey } from "@/lib/i18n";
 import { getWordLengthCategory } from "@/lib/masteryModel";
 import type { Words } from "@/lib/wordsStore";
+import { WordDefinitionDialog } from "./WordDefinitionDialog";
 
 const CATEGORY_META = [
   { category: 0, labelKey: "profile.shortWords" },
@@ -32,6 +34,7 @@ interface WordPerformanceRowProps {
   hints: number;
   fluencyScore: number | null;
   onDelete: (word: string) => void;
+  onViewDefinition: (word: string) => void;
   t: (key: TranslationKey) => string;
 }
 
@@ -45,12 +48,22 @@ const WordPerformanceRow = memo(
     hints,
     fluencyScore,
     onDelete,
+    onViewDefinition,
     t,
   }: WordPerformanceRowProps) => (
     <div className="flex items-center justify-between gap-4 px-4 py-2.5">
-      <div className="min-w-0 flex-1">
-        <span className="font-medium">{word}</span>
-        <span className="ml-2 text-sm text-muted-foreground">
+      <div className="flex min-w-0 flex-1 items-center gap-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-auto shrink-0 gap-1.5 px-1 text-sm font-medium"
+          title={t("profile.viewDefinition")}
+          onClick={() => onViewDefinition(word)}
+        >
+          <BookOpenIcon className="text-muted-foreground" data-icon="inline-start" />
+          {word}
+        </Button>
+        <span className="text-sm text-muted-foreground">
           ({reviews} {t("profile.reviews")} · {hints} {t("profile.hints")})
         </span>
       </div>
@@ -91,7 +104,12 @@ interface WordPerformanceSectionProps {
 export const WordPerformanceSection = observer(
   ({ words, onDelete, t }: WordPerformanceSectionProps) => {
     const [searchQuery, setSearchQuery] = useState("");
+    const [definitionWord, setDefinitionWord] = useState<string | null>(null);
     const wordsWithStats = words.practiceStats;
+
+    const handleViewDefinition = useCallback((word: string) => {
+      setDefinitionWord(word);
+    }, []);
 
     const wordsByCategory = useMemo<Record<number, WordStat[]>>(() => {
       const grouped: Record<number, WordStat[]> = {
@@ -176,6 +194,7 @@ export const WordPerformanceSection = observer(
                             hints={hints}
                             fluencyScore={fluencyScore}
                             onDelete={onDelete}
+                            onViewDefinition={handleViewDefinition}
                             t={t}
                           />
                         ),
@@ -193,6 +212,7 @@ export const WordPerformanceSection = observer(
             })}
           </div>
         </CardContent>
+        <WordDefinitionDialog word={definitionWord} onClose={() => setDefinitionWord(null)} />
       </Card>
     );
   },
