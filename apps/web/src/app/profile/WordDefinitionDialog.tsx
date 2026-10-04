@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { observer } from "mobx-react-lite";
 import {
   Button,
@@ -11,8 +11,8 @@ import {
   DialogTitle,
 } from "@/components/ui";
 import { SenseComparePanel } from "@/components/word/SenseComparePanel";
+import { WordSenses } from "@/components/word/WordSenses";
 import { toast, useFirestoreWords, useLocale, useSenseCompare } from "@/hooks";
-import { decodeSenses } from "@/lib/wordSenses";
 import type { TranslateCompareResult } from "@/lib/translateCompare";
 
 interface WordDefinitionDialogProps {
@@ -33,8 +33,6 @@ export const WordDefinitionDialog = observer(({ word, onClose }: WordDefinitionD
   }
 
   const translation = shownWord ? words.getWordData(shownWord)?.translation : undefined;
-  const senses = useMemo(() => decodeSenses(translation ?? ""), [translation]);
-  const hasSense = senses.length > 0;
 
   const handleUseResult = async (result: TranslateCompareResult) => {
     if (!word || !result.senses || result.senses.length === 0) return;
@@ -72,25 +70,7 @@ export const WordDefinitionDialog = observer(({ word, onClose }: WordDefinitionD
           <DialogTitle>{shownWord}</DialogTitle>
         </DialogHeader>
         <div className="flex flex-col gap-3">
-          <div
-            className={
-              hasSense ? "flex flex-col font-medium" : "text-sm text-muted-foreground italic"
-            }
-          >
-            {hasSense
-              ? senses.map((sense, index) => (
-                  <span key={index}>
-                    {[sense.pos, sense.chinese].filter(Boolean).join(" ")}
-                    {sense.english && (
-                      <span className="text-sm font-normal text-muted-foreground">
-                        {" "}
-                        — {sense.english}
-                      </span>
-                    )}
-                  </span>
-                ))
-              : t("home.noTranslation")}
-          </div>
+          <WordSenses translation={translation ?? ""} />
           {compareOpen && shownWord && (
             <SenseComparePanel
               key={shownWord}
