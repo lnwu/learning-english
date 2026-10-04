@@ -12,21 +12,13 @@ import {
   PageContainer,
   PageHeader,
 } from "@/components/ui";
+import { WordSenses } from "@/components/word/WordSenses";
 import { CheckIcon, XIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-  useRef,
-  type FormEvent,
-  type RefObject,
-} from "react";
+import { useCallback, useEffect, useState, useRef, type FormEvent, type RefObject } from "react";
 import { observer } from "mobx-react-lite";
 import Link from "next/link";
 import { useFirestoreWords, useLocale, usePracticeTimeTracker } from "@/hooks";
-import { decodeSenses } from "@/lib/wordSenses";
 import {
   createPracticeInputState,
   evaluatePracticeInput,
@@ -58,8 +50,6 @@ const allInputsCorrect = (randomWords: [string, string][], words: Words): boolea
 const WordRow = observer(
   ({ word, translation, words, onInputChange, onHintReveal, inputRefs, t }: WordRowProps) => {
     const inputValue = words.getUserInput(word);
-    const senses = useMemo(() => decodeSenses(translation), [translation]);
-    const hasSense = senses.some((sense) => sense.chinese);
     const libraryWordMatch = isOtherLibraryWord(word, inputValue, (candidate) =>
       words.hasWord(candidate),
     );
@@ -72,26 +62,7 @@ const WordRow = observer(
     return (
       <li className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-6 gap-y-2 py-4 first:pt-0">
         <div className="max-w-md min-w-0 text-left">
-          <div
-            className={cn(
-              "flex min-h-8 flex-col items-start justify-start whitespace-pre-line",
-              hasSense ? "font-medium" : "text-muted-foreground italic",
-            )}
-          >
-            {hasSense
-              ? senses.map((sense, index) => (
-                  <span key={index}>
-                    {[sense.pos, sense.chinese].filter(Boolean).join(" ")}
-                    {sense.english && (
-                      <span className="text-sm font-normal text-muted-foreground">
-                        {" "}
-                        — {sense.english}
-                      </span>
-                    )}
-                  </span>
-                ))
-              : t("home.noTranslation")}
-          </div>
+          <WordSenses translation={translation} className="min-h-8 items-start justify-start" />
         </div>
         <div className="flex items-center gap-3">
           <div className="flex flex-col gap-1">

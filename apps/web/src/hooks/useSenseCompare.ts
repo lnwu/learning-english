@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useAiModel } from "@/hooks/useAiModel";
 import { useLocale } from "@/hooks/useLocale";
 import { toast } from "@/hooks/useToast";
@@ -24,6 +24,7 @@ export const useSenseCompare = (): SenseCompareState => {
   const [selection, setSelection] = useState<string[]>([]);
   const [results, setResults] = useState<TranslateCompareResult[] | null>(null);
   const [comparing, setComparing] = useState(false);
+  const running = useRef(false);
 
   const select = useCallback((modelIds: string[]) => {
     setSelection(modelIds);
@@ -38,7 +39,8 @@ export const useSenseCompare = (): SenseCompareState => {
 
   const generate = useCallback(
     async (word: string, modelIds: string[]) => {
-      if (modelIds.length === 0) return;
+      if (modelIds.length === 0 || running.current) return;
+      running.current = true;
       setSelection(modelIds);
       setComparing(true);
       setResults(null);
@@ -56,6 +58,7 @@ export const useSenseCompare = (): SenseCompareState => {
           variant: "destructive",
         });
       } finally {
+        running.current = false;
         setComparing(false);
       }
     },

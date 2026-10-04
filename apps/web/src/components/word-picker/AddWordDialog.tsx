@@ -48,7 +48,7 @@ const toTranslateResult = (
 const AddWordDialog = ({ word, onClose, onFinished }: AddWordDialogProps) => {
   const { words, addWord } = useFirestoreWords();
   const { t } = useLocale();
-  const { aiModel, models } = useAiModel();
+  const { aiModel } = useAiModel();
   const compare = useSenseCompare();
   const [translated, setTranslated] = useState<TranslateResult | null>(null);
   const [useOriginalFor, setUseOriginalFor] = useState<string | null>(null);
@@ -148,7 +148,7 @@ const AddWordDialog = ({ word, onClose, onFinished }: AddWordDialogProps) => {
 
   const handleOpenCompare = () => {
     setCompareOpen(true);
-    compare.select(models.filter((model) => model.id !== aiModel).map((model) => model.id));
+    compare.select(compare.models.filter((model) => model.id !== aiModel).map((model) => model.id));
   };
 
   const handleUseCompareResult = (result: TranslateCompareResult) => {
