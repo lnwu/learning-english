@@ -305,7 +305,12 @@ const WordsPractice = observer(() => {
       <PageContainer>
         <PageHeader
           className="mb-6"
-          title={t("practiceHub.words.title")}
+          title={
+            <span className="inline-flex items-center gap-2">
+              {t("practiceHub.words.title")}
+              <DailyProgress seconds={todaySeconds} />
+            </span>
+          }
           description={t("practiceHub.words.description")}
           actions={
             <>
@@ -318,7 +323,6 @@ const WordsPractice = observer(() => {
             </>
           }
         />
-        <DailyProgress seconds={todaySeconds} className="mb-6" />
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <ul className="divide-y">
             {randomWords.map(([word, translation]) => (
