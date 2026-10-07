@@ -109,15 +109,18 @@ const Sentence = observer(() => {
     <PageContainer width="narrow">
       <PageHeader
         className="mb-6"
-        title={t("sentence.title")}
+        title={
+          <span className="inline-flex items-center gap-2">
+            {t("sentence.title")}
+            <DailyProgress seconds={todaySeconds} />
+          </span>
+        }
         actions={
           <Button render={<Link href="/home" />} nativeButton={false} variant="ghost">
             {t("practiceHub.back")}
           </Button>
         }
       />
-
-      <DailyProgress seconds={todaySeconds} className="mb-6" />
 
       {noWords ? (
         loadError ? (

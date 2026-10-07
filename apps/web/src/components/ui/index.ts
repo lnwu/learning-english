@@ -10,6 +10,7 @@ export * from "./mastery-bar";
 export * from "./input";
 export * from "./page";
 export * from "./progress";
+export * from "./progress-ring";
 export * from "./separator";
 export { Toaster } from "./toaster";
 export * from "./spinner";
