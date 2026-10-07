@@ -59,7 +59,7 @@
 - 调整快照合并或上限语义时同步 `lib/masteryModel.ts` 中的上限常量。`updateTranslations` 先即时更新 store，再 batch 写 `translation`，由 `onSnapshot` 幂等合并兜底。
 - 练习页输入判定使用 `lib/practiceInput.ts` 与单个 `inputStatesRef`：只有计时有效的逐字输入由 `resolveReview` 写入复习，粘贴/联想补全不产生复习；输入恰好命中词库内另一个单词（`Words.hasWord`，且不是本题单词的前缀，见 `isOtherLibraryWord`）时练习页只显示提示、不改评分：答错照常记 Again，之后改对仍按独立答对记 Good，只有 `onHintReveal`（悬停或点击提示按钮）才把本轮降为 Hard；`WordRow` 保持独立 observer，父组件渲染路径不读 `words.userInputs`。
 - `PracticeHeatmap` 保持 `memo`、只接收 `practiceTime`，网格构建使用 `useMemo`；纯网格、分档与记账逻辑（`PracticeTimeRecorder`）都位于 `lib/practiceTime.ts`。
-- 练习时间由 `lib/practiceTime.ts` 的 `PracticeTimeRecorder` 记账（注入 `writeSeconds` 与时钟）：只在 visible + focus 时累计，每 60 秒把整秒用 `increment` 写入 `practiceTime/{YYYY-MM-DD}` 的 `seconds`，失败时把秒数放回池中重试，不足一秒的结余留到下次；`usePracticeTimeTracker` 只接线事件与定时器。
+- 练习时间由 `lib/practiceTime.ts` 的 `PracticeTimeRecorder` 记账（注入 `writeSeconds` 与时钟）：只在 visible + focus 时累计，每 60 秒把整秒用 `increment` 写入 `practiceTime/{YYYY-MM-DD}` 的 `seconds`，失败时把秒数放回池中重试，不足一秒的结余留到下次；`usePracticeTimeTracker` 接线事件与定时器并返回当天秒数（基数取 `loadPracticeSeconds`，写入成功后通过 `onFlushed` 累加）。当日进度只按练习时长展示：`components/practice/DailyProgress.tsx` 用 `getDailyPracticeProgress` 算「今日秒数 ÷ 每日目标」的百分比，不显示数字与词数；目标存 `users/{uid}.dailyGoalMinutes`（`lib/dailyGoal.ts` 默认 30 分钟，`ProfileDailyGoalRow` 用预设档位修改）。
 - `lib/firebase.ts` 惰性创建实例（首次 `getDb()`/`getAuthInstance()` 时才校验 env 并初始化），Firestore 使用 `initializeFirestore`、`persistentLocalCache` 与 `persistentMultipleTabManager`；不要在服务端组件直接读写 `db`。
 
 ## 双击选词添加
@@ -70,7 +70,7 @@
 
 ## Profile 与批量 AI 操作
 
-- `profile/page.tsx` 只保留账号、语言、热力图、统计、熟练度、单词列表及删除/重置确认；批量 AI 操作放在 `profile/ProfileAiSection.tsx`。
+- `profile/page.tsx` 只保留账号、语言、每日练习目标、热力图、统计、熟练度、单词列表及删除/重置确认；批量 AI 操作放在 `profile/ProfileAiSection.tsx`。
 - 单词列表（`profile/WordPerformanceSection.tsx`）点击单词打开 `profile/WordDefinitionDialog.tsx` 查看该词义项；弹窗里的「重新生成释义」用 `/api/translate/compare` 对比各已启用模型，选定后经 `updateTranslations` 落库（只改 `translation`，单词 key 不变）。对比面板与 `AddWordDialog` 共用 `components/word/SenseComparePanel.tsx`。
 - 重新生成释义调用 `/api/regenerate-definitions`（每批不超过 `MAX_REGENERATE_BATCH_SIZE` 个词）；`senses: null` 的词保留原释义，只通过 `updateTranslations` 修改 `translation`，不触碰练习数据；前端串行分批并显示进度。translate 与 regenerate 只产生 `pos`/`chinese`/`english`（共用 `lib/aiPrompts.ts` 的 `SENSE_FIELD_LINES`）。
 - 重新生成释义的批量流程使用 `lib/batchAiTask.ts` 的 `chunkItems` 与 `runAiBatches`（串行分批、进度回调、单批失败不中断），失败单词数用 `countFailedWords` 统计；部分批次失败必须提示（`profile.regeneratePartial`），不要静默当成全部成功。熟练度均值与分布用 `lib/masteryStats.ts`，热力图月份文案用 `lib/practiceTime.ts` 的 `formatPracticeMonthLabel`。

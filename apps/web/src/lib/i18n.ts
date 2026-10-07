@@ -76,6 +76,9 @@ const zh = {
   "words.allReviewedDescription": "所有单词今天都已复习或达到上限，明天再来继续。",
   "words.libraryWordHint": "「{word}」也在词库中，别和本题要拼的词弄混了",
 
+  "practice.dailyProgressLabel": "今日练习进度",
+  "practice.dailyGoalReached": "今日目标已完成",
+
   "profile.title": "用户资料",
   "profile.loading": "加载您的资料...",
   "profile.accountInfo": "账户信息",
@@ -98,6 +101,9 @@ const zh = {
   "profile.practiceWords": "练习单词",
   "profile.settings": "设置",
   "profile.language": "语言",
+  "profile.dailyGoal": "每日练习目标",
+  "profile.dailyGoalDesc": "练习页的当日进度按该目标显示百分比",
+  "profile.dailyGoalSaveFailed": "保存每日练习目标失败，请稍后重试",
   "profile.aiModel": "AI 模型",
   "profile.aiModelDesc": "选择用于翻译、造句等 AI 功能的模型",
   "profile.aiModelSaveFailed": "保存模型设置失败，请稍后重试",
@@ -237,6 +243,9 @@ const en: Record<TranslationKey, string> = {
     "Every word has been reviewed or hit the daily limit. Come back tomorrow.",
   "words.libraryWordHint": '"{word}" is also in your wordbook — check which word this row asks for',
 
+  "practice.dailyProgressLabel": "Today's practice progress",
+  "practice.dailyGoalReached": "Today's goal is complete",
+
   "profile.title": "User Profile",
   "profile.loading": "Loading your profile...",
   "profile.accountInfo": "Account Information",
@@ -259,6 +268,9 @@ const en: Record<TranslationKey, string> = {
   "profile.practiceWords": "Practice Words",
   "profile.settings": "Settings",
   "profile.language": "Language",
+  "profile.dailyGoal": "Daily Practice Goal",
+  "profile.dailyGoalDesc": "The practice page shows daily progress as a percentage of this goal",
+  "profile.dailyGoalSaveFailed": "Failed to save daily practice goal, please try again",
   "profile.aiModel": "AI Model",
   "profile.aiModelDesc":
     "Choose the model used for translation, sentence practice, and other AI features",

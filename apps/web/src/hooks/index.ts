@@ -7,3 +7,4 @@ export { useAddableWordCheck } from "./useAddableWordCheck";
 export { useAiModel, AiModelsProvider } from "./useAiModel";
 export { useSenseCompare } from "./useSenseCompare";
 export { usePracticeTimeTracker } from "./usePracticeTimeTracker";
+export { useDailyGoal } from "./useDailyGoal";

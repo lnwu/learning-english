@@ -13,6 +13,7 @@ import {
   PageHeader,
 } from "@/components/ui";
 import { WordSenses } from "@/components/word/WordSenses";
+import { DailyProgress } from "@/components/practice/DailyProgress";
 import { CheckIcon, XIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCallback, useEffect, useState, useRef, type FormEvent, type RefObject } from "react";
@@ -147,7 +148,7 @@ const SubmitButton = observer(
 const WordsPractice = observer(() => {
   const { words, recordReview, loading, error } = useFirestoreWords();
   const { t } = useLocale();
-  usePracticeTimeTracker();
+  const { todaySeconds } = usePracticeTimeTracker();
   const [isClient, setIsClient] = useState(false);
   const [shouldFocusFirst, setShouldFocusFirst] = useState(false);
   const [randomWords, setRandomWords] = useState<[string, string][]>([]);
@@ -317,6 +318,7 @@ const WordsPractice = observer(() => {
             </>
           }
         />
+        <DailyProgress seconds={todaySeconds} className="mb-6" />
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <ul className="divide-y">
             {randomWords.map(([word, translation]) => (

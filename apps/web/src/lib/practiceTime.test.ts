@@ -4,6 +4,7 @@ import {
   buildPracticeTimeWeeks,
   formatPracticeDuration,
   formatPracticeMonthLabel,
+  getDailyPracticeProgress,
   getPracticeTimeLevel,
   getPracticeTimeMonthLabels,
 } from "./practiceTime";
@@ -15,6 +16,7 @@ describe("PracticeTimeRecorder", () => {
   const createRecorder = () => {
     let current = new Date(2026, 7, 19, 10, 0, 0).getTime();
     const writes: Array<{ dateId: string; seconds: number }> = [];
+    const flushes: Array<{ dateId: string; seconds: number }> = [];
     let failing = false;
     const recorder = new PracticeTimeRecorder({
       now: () => current,
@@ -22,11 +24,15 @@ describe("PracticeTimeRecorder", () => {
         if (failing) throw new Error("write failed");
         writes.push({ dateId, seconds });
       },
+      onFlushed: (dateId, seconds) => {
+        flushes.push({ dateId, seconds });
+      },
     });
 
     return {
       recorder,
       writes,
+      flushes,
       advance: (ms: number) => {
         current += ms;
       },
@@ -122,6 +128,36 @@ describe("PracticeTimeRecorder", () => {
     await recorder.flush();
 
     expect(writes).toEqual([{ dateId: "2026-08-20", seconds: 3 }]);
+  });
+
+  it("写出成功后回调当天秒数，失败时不回调", async () => {
+    const { recorder, flushes, advance, setFailing } = createRecorder();
+    recorder.setActive(true);
+    advance(5_000);
+    setFailing(true);
+
+    await recorder.flush();
+    expect(flushes).toEqual([]);
+
+    setFailing(false);
+    await recorder.flush();
+    expect(flushes).toEqual([{ dateId: "2026-08-19", seconds: 5 }]);
+  });
+});
+
+describe("getDailyPracticeProgress", () => {
+  const goalSeconds = 30 * 60;
+
+  it("按时长占目标的比例返回 0-1", () => {
+    expect(getDailyPracticeProgress(0, goalSeconds)).toBe(0);
+    expect(getDailyPracticeProgress(15 * 60, goalSeconds)).toBe(0.5);
+  });
+
+  it("超出目标封顶为 1，负时长与非法目标返回 0", () => {
+    expect(getDailyPracticeProgress(45 * 60, goalSeconds)).toBe(1);
+    expect(getDailyPracticeProgress(-10, goalSeconds)).toBe(0);
+    expect(getDailyPracticeProgress(600, 0)).toBe(0);
+    expect(getDailyPracticeProgress(600, -1)).toBe(0);
   });
 });
 

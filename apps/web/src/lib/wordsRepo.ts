@@ -3,6 +3,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDoc,
   getDocs,
   increment,
   onSnapshot,
@@ -38,6 +39,7 @@ export interface WordsRepo {
   deleteWord(wordId: string): Promise<void>;
   commitWordOperations(operations: WordOperation[]): Promise<void>;
   loadPracticeTime(): Promise<Map<string, number>>;
+  loadPracticeSeconds(dateId: string): Promise<number>;
   addPracticeTime(dateId: string, seconds: number): Promise<void>;
 }
 
@@ -97,6 +99,11 @@ export const createWordsRepo = (userId: string): WordsRepo => {
     async loadPracticeTime() {
       const snapshot = await getDocs(collection(db, "users", userId, "practiceTime"));
       return new Map(snapshot.docs.map((item) => [item.id, Number(item.data().seconds) || 0]));
+    },
+
+    async loadPracticeSeconds(dateId) {
+      const snapshot = await getDoc(doc(db, "users", userId, "practiceTime", dateId));
+      return Number(snapshot.data()?.seconds) || 0;
     },
 
     async addPracticeTime(dateId, seconds) {
