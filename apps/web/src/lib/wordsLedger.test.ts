@@ -54,6 +54,10 @@ class FakeRepo implements WordsRepo {
     return new Map<string, number>();
   }
 
+  async loadPracticeSeconds() {
+    return 0;
+  }
+
   async addPracticeTime() {}
 
   emit(docs: WordDocSnapshot[]) {

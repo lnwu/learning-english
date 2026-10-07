@@ -17,6 +17,7 @@ import {
 } from "@/components/ui";
 import { CheckIcon, XIcon } from "lucide-react";
 import { useSentencePractice, useLocale, usePracticeTimeTracker } from "@/hooks";
+import { DailyProgress } from "@/components/practice/DailyProgress";
 import { observer } from "mobx-react-lite";
 import Link from "next/link";
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
@@ -37,7 +38,7 @@ const Sentence = observer(() => {
     words,
   } = useSentencePractice();
   const { t } = useLocale();
-  usePracticeTimeTracker();
+  const { todaySeconds } = usePracticeTimeTracker();
   const [answer, setAnswer] = useState("");
   const [hasChecked, setHasChecked] = useState(false);
   const [lastCheckedAnswer, setLastCheckedAnswer] = useState("");
@@ -115,6 +116,8 @@ const Sentence = observer(() => {
           </Button>
         }
       />
+
+      <DailyProgress seconds={todaySeconds} className="mb-6" />
 
       {noWords ? (
         loadError ? (

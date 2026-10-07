@@ -3,6 +3,7 @@ import { formatLocalPracticeDate } from "./practiceDate";
 
 export interface PracticeTimeRecorderDeps {
   writeSeconds: (dateId: string, seconds: number) => Promise<void>;
+  onFlushed?: (dateId: string, seconds: number) => void;
   now?: () => number;
 }
 
@@ -13,10 +14,12 @@ export class PracticeTimeRecorder {
   #carrySeconds = 0;
   #now: () => number;
   #writeSeconds: (dateId: string, seconds: number) => Promise<void>;
+  #onFlushed?: (dateId: string, seconds: number) => void;
 
   constructor(deps: PracticeTimeRecorderDeps) {
     this.#now = deps.now ?? (() => Date.now());
     this.#writeSeconds = deps.writeSeconds;
+    this.#onFlushed = deps.onFlushed;
   }
 
   setActive(active: boolean) {
@@ -51,12 +54,18 @@ export class PracticeTimeRecorder {
     const dateId = formatLocalPracticeDate(new Date(this.#now()));
     try {
       await this.#writeSeconds(dateId, wholeSeconds);
+      this.#onFlushed?.(dateId, wholeSeconds);
     } catch (error) {
       console.error("Failed to record practice time:", error);
       this.#carrySeconds += wholeSeconds;
     }
   }
 }
+
+export const getDailyPracticeProgress = (seconds: number, goalSeconds: number): number => {
+  if (goalSeconds <= 0) return 0;
+  return Math.min(Math.max(seconds / goalSeconds, 0), 1);
+};
 
 export type PracticeTimeLevel = 0 | 1 | 2 | 3 | 4;
 

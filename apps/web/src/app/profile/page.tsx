@@ -24,6 +24,7 @@ import Link from "next/link";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import PracticeHeatmap from "./PracticeHeatmap";
 import { ProfileAiModelRow } from "./ProfileAiModelRow";
+import { ProfileDailyGoalRow } from "./ProfileDailyGoalRow";
 import { ProfileAiSection } from "./ProfileAiSection";
 import { SettingRow } from "./SettingRow";
 import { WordPerformanceSection } from "./WordPerformanceSection";
@@ -198,6 +199,8 @@ const Profile = observer(() => {
                 <ToggleGroupItem value="en">English</ToggleGroupItem>
               </ToggleGroup>
             </div>
+
+            <ProfileDailyGoalRow />
 
             <ProfileAiModelRow />
 
