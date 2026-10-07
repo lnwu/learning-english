@@ -3,12 +3,11 @@
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui";
 import { useDailyGoal, useLocale, toast } from "@/hooks";
 import { DAILY_GOAL_PRESET_MINUTES } from "@/lib/dailyGoal";
-import { formatPracticeDuration } from "@/lib/practiceTime";
 import { SettingRow } from "./SettingRow";
 
 export const ProfileDailyGoalRow = () => {
   const { dailyGoalMinutes, setDailyGoalMinutes } = useDailyGoal();
-  const { locale, t } = useLocale();
+  const { t } = useLocale();
 
   const handleChange = (value: string) => {
     const minutes = Number(value);
@@ -32,7 +31,7 @@ export const ProfileDailyGoalRow = () => {
       >
         {DAILY_GOAL_PRESET_MINUTES.map((minutes) => (
           <ToggleGroupItem key={minutes} value={String(minutes)}>
-            {formatPracticeDuration(minutes * 60, locale)}
+            {t("profile.dailyGoalMinutes", { minutes })}
           </ToggleGroupItem>
         ))}
       </ToggleGroup>

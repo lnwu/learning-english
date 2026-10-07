@@ -103,6 +103,7 @@ const zh = {
   "profile.language": "语言",
   "profile.dailyGoal": "每日练习目标",
   "profile.dailyGoalDesc": "练习页的当日进度按该目标显示百分比",
+  "profile.dailyGoalMinutes": "{minutes} 分钟",
   "profile.dailyGoalSaveFailed": "保存每日练习目标失败，请稍后重试",
   "profile.aiModel": "AI 模型",
   "profile.aiModelDesc": "选择用于翻译、造句等 AI 功能的模型",
@@ -270,6 +271,7 @@ const en: Record<TranslationKey, string> = {
   "profile.language": "Language",
   "profile.dailyGoal": "Daily Practice Goal",
   "profile.dailyGoalDesc": "The practice page shows daily progress as a percentage of this goal",
+  "profile.dailyGoalMinutes": "{minutes} min",
   "profile.dailyGoalSaveFailed": "Failed to save daily practice goal, please try again",
   "profile.aiModel": "AI Model",
   "profile.aiModelDesc":
