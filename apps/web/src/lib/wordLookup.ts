@@ -123,6 +123,7 @@ export const lookupWordWithSources = async (
   return parseWordLookupResult(
     await chatCompletionJson<unknown>(buildWordLookupMessages(word, candidates), {
       temperature: 0.2,
+      maxOutputTokens: 8192,
       timeoutMs: 60_000,
       model,
     }),
