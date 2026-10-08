@@ -25,7 +25,7 @@ export async function POST(request: Request) {
 
       const raw = await chatCompletionJson<unknown>(
         buildSourceSelectionMessages(word, senses, candidates),
-        { temperature: 0.2, model },
+        { temperature: 0.2, maxOutputTokens: 8192, model },
       );
       return NextResponse.json({ sources: parseSourceSelection(raw, senses, candidates) });
     },
