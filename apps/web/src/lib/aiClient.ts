@@ -7,7 +7,7 @@ import { resolveAiModel, type AiModelSpec } from "@/lib/aiProviders";
 const REQUEST_TIMEOUT_MS = 30000;
 const MAX_ATTEMPTS = 2;
 const RETRY_DELAY_MS = 300;
-const DEFAULT_MAX_OUTPUT_TOKENS = 4096;
+const DEFAULT_MAX_OUTPUT_TOKENS = 8192;
 
 export interface ChatMessage {
   role: "system" | "user" | "assistant";
@@ -21,6 +21,13 @@ export class AiServiceError extends Error {
     super(message);
     this.name = "AiServiceError";
     this.status = status;
+  }
+}
+
+class EmptyResponseError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "EmptyResponseError";
   }
 }
 
@@ -69,6 +76,9 @@ const isRetryableStatus = (status: number) => status === 429 || status >= 500;
 
 const toServiceError = (error: unknown): AiServiceError => {
   if (error instanceof AiServiceError) return error;
+  if (error instanceof EmptyResponseError) {
+    return new AiServiceError(error.message, 502);
+  }
   if (error instanceof APICallError) {
     return new AiServiceError("AI 服务返回错误，请稍后重试", 502);
   }
@@ -76,6 +86,7 @@ const toServiceError = (error: unknown): AiServiceError => {
 };
 
 const isRetryableError = (error: unknown): boolean => {
+  if (error instanceof EmptyResponseError) return true;
   if (error instanceof AiServiceError) return false;
   if (error instanceof APICallError) {
     return error.statusCode === undefined || isRetryableStatus(error.statusCode);
@@ -152,6 +163,15 @@ async function requestOnce(
       maxRetries: 0,
       abortSignal: controller.signal,
     });
+    if (!result.text.trim()) {
+      console.error("AI 服务返回内容为空:", {
+        provider: spec.provider,
+        model: spec.model,
+        finishReason: result.finishReason,
+        usage: result.usage,
+      });
+      throw new EmptyResponseError("AI 服务返回内容为空");
+    }
     return result.text;
   } catch (error) {
     if (controller.signal.aborted) {
