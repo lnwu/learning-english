@@ -3,7 +3,8 @@ import { API_RATE_LIMITS, withApiPost } from "@/lib/apiRoute";
 import { optionalAiModelId, optionalBoolean, parseBody, wordToken } from "@/lib/apiInput";
 import { getCachedTranslation, setCachedTranslation } from "@/lib/translationCache";
 import { DEFAULT_AI_MODEL_ID } from "@/lib/aiProviders";
-import { lookupWordWithSources } from "@/lib/wordLookup";
+import { collectWordSourceCandidates } from "@/lib/wordSourceSearch";
+import { lookupWord } from "@/lib/wordLookup";
 
 const parse = parseBody<{ word: string; model: string; refresh: boolean }>({
   word: wordToken(),
@@ -28,7 +29,7 @@ export async function POST(request: Request) {
         }
       }
 
-      const result = await lookupWordWithSources(word, modelId);
+      const result = await lookupWord(word, modelId, await collectWordSourceCandidates(word));
       setCachedTranslation(word, result, modelId);
       return NextResponse.json(result);
     },

@@ -336,6 +336,7 @@ describe("WordsLedger 词库命令", () => {
       {
         word: "apple",
         senses: [{ pos: "n.", chinese: "苹果", english: "a round fruit" }],
+        sources: [],
       },
     ]);
 

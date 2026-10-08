@@ -7,7 +7,7 @@ import {
 import { chatCompletionJson, AiServiceError, type ChatMessage } from "@/lib/aiClient";
 import { sanitizeLemma } from "@/lib/lemma";
 import { sanitizeWordSenses, type WordSense } from "@/lib/wordSenses";
-import { collectWordSourceCandidates, type WordSourceCandidate } from "@/lib/wordSourceSearch";
+import type { WordSourceCandidate } from "@/lib/wordSourceSearch";
 import type { WordSource } from "@/lib/wordSources";
 import type { TranslationCacheEntry } from "@/lib/translationCache";
 
@@ -106,21 +106,12 @@ export const parseWordLookupResult = (
   return { lemma, senses, sources: parseSourcePicks(result.sources, senses, candidates) };
 };
 
-export const lookupWord = async (word: string, model?: string): Promise<TranslationCacheEntry> =>
-  parseWordLookupResult(
-    await chatCompletionJson<unknown>(buildWordLookupMessages(word), {
-      temperature: 0.2,
-      model,
-    }),
-    word,
-  );
-
-export const lookupWordWithSources = async (
+export const lookupWord = async (
   word: string,
   model?: string,
-): Promise<TranslationCacheEntry> => {
-  const candidates = await collectWordSourceCandidates(word);
-  return parseWordLookupResult(
+  candidates: readonly WordSourceCandidate[] = [],
+): Promise<TranslationCacheEntry> =>
+  parseWordLookupResult(
     await chatCompletionJson<unknown>(buildWordLookupMessages(word, candidates), {
       temperature: 0.2,
       maxOutputTokens: 8192,
@@ -130,4 +121,3 @@ export const lookupWordWithSources = async (
     word,
     candidates,
   );
-};
