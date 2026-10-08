@@ -15,6 +15,7 @@ import { commitInChunks } from "@/lib/chunkedCommit";
 import { getDb } from "@/lib/firebase";
 import { newWordDocFields } from "@/lib/wordDoc";
 import type { WordSense } from "@/lib/wordSenses";
+import type { WordSource } from "@/lib/wordSources";
 
 const WORD_BATCH_LIMIT = 500;
 
@@ -35,7 +36,7 @@ export interface WordsRepo {
     onDocs: (docs: WordDocSnapshot[]) => void;
     onError: (error: unknown) => void;
   }): () => void;
-  addWord(word: string, senses: WordSense[]): Promise<string>;
+  addWord(word: string, senses: WordSense[], sources: WordSource[]): Promise<string>;
   deleteWord(wordId: string): Promise<void>;
   commitWordOperations(operations: WordOperation[]): Promise<void>;
   loadPracticeTime(): Promise<Map<string, number>>;
@@ -66,8 +67,8 @@ export const createWordsRepo = (userId: string): WordsRepo => {
       );
     },
 
-    async addWord(word, senses) {
-      const created = await addDoc(wordsCollection(), newWordDocFields(word, senses));
+    async addWord(word, senses, sources) {
+      const created = await addDoc(wordsCollection(), newWordDocFields(word, senses, sources));
       return created.id;
     },
 

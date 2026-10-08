@@ -339,45 +339,44 @@ describe("WordsLedger 词库命令", () => {
       },
     ]);
 
-    expect(words.getTranslation("apple")).toBe("n. 苹果 — a round fruit");
+    expect(words.getTranslation("apple")).toBe("n. a round fruit — 苹果");
     expect(repo.operations[0]).toEqual([
       {
         type: "update",
         wordId: "id-apple",
-        fields: { translation: "n. 苹果 — a round fruit", sources: [] },
+        fields: { translation: "n. a round fruit — 苹果", sources: [] },
       },
     ]);
   });
 
-  it("来源写入前校验释义未变化，变化后丢弃", async () => {
+  it("更新释义时同时写入来源", async () => {
     const { repo, words, ledger } = setup();
-    const senses: WordSense[] = [{ pos: "n.", chinese: "苹果", english: "a round fruit" }];
+    repo.emit([makeDoc("apple")]);
     const sources = [
       {
         senseIndex: 0,
         kind: "wikipedia" as const,
-        title: "Apple",
         url: "https://en.wikipedia.org/?curid=1",
         excerpt: "an apple a day",
       },
     ];
-    words.setWordData("apple", makeWordData("apple", { translation: "n. 苹果 — a round fruit" }));
 
-    await ledger.attachWordSources({ word: "apple", wordId: "id-apple", senses, sources });
+    await ledger.updateTranslations([
+      {
+        word: "apple",
+        senses: [{ pos: "n.", chinese: "苹果", english: "a round fruit" }],
+        sources,
+      },
+    ]);
 
     expect(words.getWordData("apple")?.sources).toEqual(sources);
     expect(repo.operations[0]).toEqual([
-      { type: "update", wordId: "id-apple", fields: { sources } },
+      {
+        type: "update",
+        wordId: "id-apple",
+        fields: { translation: "n. a round fruit — 苹果", sources },
+      },
     ]);
-
-    await ledger.attachWordSources({
-      word: "apple",
-      wordId: "id-apple",
-      senses: [{ pos: "n.", chinese: "别的", english: "other" }],
-      sources,
-    });
-
-    expect(repo.operations).toHaveLength(1);
   });
 
   it("重置练习记录时清空队列并回到 new", async () => {
@@ -405,7 +404,7 @@ describe("WordsLedger 词库命令", () => {
     });
 
     await expect(
-      ledger.addWord("apple", [{ pos: "n.", chinese: "苹果", english: "a round fruit" }]),
+      ledger.addWord("apple", [{ pos: "n.", chinese: "苹果", english: "a round fruit" }], []),
     ).rejects.toThrow();
     await expect(ledger.deleteWord("apple")).rejects.toThrow();
     await expect(ledger.resetPracticeRecords()).rejects.toThrow();

@@ -6,7 +6,7 @@ import {
 } from "./wordSourceSearch";
 
 describe("parseWikipediaResults", () => {
-  it("去掉高亮标签并保留包含目标词的摘录", () => {
+  it("去掉高亮标签并保留包含目标词的句子", () => {
     const candidates = parseWikipediaResults(
       {
         query: {
@@ -27,31 +27,30 @@ describe("parseWikipediaResults", () => {
     expect(candidates).toEqual([
       {
         kind: "wikipedia",
-        title: "Limited hangout",
         url: "https://en.wikipedia.org/?curid=6115595",
         excerpt: "let it hang out, so to speak?",
       },
     ]);
   });
 
-  it("解码数字实体", () => {
+  it("只取含目标词的那一句并解码数字实体", () => {
     const [candidate] = parseWikipediaResults(
       {
         query: {
           search: [
             {
-              title: "Lettin&#039; It All Hang Out",
+              title: "Hang",
               pageid: 1,
-              snippet: "it&#039;s a <span>hang</span> out",
+              snippet:
+                "Some unrelated copy about old songs. It&#039;s a hang out spot for locals. And more copy.",
             },
           ],
         },
       },
-      "hang",
+      "hang out",
     );
 
-    expect(candidate.title).toBe("Lettin' It All Hang Out");
-    expect(candidate.excerpt).toBe("it's a hang out");
+    expect(candidate.excerpt).toBe("It's a hang out spot for locals.");
   });
 
   it("响应结构异常时返回空列表", () => {
@@ -79,7 +78,6 @@ describe("parseStackExchangeResults", () => {
     expect(candidates).toEqual([
       {
         kind: "stackexchange",
-        title: 'Is "hang" really short for "hang out"?',
         url: "https://english.stackexchange.com/questions/116348",
         excerpt: "hang out with my friends, I'm just gonna hang at home",
       },
@@ -131,7 +129,12 @@ describe("parseUrbanDictionaryResults", () => {
         {
           list: [
             { word: "ghost", permalink: "https://u.example/1", thumbs_up: 9, example: "" },
-            { word: "ghost", permalink: "http://u.example/2", thumbs_up: 8, example: "a ghost" },
+            {
+              word: "ghost",
+              permalink: "http://u.example/2",
+              thumbs_up: 8,
+              example: "a ghost story",
+            },
           ],
         },
         "ghost",

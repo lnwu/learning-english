@@ -8,7 +8,7 @@
 
 - API Key 只允许在服务端使用，禁止加 `NEXT_PUBLIC_` 前缀或下发到前端。
 - `NEXT_PUBLIC_*` 必须用字面量 `process.env.NEXT_PUBLIC_X` 读取，不要用 `process.env[name]` 动态访问：Next 只在构建期内联字面量，动态访问在浏览器端恒为 undefined。
-- 新增 `/api/*` 统一走 `lib/apiRoute.ts` 的 `withApiPost`（内部依次完成 `serverAuth`、`await checkRateLimit`、JSON 解析与 AI 错误映射），限额加进 `API_RATE_LIMITS`；输入校验用 `lib/apiInput.ts` 的 `parseBody` + 字段解析器（`requiredText`/`optionalText`/`wordToken`/`wordTokenList`/`wordList`/`sentenceWordList`/`optionalAiModelId`/`aiModelIdList`）声明式描述形状与上限，缺省文案由 `badRequest` 统一生成；不要手写守卫三段、取字段/过滤/限长或错误尾巴。
+- 新增 `/api/*` 统一走 `lib/apiRoute.ts` 的 `withApiPost`（内部依次完成 `serverAuth`、JSON 解析与输入校验、`await checkRateLimit`、AI 错误映射；限额可按请求体选择），限额加进 `API_RATE_LIMITS`；输入校验用 `lib/apiInput.ts` 的 `parseBody` + 字段解析器（`requiredText`/`optionalText`/`wordToken`/`wordList`/`sentenceWordList`/`optionalBoolean`/`optionalAiModelId`/`aiModelIdList`）声明式描述形状与上限，缺省文案由 `badRequest` 统一生成；不要手写守卫三段、取字段/过滤/限长或错误尾巴。
 - 带登录态调用 `/api/*` 统一使用 `lib/apiClient.ts` 的 `postJson<T>(url, payload, fallbackError)`，不要手写 token 与 fetch。
 - Firestore 客户端访问统一经 `lib/wordsRepo.ts`（`WordsProvider` 按 effective uid 构造并注入），页面与组件不直接 import `firebase/firestore`；订阅仍只在 `WordsProvider` 中发生一次。
 - 练习计时不能伪造：只有拼写练习写入记忆模型，粘贴或联想补全等整段插入的输入因计时失效不产生复习；造句不写入熟练度数据。统计用的本地日期按客户端时区生成 `YYYY-MM-DD`，不存 ISO 时间戳。
@@ -71,19 +71,18 @@
 ## Profile 与批量 AI 操作
 
 - `profile/page.tsx` 只保留账号、语言、每日练习目标、热力图、统计、熟练度、单词列表及删除/重置确认；批量 AI 操作放在 `profile/ProfileAiSection.tsx`。
-- 单词列表（`profile/WordPerformanceSection.tsx`）点击单词打开 `profile/WordDefinitionDialog.tsx` 查看该词义项；弹窗里的「重新生成释义」用 `/api/translate/compare` 对比各已启用模型，选定后经 `updateTranslations` 落库（只改 `translation`，单词 key 不变）。对比面板与 `AddWordDialog` 共用 `components/word/SenseComparePanel.tsx`。
-- 重新生成释义调用 `/api/regenerate-definitions`（每批不超过 `MAX_REGENERATE_BATCH_SIZE` 个词）；`senses: null` 的词保留原释义，只通过 `updateTranslations` 修改 `translation`，不触碰练习数据；前端串行分批并显示进度。translate 与 regenerate 只产生 `pos`/`chinese`/`english`（共用 `lib/aiPrompts.ts` 的 `SENSE_FIELD_LINES`）。
-- 重新生成释义的批量流程使用 `lib/batchAiTask.ts` 的 `chunkItems` 与 `runAiBatches`（串行分批、进度回调、单批失败不中断），失败单词数用 `countFailedWords` 统计；部分批次失败必须提示（`profile.regeneratePartial`），不要静默当成全部成功。熟练度均值与分布用 `lib/masteryStats.ts`，热力图月份文案用 `lib/practiceTime.ts` 的 `formatPracticeMonthLabel`。
+- 单词列表（`profile/WordPerformanceSection.tsx`）点击单词打开 `profile/WordDefinitionDialog.tsx` 查看该词义项与来源；弹窗里的「重新生成释义」先用当前生效模型走 `/api/translate`（`refresh: true`）刷新并立即落库，再展开多模型对比，选定后只改 `translation` 并清空 `sources`（单词 key 不变）。对比面板与 `AddWordDialog` 共用 `components/word/SenseComparePanel.tsx`。
+- 添加单词与重新生成释义共用 `hooks/useDefinitionFlow.ts`（一次 `/api/translate` 同时拿义项与来源），两个入口的行为必须保持一致：先当前模型、立即写库、再可选对比。`senses: null` 的词保留原释义与来源；只改 `translation`/`sources`，不触碰练习数据。义项与来源字段由 `lib/aiPrompts.ts` 的 `SENSE_FIELD_LINES` 与 `SENSE_SELECTION_RULE` 约束。
+- 重新生成释义的批量流程逐词串行调 `/api/translate { refresh: true }` 并显示进度；部分失败必须提示（`profile.regeneratePartial`），不要静默当成全部成功。熟练度均值与分布用 `lib/masteryStats.ts`，热力图月份文案用 `lib/practiceTime.ts` 的 `formatPracticeMonthLabel`。
 
 ## 单词来源
 
-- 来源是义项的真实用法摘录，只来自 Wikipedia、Stack Exchange（english.stackexchange）与 Urban Dictionary 三个免 Key 的公开接口；`lib/wordSourceSearch.ts` 负责检索与摘录清洗，摘录必须包含目标词才会保留。
-- `/api/word-sources` 经 `withApiPost` 执行：先收集候选，再由 `lib/wordSourceSelection.ts` 让模型只从编号候选中挑选，并用 `senseIndex` 标注所属义项。模型不生成或改写来源文本；无候选或无合适项时返回空列表，界面不显示「未找到」。
-- 每个单词最多三条来源，存为 `WordData.sources`（Firestore 字段 `sources`），字段投影与解析只在 `lib/wordDoc.ts`（`sourceFields`、`replaceTranslationFields`、`parseWordDoc`），清洗统一用 `lib/wordSources.ts` 的 `sanitizeWordSources`。
-- 添加单词、单个重新生成释义、批量重新生成释义都走同一条流程：释义写库后，由 `hooks/useWordSources.ts` 按单词串行调用 `/api/word-sources` 并经 `WordsLedger.attachWordSources` 写入。新增入口必须复用这个 hook，不要另写一份。
-- 写入前若词库中该词的释义与查找时使用的义项不一致，则丢弃结果。
-- 释义被替换（`updateTranslations`）时先清空旧来源，再由上面的流程重新查找。
-- 来源只在 `profile/WordDefinitionDialog.tsx` 展示（`components/word/WordSources.tsx`），练习页不展示。
+- 来源是义项的真实用法摘录，只来自 Wikipedia、Stack Exchange（english.stackexchange）与 Urban Dictionary 三个免 Key 的公开接口；`lib/wordSourceSearch.ts` 负责检索与句子抽取，摘录必须包含目标词的完整句子才会保留，每来源最多两条，单个来源失败只记日志。
+- 来源与义项在同一次 `/api/translate` 调用里产出：prompt 只给编号候选，模型只从候选中挑选并用 `senseIndex` 标注所属义项，不生成或改写来源文本；无候选或无合适项时 `sources` 为空数组，界面不显示「未找到」。compare 不抓候选、不返回来源。
+- 每个义项、每种来源至多一条，存为 `WordData.sources`（Firestore 字段 `sources`）；字段投影与解析只在 `lib/wordDoc.ts`（`definitionFields`、`replaceTranslationFields`、`parseWordDoc`），清洗统一用 `lib/wordSources.ts` 的 `sanitizeWordSources`。
+- 来源没有独立写路径：随义项在同一次 `WordsLedger.addWord` / `updateTranslations` 里写入，不要新增单独写来源的接口或 hook。
+- 对比选用（`updateTranslations` 不传 `sources`）会清空旧来源，不回头重新查找。
+- 来源只在 `profile/WordDefinitionDialog.tsx` 经 `components/word/WordDefinition.tsx` 展示；练习页的 `components/word/WordSenses.tsx` 只接收 `translation`、不接收来源，双击选词的 `AddWordDialog` 也不展示来源——来源句子必然包含目标词，出现在练习页就是直接给答案。
 
 ## 多语言
 
@@ -93,14 +92,14 @@
 ## 造句与 AI 集成
 
 - 浏览器只请求本站 `/api/*`，由服务端代理调用各模型服务商；`serverAuth` token 缓存、`await checkRateLimit` 与 `lib/aiClient.ts` 的重试/错误映射语义受测试保护，修改时同步测试。
-- 模型清单、baseUrl 与协议（`openai-compatible`/`anthropic`/`google`）都属于代码里的常量（`lib/aiProviders.ts`），环境变量只提供 API Key；不要为 baseUrl 或模型列表新增环境变量，也不要把 Key 下发到前端。
+- 模型清单、baseUrl 与协议（`openai-compatible`/`anthropic`/`google`）都属于代码里的常量（`lib/aiProviders.ts`），环境变量只提供 API Key；不要为 baseUrl 或模型列表新增环境变量，也不要把 Key 下发到前端。每个模型的 thinking 最低档与是否支持 `temperature` 也写在注册表里（`reasoning`/`supportsTemperature`）。
 - 新增模型一律先加进 `lib/aiProviders.ts` 的注册表（复合 ID `provider/model`），不是先改路由；未配置 Key 的服务商在页面上不出现在可选列表，直接用它的模型 ID 请求返回 500。
 - 用户选定模型存在 Firestore `users/{uid}` 文档的 `aiModel` 字段，已启用模型的清单由根 layout 服务端计算并经 `hooks/useAiModel.tsx` 下发；`postJson` 自动注入 `model` 字段，各路由用 `optionalAiModelId()` 解析，不要在各调用点手写模型参数。
 - 路由骨架统一 `withApiPost`；translate 的 prompt 与解析在 `lib/wordLookup.ts`，造句生成/批改的 prompt 与解析在 `lib/sentenceMessages.ts`（生成响应会校验目标词为候选词子集并限制数量，批改响应会夹取 `score`、截断超长字段、过滤 `issues`），批改结果（含「完全相同直接满分」快路径）都由该文件构造，路由只做取参与返回。
 - 造句抽词为从词库中均匀随机抽取至多 `SENTENCE_WORD_POOL_SIZE` 个候选词，由模型从中挑出 2-3 个能自然共现的词作为本题目标词并随响应返回，逻辑在 `lib/sentenceWords.ts`（纯函数 + 测试）；单词数下限统一用 `MIN_SENTENCE_WORDS`，不足时 hook 置 `insufficientWords` 布尔状态，错误文案走 `tNow`。
-- 翻译与重新生成释义共用的 prompt 片段（lemma 还原规则、义项字段说明）在 `lib/aiPrompts.ts`，修改片段等同修改 translate prompt，需提升缓存 key 前缀；翻译缓存按模型区分（默认模型沿用原前缀，其他模型在 key 中带模型 ID），不要把不同模型的结果写进同一个 key；进程内有上限的缓存/计数 Map 统一用 `lib/boundedMap.ts` 的 `setBounded` 淘汰。
+- translate 共用的 prompt 片段（lemma 还原规则、义项选择约束、义项字段说明）在 `lib/aiPrompts.ts`，修改片段等同修改 translate prompt，需提升缓存 key 前缀；翻译缓存按模型区分（默认模型沿用原前缀，其他模型在 key 中带模型 ID），不要把不同模型的结果写进同一个 key；进程内有上限的缓存/计数 Map 统一用 `lib/boundedMap.ts` 的 `setBounded` 淘汰。
 - 限流与缓存的 Redis 客户端统一使用 `lib/redis.ts` 的 `getRedis()`；未配置 Upstash 时仅在本地开发回退进程内实现。
-- 义项清洗统一使用 `lib/wordSenses.ts` 的 `sanitizeWordSenses`，由翻译与重新生成释义接口共用；`WordSense` 类型、编码（`encodeSenses`）与解析（`decodeSenses`）也都在这个文件。
+- 义项清洗统一使用 `lib/wordSenses.ts` 的 `sanitizeWordSenses`，来源清洗统一用 `lib/wordSources.ts` 的 `sanitizeWordSources`；`WordSense` 类型、编码（`encodeSenses`）与解析（`decodeSenses`，兼容中英两种字段顺序）也都在 `wordSenses.ts`。
 - 批改前判等与满分快路径统一走 `lib/sentenceMessages.ts` 的 `isExactMatchAnswer` + `buildExactMatchResult`（内部复用 `lib/sentenceCompare.ts` 的 `normalizeForComparison`），与模型批改路径产出同一份 `CheckResult`。
 - 造句不写入熟练度数据；答案输入使用 `Textarea`，Enter 提交、Shift+Enter 换行，`onKeyDown` 必须检查 `isComposing`。
 - 纯函数测试使用 `bun:test`；跨测试复用的夹具与环境变量/fetch 还原辅助放在 `lib/testSupport.ts`，不要在各测试文件里重复实现。熟练度、翻译解析、句意判定、日期、同步合并等核心算法修改时同步补测试；统一验证入口为仓库根目录 `bun run test`。

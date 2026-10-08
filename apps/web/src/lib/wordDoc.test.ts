@@ -42,7 +42,7 @@ const makeWordData = (overrides: Partial<WordData> = {}): WordData => ({
 describe("translationFields", () => {
   it("把结构化义项编码为持久化字符串", () => {
     expect(translationFields([{ pos: "n.", chinese: "苹果", english: "a round fruit" }])).toEqual({
-      translation: "n. 苹果 — a round fruit",
+      translation: "n. a round fruit — 苹果",
     });
     expect(translationFields([])).toEqual({ translation: "" });
   });
@@ -50,12 +50,14 @@ describe("translationFields", () => {
 
 describe("newWordDocFields", () => {
   it("新词文档带初始记忆状态与创建时间", () => {
-    const fields = newWordDocFields("apple", [
-      { pos: "n.", chinese: "苹果", english: "a round fruit" },
-    ]);
+    const fields = newWordDocFields(
+      "apple",
+      [{ pos: "n.", chinese: "苹果", english: "a round fruit" }],
+      [],
+    );
 
     expect(fields.word).toBe("apple");
-    expect(fields.translation).toBe("n. 苹果 — a round fruit");
+    expect(fields.translation).toBe("n. a round fruit — 苹果");
     expect(fields.memory.state).toBe("new");
     expect(fields.memory.reps).toBe(0);
     expect(fields.memory.modelVersion).toBe(MODEL_VERSION);
@@ -158,7 +160,6 @@ describe("parseWordDoc", () => {
     const source: WordSource = {
       senseIndex: 0,
       kind: "stackexchange",
-      title: "Q",
       url: "https://english.stackexchange.com/questions/1",
       excerpt: "hang out",
     };

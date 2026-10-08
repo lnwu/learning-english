@@ -1,6 +1,7 @@
 import { describe, it, expect } from "bun:test";
 import {
   MAX_SENSES,
+  chineseTranslations,
   decodeSenses,
   encodeSenses,
   sanitizeWordSenses,
@@ -34,6 +35,18 @@ describe("sanitizeWordSenses", () => {
     expect(senses).toEqual([{ pos: "n.", chinese: "苹果", english: "a round fruit" }]);
   });
 
+  it("规范化词性并折叠字段内空白", () => {
+    expect(
+      sanitizeWordSenses([
+        { pos: "n", chinese: "  嘴\n口  ", english: "the part\nof the face" },
+        { pos: "adj. / adv.", chinese: "口—嘴", english: "x" },
+      ]),
+    ).toEqual([
+      { pos: "n.", chinese: "嘴 口", english: "the part of the face" },
+      { pos: "adj.", chinese: "口 嘴", english: "x" },
+    ]);
+  });
+
   it("非数组输入返回空数组", () => {
     expect(sanitizeWordSenses(null)).toEqual([]);
     expect(sanitizeWordSenses("bad")).toEqual([]);
@@ -46,10 +59,10 @@ describe("decodeSenses", () => {
     expect(decodeSenses("  \n  ")).toEqual([]);
   });
 
-  it("新格式：每行一个义项，解析词性/中文/英文", () => {
+  it("解析英文在前的新格式", () => {
     expect(
       decodeSenses(
-        "v. 吐（口水）；喷出 — to force liquid from the mouth\nn. 口水；唾沫 — liquid in the mouth",
+        "v. to force liquid from the mouth — 吐（口水）；喷出\nn. liquid in the mouth — 口水；唾沫",
       ),
     ).toEqual([
       { pos: "v.", chinese: "吐（口水）；喷出", english: "to force liquid from the mouth" },
@@ -57,15 +70,21 @@ describe("decodeSenses", () => {
     ]);
   });
 
-  it("去除多余空白", () => {
-    expect(decodeSenses("  v. 吐  — to spit ")).toEqual([
-      { pos: "v.", chinese: "吐", english: "to spit" },
+  it("按是否含中日韩字符兼容旧的中文在前格式", () => {
+    expect(decodeSenses("v. 吐（口水）；喷出 — to force liquid from the mouth")).toEqual([
+      { pos: "v.", chinese: "吐（口水）；喷出", english: "to force liquid from the mouth" },
+    ]);
+  });
+
+  it("容忍不带句点的词性并去除多余空白", () => {
+    expect(decodeSenses("  v to spit — 吐 ")).toEqual([
+      { pos: "v", chinese: "吐", english: "to spit" },
     ]);
   });
 
   it("忽略历史释义里的区分说明行", () => {
     expect(
-      decodeSenses("v. 复制 — to make a copy\n区分：多用于文件，强调与原物一致\nn. 副本 — a copy"),
+      decodeSenses("v. to make a copy — 复制\n区分：多用于文件，强调与原物一致\nn. a copy — 副本"),
     ).toEqual([
       { pos: "v.", chinese: "复制", english: "to make a copy" },
       { pos: "n.", chinese: "副本", english: "a copy" },
@@ -74,20 +93,20 @@ describe("decodeSenses", () => {
 });
 
 describe("encodeSenses", () => {
-  it("每行一个义项", () => {
+  it("每行一个义项，英文在前", () => {
     expect(
       encodeSenses([
         { pos: "v.", chinese: "吐（口水）；喷出", english: "to force liquid from the mouth" },
         { pos: "n.", chinese: "口水；唾沫", english: "liquid in the mouth" },
       ]),
     ).toBe(
-      "v. 吐（口水）；喷出 — to force liquid from the mouth\nn. 口水；唾沫 — liquid in the mouth",
+      "v. to force liquid from the mouth — 吐（口水）；喷出\nn. liquid in the mouth — 口水；唾沫",
     );
   });
 
   it("空词性/空英文时省略对应部分", () => {
     expect(encodeSenses([{ pos: "", chinese: "苹果", english: "a round fruit" }])).toBe(
-      "苹果 — a round fruit",
+      "a round fruit — 苹果",
     );
     expect(encodeSenses([{ pos: "", chinese: "苹果", english: "" }])).toBe("苹果");
     expect(encodeSenses([{ pos: "", chinese: "", english: "a round fruit" }])).toBe(
@@ -105,5 +124,17 @@ describe("encodeSenses", () => {
       { pos: "n.", chinese: "口水；唾沫", english: "liquid in the mouth" },
     ];
     expect(decodeSenses(encodeSenses(senses))).toEqual(senses);
+  });
+});
+
+describe("chineseTranslations", () => {
+  it("只拼接中文译法", () => {
+    expect(
+      chineseTranslations("n. the part of the face — 嘴\nn. the opening of a river — 河口"),
+    ).toBe("嘴、河口");
+  });
+
+  it("解析失败时返回空字符串", () => {
+    expect(chineseTranslations("apple")).toBe("");
   });
 });

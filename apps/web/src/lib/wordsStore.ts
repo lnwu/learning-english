@@ -104,7 +104,6 @@ const sourcesEqual = (a: readonly WordSource[], b: readonly WordSource[]): boole
     (source, index) =>
       source.senseIndex === b[index].senseIndex &&
       source.kind === b[index].kind &&
-      source.title === b[index].title &&
       source.url === b[index].url &&
       source.excerpt === b[index].excerpt,
   );

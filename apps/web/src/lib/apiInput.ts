@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { isAiModelId } from "@/lib/aiProviders";
 import type { ApiParseResult } from "@/lib/apiRoute";
 import { isValidWordToken } from "@/lib/lemma";
-import { sanitizeWordSenses, type WordSense } from "@/lib/wordSenses";
 
 type ApiField<T> = { ok: true; value: T } | { ok: false; error: string };
 
@@ -37,29 +36,6 @@ export const wordToken = (): FieldParser<string> => (raw) => {
   return isValidWordToken(value) ? { ok: true, value } : { ok: false, error: "无效单词" };
 };
 
-export const wordTokenList =
-  (options: { maxItems: number }): FieldParser<string[]> =>
-  (raw) => {
-    if (!Array.isArray(raw) || raw.length === 0) {
-      return { ok: false, error: "无效单词列表" };
-    }
-    if (raw.length > options.maxItems) {
-      return { ok: false, error: "单词数量过多" };
-    }
-
-    const words: string[] = [];
-    for (const item of raw) {
-      const word = typeof item === "string" ? item.trim().toLowerCase() : "";
-      if (isValidWordToken(word)) words.push(word);
-    }
-
-    const unique = Array.from(new Set(words));
-    if (unique.length === 0) {
-      return { ok: false, error: "无效单词列表" };
-    }
-    return { ok: true, value: unique };
-  };
-
 export const wordList =
   (options: { maxItems: number; maxItemLength: number }): FieldParser<string[]> =>
   (raw) => {
@@ -77,10 +53,10 @@ export const wordList =
     return { ok: true, value: values };
   };
 
-export const wordSenseList = (): FieldParser<WordSense[]> => (raw) => {
-  const senses = sanitizeWordSenses(raw);
-  return senses.length > 0 ? { ok: true, value: senses } : { ok: false, error: "无效义项" };
-};
+export const optionalBoolean = (): FieldParser<boolean> => (raw) => ({
+  ok: true,
+  value: raw === true,
+});
 
 export interface SentenceWordInput {
   word: string;

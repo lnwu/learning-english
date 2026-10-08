@@ -3,13 +3,13 @@ import {
   aiModelIdList,
   badRequest,
   optionalAiModelId,
+  optionalBoolean,
   optionalText,
   parseBody,
   requiredText,
   sentenceWordList,
   wordList,
   wordToken,
-  wordTokenList,
   type FieldParser,
 } from "./apiInput";
 
@@ -78,25 +78,14 @@ describe("wordToken", () => {
   });
 });
 
-describe("wordTokenList", () => {
-  const parser = wordTokenList({ maxItems: 3 });
+describe("optionalBoolean", () => {
+  const parser = optionalBoolean();
 
-  it("非数组或空数组返回无效单词列表", () => {
-    expect(errorOf(parser, undefined)).toBe("无效单词列表");
-    expect(errorOf(parser, [])).toBe("无效单词列表");
-    expect(errorOf(parser, "apple")).toBe("无效单词列表");
-  });
-
-  it("超过上限返回单词数量过多", () => {
-    expect(errorOf(parser, ["a", "b", "c", "d"])).toBe("单词数量过多");
-  });
-
-  it("转小写并去重", () => {
-    expect(valueOf(parser, ["A", "a", "B"])).toEqual(["a", "b"]);
-  });
-
-  it("全部非法时返回无效单词列表", () => {
-    expect(errorOf(parser, ["b!", 5, ""])).toBe("无效单词列表");
+  it("只有 true 解析为 true", () => {
+    expect(valueOf(parser, true)).toBe(true);
+    expect(valueOf(parser, false)).toBe(false);
+    expect(valueOf(parser, undefined)).toBe(false);
+    expect(valueOf(parser, "true")).toBe(false);
   });
 });
 

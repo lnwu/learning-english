@@ -13,9 +13,8 @@ export type ApiParseResult<T> = { ok: true; body: T } | { ok: false; response: N
 
 export const API_RATE_LIMITS = {
   translate: { name: "translate", limit: 30 },
+  translateRefresh: { name: "translate/refresh", limit: 60 },
   translateCompare: { name: "translate/compare", limit: 10 },
-  regenerateDefinitions: { name: "regenerate", limit: 60 },
-  wordSources: { name: "word-sources", limit: 20 },
   sentenceGenerate: { name: "sentence/generate", limit: 10 },
   sentenceCheck: { name: "sentence/check", limit: 20 },
 } as const;
@@ -32,19 +31,12 @@ export const mapApiError = (
 
 export const withApiPost = async <T>(
   request: Request,
-  policy: ApiPolicy,
+  policy: ApiPolicy | ((body: T) => ApiPolicy),
   parse: (raw: unknown) => ApiParseResult<T>,
   handle: (body: T, context: { uid: string }) => Promise<NextResponse>,
 ): Promise<NextResponse> => {
   const auth = await verifyFirebaseIdToken(request);
   if (auth instanceof NextResponse) return auth;
-
-  const rateLimitError = await checkRateLimit(
-    `${auth.uid}:${policy.name}`,
-    policy.limit,
-    RATE_LIMIT_WINDOW_MS,
-  );
-  if (rateLimitError) return rateLimitError;
 
   let raw: unknown;
   try {
@@ -56,11 +48,20 @@ export const withApiPost = async <T>(
   const parsed = parse(raw);
   if (!parsed.ok) return parsed.response;
 
+  const resolvedPolicy = typeof policy === "function" ? policy(parsed.body) : policy;
+
+  const rateLimitError = await checkRateLimit(
+    `${auth.uid}:${resolvedPolicy.name}`,
+    resolvedPolicy.limit,
+    RATE_LIMIT_WINDOW_MS,
+  );
+  if (rateLimitError) return rateLimitError;
+
   try {
     return await handle(parsed.body, { uid: auth.uid });
   } catch (error) {
-    console.error(`${policy.name} failed:`, error);
-    const mapped = mapApiError(error, policy.fallbackError);
+    console.error(`${resolvedPolicy.name} failed:`, error);
+    const mapped = mapApiError(error, resolvedPolicy.fallbackError);
     return NextResponse.json({ error: mapped.error }, { status: mapped.status });
   }
 };

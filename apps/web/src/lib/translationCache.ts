@@ -2,15 +2,17 @@ import { setBounded } from "@/lib/boundedMap";
 import { DEFAULT_AI_MODEL_ID } from "@/lib/aiProviders";
 import { getRedis } from "@/lib/redis";
 import type { WordSense } from "@/lib/wordSenses";
+import type { WordSource } from "@/lib/wordSources";
 
 export interface TranslationCacheEntry {
   lemma: string;
   senses: WordSense[] | null;
+  sources: WordSource[];
 }
 
 const MAX_CACHE_ENTRIES = 1000;
 const CACHE_TTL_SECONDS = 60 * 60 * 24 * 30;
-const CACHE_KEY_PREFIX = "translation:v6";
+const CACHE_KEY_PREFIX = "translation:v7";
 
 const memoryCache = new Map<string, TranslationCacheEntry>();
 

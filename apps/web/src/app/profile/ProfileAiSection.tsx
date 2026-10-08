@@ -3,11 +3,10 @@
 import { useRef, useState } from "react";
 import { observer } from "mobx-react-lite";
 import { Button, ConfirmDialog } from "@/components/ui";
-import { useFirestoreWords, useLocale, toast, useWordSources } from "@/hooks";
+import { useFirestoreWords, useLocale, toast } from "@/hooks";
 import { postJson } from "@/lib/apiClient";
-import { MAX_REGENERATE_BATCH_SIZE, type RegenerateResult } from "@/lib/regenerateDefinitions";
-import { countFailedWords, chunkItems, runAiBatches } from "@/lib/batchAiTask";
 import type { WordSense } from "@/lib/wordSenses";
+import type { WordSource } from "@/lib/wordSources";
 import { SettingRow } from "./SettingRow";
 
 const useBatchAiAction = (fallbackError: string) => {
@@ -96,7 +95,6 @@ const BatchAiActionRow = ({
 export const ProfileAiSection = observer(() => {
   const { words, updateTranslations } = useFirestoreWords();
   const { t } = useLocale();
-  const findWordSources = useWordSources();
   const regenerate = useBatchAiAction(t("profile.regenerateFailed"));
 
   const totalWords = words.wordCount;
@@ -106,48 +104,38 @@ export const ProfileAiSection = observer(() => {
     if (allWords.length === 0) return;
 
     return regenerate.run(async (onProgress) => {
-      const outcomes = await runAiBatches<{ results?: RegenerateResult[] }>({
-        batches: chunkItems(allWords, MAX_REGENERATE_BATCH_SIZE),
-        runBatch: (batch) =>
-          postJson<{ results?: RegenerateResult[] }>(
-            "/api/regenerate-definitions",
-            { words: batch },
-            t("profile.regenerateFailed"),
-          ),
-        onProgress,
-      });
-
       let success = 0;
       let skipped = 0;
-      for (const outcome of outcomes) {
-        if ("error" in outcome) {
-          console.error("Regenerate batch failed:", outcome.error);
-          skipped += outcome.words.length;
-          continue;
-        }
+      let failed = 0;
 
-        const updates: Array<{ word: string; senses: WordSense[] }> = [];
-        for (const item of outcome.result.results ?? []) {
-          if (item.senses && item.senses.length > 0) {
-            updates.push({ word: item.word, senses: item.senses });
+      for (const [index, word] of allWords.entries()) {
+        try {
+          const result = await postJson<{ senses?: WordSense[] | null; sources?: WordSource[] }>(
+            "/api/translate",
+            { word, refresh: true },
+            t("profile.regenerateFailed"),
+          );
+          const senses = result.senses ?? [];
+          if (senses.length > 0) {
+            await updateTranslations([{ word, senses, sources: result.sources ?? [] }]);
             success += 1;
+          } else {
+            skipped += 1;
           }
+        } catch (error) {
+          console.error("Regenerate word failed:", error);
+          failed += 1;
         }
-        if (updates.length > 0) {
-          const targets = updates.flatMap(({ word, senses }) => {
-            const wordId = words.getWordId(word);
-            return wordId ? [{ word, wordId, senses }] : [];
-          });
-          await updateTranslations(updates);
-          void findWordSources(targets);
-        }
-        skipped += outcome.words.length - updates.length;
+        onProgress(index + 1);
       }
 
-      if (countFailedWords(outcomes) === allWords.length) {
+      if (failed === allWords.length) {
         toast({ title: t("profile.regenerateFailed"), variant: "destructive" });
-      } else if (skipped > 0) {
-        toast({ title: t("profile.regeneratePartial", { success, skipped }), variant: "success" });
+      } else if (skipped + failed > 0) {
+        toast({
+          title: t("profile.regeneratePartial", { success, skipped: skipped + failed }),
+          variant: "success",
+        });
       } else {
         toast({ title: t("profile.regenerateSuccess", { success }), variant: "success" });
       }

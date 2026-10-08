@@ -4,12 +4,21 @@ export interface WordSense {
   english: string;
 }
 
-export const MAX_SENSES = 4;
-const MAX_POS_LENGTH = 10;
+export const MAX_SENSES = 3;
+const MAX_POS_TAG_LENGTH = 9;
 const MAX_DEFINITION_LENGTH = 150;
 const MAX_TRANSLATION_LENGTH = 50;
+const SENSE_SEPARATOR = " — ";
+const CJK_PATTERN = /[\u3400-\u9fff]/;
 
-const SENSE_LINE_PATTERN = /^([a-zA-Z]+\.)\s+(.+?)\s*—\s*(.+)$/;
+const normalizeInline = (value: string): string => value.replace(/\s+/g, " ").trim();
+
+const normalizePos = (value: string): string => {
+  const tag = /[a-z]+/.exec(value.toLowerCase())?.[0] ?? "";
+  return tag && tag.length <= MAX_POS_TAG_LENGTH ? `${tag}.` : "";
+};
+
+const normalizeChinese = (value: string): string => normalizeInline(value.replace(/[—–]/g, " "));
 
 export const sanitizeWordSenses = (value: unknown): WordSense[] => {
   if (!Array.isArray(value)) return [];
@@ -18,12 +27,11 @@ export const sanitizeWordSenses = (value: unknown): WordSense[] => {
   for (const raw of value.slice(0, MAX_SENSES)) {
     if (typeof raw !== "object" || raw === null) continue;
     const record = raw as Record<string, unknown>;
-    const pos = typeof record.pos === "string" ? record.pos.trim() : "";
-    const chinese = typeof record.chinese === "string" ? record.chinese.trim() : "";
-    const english = typeof record.english === "string" ? record.english.trim() : "";
+    const pos = normalizePos(typeof record.pos === "string" ? record.pos : "");
+    const chinese = normalizeChinese(typeof record.chinese === "string" ? record.chinese : "");
+    const english = normalizeInline(typeof record.english === "string" ? record.english : "");
     if (
       pos &&
-      pos.length <= MAX_POS_LENGTH &&
       chinese &&
       chinese.length <= MAX_TRANSLATION_LENGTH &&
       english &&
@@ -39,19 +47,40 @@ export const sanitizeWordSenses = (value: unknown): WordSense[] => {
 export const encodeSenses = (senses: WordSense[]): string =>
   senses
     .map((sense) => {
-      const head = [sense.pos, sense.chinese].filter(Boolean).join(" ");
-      const english = sense.english ? (head ? ` — ${sense.english}` : sense.english) : "";
-      return `${head}${english}`.trim();
+      const head = [sense.pos, sense.english].filter(Boolean).join(" ");
+      const chinese = sense.chinese
+        ? head
+          ? `${SENSE_SEPARATOR}${sense.chinese}`
+          : sense.chinese
+        : "";
+      return `${head}${chinese}`.trim();
     })
     .join("\n");
+
+const pickSides = (a: string, b: string): [string, string] =>
+  CJK_PATTERN.test(a) && !CJK_PATTERN.test(b) ? [b, a] : [a, b];
 
 export const decodeSenses = (translation: string): WordSense[] => {
   const senses: WordSense[] = [];
 
   for (const line of translation.split("\n")) {
-    const match = SENSE_LINE_PATTERN.exec(line.trim());
-    if (match) senses.push({ pos: match[1], chinese: match[2], english: match[3] });
+    const trimmed = line.trim();
+    const separatorIndex = trimmed.lastIndexOf(SENSE_SEPARATOR);
+    if (separatorIndex <= 0) continue;
+
+    const head = trimmed.slice(0, separatorIndex);
+    const tail = trimmed.slice(separatorIndex + SENSE_SEPARATOR.length).trim();
+    const headMatch = /^(\S+)\s+(.+)$/.exec(head);
+    if (!headMatch || !tail) continue;
+
+    const [english, chinese] = pickSides(headMatch[2].trim(), tail);
+    senses.push({ pos: headMatch[1], chinese, english });
   }
 
   return senses;
 };
+
+export const chineseTranslations = (translation: string): string =>
+  decodeSenses(translation)
+    .map((sense) => sense.chinese)
+    .join("、");
