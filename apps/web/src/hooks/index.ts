@@ -6,5 +6,6 @@ export { useAuth } from "./useAuth";
 export { useAddableWordCheck } from "./useAddableWordCheck";
 export { useAiModel, AiModelsProvider } from "./useAiModel";
 export { useSenseCompare } from "./useSenseCompare";
+export { useWordSources } from "./useWordSources";
 export { usePracticeTimeTracker } from "./usePracticeTimeTracker";
 export { useDailyGoal } from "./useDailyGoal";

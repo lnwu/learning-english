@@ -13,7 +13,7 @@ import {
 import { SenseComparePanel } from "@/components/word/SenseComparePanel";
 import { WordSenses } from "@/components/word/WordSenses";
 import { WordSources } from "@/components/word/WordSources";
-import { toast, useFirestoreWords, useLocale, useSenseCompare } from "@/hooks";
+import { toast, useFirestoreWords, useLocale, useSenseCompare, useWordSources } from "@/hooks";
 import type { TranslateCompareResult } from "@/lib/translateCompare";
 
 interface WordDefinitionDialogProps {
@@ -25,6 +25,7 @@ export const WordDefinitionDialog = observer(({ word, onClose }: WordDefinitionD
   const { words, updateTranslations } = useFirestoreWords();
   const { t } = useLocale();
   const compare = useSenseCompare();
+  const findWordSources = useWordSources();
   const [compareOpen, setCompareOpen] = useState(false);
   const [shownWord, setShownWord] = useState(word);
 
@@ -38,10 +39,12 @@ export const WordDefinitionDialog = observer(({ word, onClose }: WordDefinitionD
 
   const handleUseResult = async (result: TranslateCompareResult) => {
     if (!word || !result.senses || result.senses.length === 0) return;
+    const wordId = words.getWordId(word);
     try {
       await updateTranslations([{ word, senses: result.senses }]);
       toast({ title: t("profile.regenerateWordSuccess", { word }), variant: "success" });
       setCompareOpen(false);
+      if (wordId) void findWordSources([{ word, wordId, senses: result.senses }]);
     } catch (error) {
       console.error("Failed to update translation:", error);
       toast({
