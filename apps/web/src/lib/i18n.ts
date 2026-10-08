@@ -172,7 +172,7 @@ const zh = {
   "senses.collapse": "收起",
   "source.kind.wikipedia": "Wikipedia",
   "source.kind.stackexchange": "Stack Exchange",
-  "source.kind.urbandictionary": "Urban Dictionary（用户投稿）",
+  "source.kind.urbandictionary": "Urban Dictionary",
 
   "sync.pending": "个单词待同步",
   "sync.syncing": "同步中...",
@@ -349,7 +349,7 @@ const en: Record<TranslationKey, string> = {
   "senses.collapse": "Collapse",
   "source.kind.wikipedia": "Wikipedia",
   "source.kind.stackexchange": "Stack Exchange",
-  "source.kind.urbandictionary": "Urban Dictionary (user-submitted)",
+  "source.kind.urbandictionary": "Urban Dictionary",
 
   "sync.pending": "words pending",
   "sync.syncing": "Syncing...",

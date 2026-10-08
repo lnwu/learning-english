@@ -47,10 +47,13 @@ export const WordDefinition = ({ translation, sources }: WordDefinitionProps) =>
                 {senseSources.map((source) => (
                   <div
                     key={`${source.kind}:${source.senseIndex}`}
-                    className="flex flex-col gap-0.5 text-sm text-muted-foreground"
+                    className="text-sm text-muted-foreground"
                   >
-                    <span>{source.excerpt}</span>
-                    <span className="text-xs">{t(KIND_LABEL_KEYS[source.kind])}</span>
+                    <span>{source.excerpt}</span>{" "}
+                    <span className="text-xs">
+                      {"- "}
+                      {t(KIND_LABEL_KEYS[source.kind])}
+                    </span>
                   </div>
                 ))}
               </div>
