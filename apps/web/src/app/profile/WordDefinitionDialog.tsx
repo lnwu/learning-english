@@ -12,6 +12,7 @@ import {
 } from "@/components/ui";
 import { SenseComparePanel } from "@/components/word/SenseComparePanel";
 import { WordSenses } from "@/components/word/WordSenses";
+import { WordSources } from "@/components/word/WordSources";
 import { toast, useFirestoreWords, useLocale, useSenseCompare } from "@/hooks";
 import type { TranslateCompareResult } from "@/lib/translateCompare";
 
@@ -32,7 +33,8 @@ export const WordDefinitionDialog = observer(({ word, onClose }: WordDefinitionD
     setCompareOpen(false);
   }
 
-  const translation = shownWord ? words.getWordData(shownWord)?.translation : undefined;
+  const wordData = shownWord ? words.getWordData(shownWord) : undefined;
+  const translation = wordData?.translation;
 
   const handleUseResult = async (result: TranslateCompareResult) => {
     if (!word || !result.senses || result.senses.length === 0) return;
@@ -71,6 +73,7 @@ export const WordDefinitionDialog = observer(({ word, onClose }: WordDefinitionD
         </DialogHeader>
         <div className="flex flex-col gap-3">
           <WordSenses translation={translation ?? ""} />
+          <WordSources sources={wordData?.sources ?? []} />
           {compareOpen && shownWord && (
             <SenseComparePanel
               key={shownWord}

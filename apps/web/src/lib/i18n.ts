@@ -170,6 +170,11 @@ const zh = {
   "senses.compareNotRecognized": "未识别为有效单词",
   "senses.useResult": "使用此释义",
   "senses.collapse": "收起",
+  "source.heading": "来源",
+  "source.sense": "义项 {index}",
+  "source.kind.wikipedia": "Wikipedia",
+  "source.kind.stackexchange": "Stack Exchange",
+  "source.kind.urbandictionary": "Urban Dictionary（用户投稿）",
 
   "sync.pending": "个单词待同步",
   "sync.syncing": "同步中...",
@@ -344,6 +349,11 @@ const en: Record<TranslationKey, string> = {
   "senses.compareNotRecognized": "Not recognized as a valid word",
   "senses.useResult": "Use this result",
   "senses.collapse": "Collapse",
+  "source.heading": "Sources",
+  "source.sense": "Sense {index}",
+  "source.kind.wikipedia": "Wikipedia",
+  "source.kind.stackexchange": "Stack Exchange",
+  "source.kind.urbandictionary": "Urban Dictionary (user-submitted)",
 
   "sync.pending": "words pending",
   "sync.syncing": "Syncing...",

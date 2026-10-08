@@ -23,6 +23,7 @@ export const makeStats = (overrides: Partial<WordStats> = {}): WordStats => ({
 export const makeWordData = (word: string, overrides: Partial<WordData> = {}): WordData => ({
   word,
   translation: `${word}-中文`,
+  sources: [],
   memory: makeMemory(),
   stats: makeStats(),
   inputTimes: [],

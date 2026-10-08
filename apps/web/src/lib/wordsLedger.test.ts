@@ -39,6 +39,7 @@ class FakeRepo implements WordsRepo {
 
   async addWord(word: string, senses: WordSense[]) {
     this.added.push({ word, senses });
+    return `id-${word}`;
   }
 
   async deleteWord(wordId: string) {
@@ -343,9 +344,40 @@ describe("WordsLedger 词库命令", () => {
       {
         type: "update",
         wordId: "id-apple",
-        fields: { translation: "n. 苹果 — a round fruit" },
+        fields: { translation: "n. 苹果 — a round fruit", sources: [] },
       },
     ]);
+  });
+
+  it("来源写入前校验释义未变化，变化后丢弃", async () => {
+    const { repo, words, ledger } = setup();
+    const senses: WordSense[] = [{ pos: "n.", chinese: "苹果", english: "a round fruit" }];
+    const sources = [
+      {
+        senseIndex: 0,
+        kind: "wikipedia" as const,
+        title: "Apple",
+        url: "https://en.wikipedia.org/?curid=1",
+        excerpt: "an apple a day",
+      },
+    ];
+    words.setWordData("apple", makeWordData("apple", { translation: "n. 苹果 — a round fruit" }));
+
+    await ledger.attachWordSources({ word: "apple", wordId: "id-apple", senses, sources });
+
+    expect(words.getWordData("apple")?.sources).toEqual(sources);
+    expect(repo.operations[0]).toEqual([
+      { type: "update", wordId: "id-apple", fields: { sources } },
+    ]);
+
+    await ledger.attachWordSources({
+      word: "apple",
+      wordId: "id-apple",
+      senses: [{ pos: "n.", chinese: "别的", english: "other" }],
+      sources,
+    });
+
+    expect(repo.operations).toHaveLength(1);
   });
 
   it("重置练习记录时清空队列并回到 new", async () => {

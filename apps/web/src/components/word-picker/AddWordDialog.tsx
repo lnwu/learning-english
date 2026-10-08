@@ -13,6 +13,7 @@ import { useEffect, useEffectEvent, useState } from "react";
 import { useFirestoreWords, useLocale, toast, useAiModel, useSenseCompare } from "@/hooks";
 import { postJson } from "@/lib/apiClient";
 import { encodeSenses, type WordSense } from "@/lib/wordSenses";
+import type { WordSource } from "@/lib/wordSources";
 import { type TranslateCompareResult } from "@/lib/translateCompare";
 
 interface AddWordDialogProps {
@@ -46,7 +47,7 @@ const toTranslateResult = (
 };
 
 const AddWordDialog = ({ word, onClose, onFinished }: AddWordDialogProps) => {
-  const { words, addWord } = useFirestoreWords();
+  const { words, addWord, attachWordSources } = useFirestoreWords();
   const { t } = useLocale();
   const { aiModel } = useAiModel();
   const compare = useSenseCompare();
@@ -132,9 +133,17 @@ const AddWordDialog = ({ word, onClose, onFinished }: AddWordDialogProps) => {
 
     setConfirming(true);
     try {
-      await addWord(finalWord, current.senses);
+      const wordId = await addWord(finalWord, current.senses);
       toast({ title: t("addWord.addSuccess"), variant: "success" });
       onFinished?.();
+      void postJson<{ sources: WordSource[] }>("/api/word-sources", {
+        word: finalWord,
+        senses: current.senses,
+      })
+        .then(({ sources }) =>
+          attachWordSources({ word: finalWord, wordId, senses: current.senses, sources }),
+        )
+        .catch((error) => console.error("Failed to attach word sources:", error));
     } catch (error) {
       console.error("Failed to add word:", error);
       toast({

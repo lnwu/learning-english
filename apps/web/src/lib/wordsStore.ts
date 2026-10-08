@@ -24,6 +24,7 @@ import {
   type WordStats,
 } from "@/lib/masteryModel";
 import { parseWordDoc } from "@/lib/wordDoc";
+import type { WordSource } from "@/lib/wordSources";
 
 const average = (values: readonly number[]): number =>
   values.reduce((sum, value) => sum + value, 0) / values.length;
@@ -43,6 +44,7 @@ const hashWord = (value: string): number => {
 export interface WordData {
   word: string;
   translation: string;
+  sources: WordSource[];
   memory: WordMemory;
   stats: WordStats;
   inputTimes: number[];
@@ -95,6 +97,17 @@ const statsEquals = (a: WordStats, b: WordStats): boolean =>
   a.lastReviewDay === b.lastReviewDay &&
   a.dailyReviews === b.dailyReviews &&
   a.hints === b.hints;
+
+const sourcesEqual = (a: readonly WordSource[], b: readonly WordSource[]): boolean =>
+  a.length === b.length &&
+  a.every(
+    (source, index) =>
+      source.senseIndex === b[index].senseIndex &&
+      source.kind === b[index].kind &&
+      source.title === b[index].title &&
+      source.url === b[index].url &&
+      source.excerpt === b[index].excerpt,
+  );
 
 const reviewsEqual = (a: readonly ReviewLogEntry[], b: readonly ReviewLogEntry[]): boolean =>
   a.length === b.length &&
@@ -378,6 +391,7 @@ const isWordDataEqual = (a: Readonly<WordData>, b: Readonly<WordData>): boolean 
   a.id === b.id &&
   a.word === b.word &&
   a.translation === b.translation &&
+  sourcesEqual(a.sources, b.sources) &&
   a.createdAt.getTime() === b.createdAt.getTime() &&
   memoryEquals(a.memory, b.memory) &&
   statsEquals(a.stats, b.stats) &&

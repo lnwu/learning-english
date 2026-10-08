@@ -75,6 +75,15 @@
 - 重新生成释义调用 `/api/regenerate-definitions`（每批不超过 `MAX_REGENERATE_BATCH_SIZE` 个词）；`senses: null` 的词保留原释义，只通过 `updateTranslations` 修改 `translation`，不触碰练习数据；前端串行分批并显示进度。translate 与 regenerate 只产生 `pos`/`chinese`/`english`（共用 `lib/aiPrompts.ts` 的 `SENSE_FIELD_LINES`）。
 - 重新生成释义的批量流程使用 `lib/batchAiTask.ts` 的 `chunkItems` 与 `runAiBatches`（串行分批、进度回调、单批失败不中断），失败单词数用 `countFailedWords` 统计；部分批次失败必须提示（`profile.regeneratePartial`），不要静默当成全部成功。熟练度均值与分布用 `lib/masteryStats.ts`，热力图月份文案用 `lib/practiceTime.ts` 的 `formatPracticeMonthLabel`。
 
+## 单词来源
+
+- 来源是义项的真实用法摘录，只来自 Wikipedia、Stack Exchange（english.stackexchange）与 Urban Dictionary 三个免 Key 的公开接口；`lib/wordSourceSearch.ts` 负责检索与摘录清洗，摘录必须包含目标词才会保留。
+- `/api/word-sources` 经 `withApiPost` 执行：先收集候选，再由 `lib/wordSourceSelection.ts` 让模型只从编号候选中挑选，并用 `senseIndex` 标注所属义项。模型不生成或改写来源文本；无候选或无合适项时返回空列表，界面不显示「未找到」。
+- 每个单词最多三条来源，存为 `WordData.sources`（Firestore 字段 `sources`），字段投影与解析只在 `lib/wordDoc.ts`（`sourceFields`、`replaceTranslationFields`、`parseWordDoc`），清洗统一用 `lib/wordSources.ts` 的 `sanitizeWordSources`。
+- 来源只在添加单词后由 `AddWordDialog` 在后台写入（`WordsLedger.attachWordSources`）。写入前若词库中该词的释义与查找时使用的义项不一致，则丢弃结果。
+- 释义被替换（`updateTranslations`）时同时清空来源，来源不随释义重新生成。
+- 来源只在 `profile/WordDefinitionDialog.tsx` 展示（`components/word/WordSources.tsx`），练习页不展示。
+
 ## 多语言
 
 - locale 持久化在 `locale=zh|en` cookie；`layout.tsx` 服务端读取 cookie，缺失时回退 `accept-language`，再通过 `LocaleProvider` 下发初始值。`useLocale` 的 `getServerSnapshot` 使用同一值保证 SSR/客户端一致，不使用 localStorage。
