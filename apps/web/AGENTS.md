@@ -71,17 +71,16 @@
 ## Profile 与批量 AI 操作
 
 - `profile/page.tsx` 只保留账号、语言、每日练习目标、热力图、统计、熟练度、单词列表及删除/重置确认；批量 AI 操作放在 `profile/ProfileAiSection.tsx`。
-- 单词列表（`profile/WordPerformanceSection.tsx`）点击单词打开 `profile/WordDefinitionDialog.tsx` 查看该词义项与来源；弹窗里的「重新生成释义」先用当前生效模型走 `/api/translate`（`refresh: true`）刷新并立即落库，再展开多模型对比，选定后只改 `translation` 并清空 `sources`（单词 key 不变）。对比面板与 `AddWordDialog` 共用 `components/word/SenseComparePanel.tsx`。
+- 单词列表（`profile/WordPerformanceSection.tsx`）点击单词打开 `profile/WordDefinitionDialog.tsx` 查看该词义项与来源；弹窗里的「重新生成释义」先用当前生效模型走 `/api/translate`（`refresh: true`）刷新并立即落库，再展开多模型对比，选定后写入该模型的义项与它自己配对的来源（单词 key 不变）。对比面板与 `AddWordDialog` 共用 `components/word/SenseComparePanel.tsx`。
 - 添加单词与重新生成释义共用 `hooks/useDefinitionFlow.ts`（一次 `/api/translate` 同时拿义项与来源），两个入口的行为必须保持一致：先当前模型、立即写库、再可选对比。`senses: null` 的词保留原释义与来源；只改 `translation`/`sources`，不触碰练习数据。义项与来源字段由 `lib/aiPrompts.ts` 的 `SENSE_FIELD_LINES` 与 `SENSE_SELECTION_RULE` 约束。
 - 重新生成释义的批量流程逐词串行调 `/api/translate { refresh: true }` 并显示进度；部分失败必须提示（`profile.regeneratePartial`），不要静默当成全部成功。熟练度均值与分布用 `lib/masteryStats.ts`，热力图月份文案用 `lib/practiceTime.ts` 的 `formatPracticeMonthLabel`。
 
 ## 单词来源
 
 - 来源是义项的真实用法摘录，只来自 Wikipedia、Stack Exchange（english.stackexchange）与 Urban Dictionary 三个免 Key 的公开接口；`lib/wordSourceSearch.ts` 负责检索与句子抽取，摘录必须包含目标词的完整句子才会保留，每来源最多两条，单个来源失败只记日志。
-- 来源与义项在同一次 `/api/translate` 调用里产出：prompt 只给编号候选，模型只从候选中挑选并用 `senseIndex` 标注所属义项，不生成或改写来源文本；无候选或无合适项时 `sources` 为空数组，界面不显示「未找到」。compare 不抓候选、不返回来源。
-- 每个义项、每种来源至多一条，存为 `WordData.sources`（Firestore 字段 `sources`）；字段投影与解析只在 `lib/wordDoc.ts`（`definitionFields`、`replaceTranslationFields`、`parseWordDoc`），清洗统一用 `lib/wordSources.ts` 的 `sanitizeWordSources`。
-- 来源没有独立写路径：随义项在同一次 `WordsLedger.addWord` / `updateTranslations` 里写入，不要新增单独写来源的接口或 hook。
-- 对比选用（`updateTranslations` 不传 `sources`）会清空旧来源，不回头重新查找。
+- 来源与义项在同一次模型调用里产出：prompt 只给编号候选，模型只从候选中挑选并用 `senseIndex` 标注所属义项，不生成或改写来源文本；无候选或无合适项时 `sources` 为空数组，界面不显示「未找到」。`/api/translate/compare` 也先抓一次候选复用给所有模型，逐模型返回各自的 `sources`，所以对比选定的结果不会丢来源。
+- 每个义项、每种来源至多一条，存为 `WordData.sources`（Firestore 字段 `sources`）；字段投影与解析只在 `lib/wordDoc.ts`（`definitionFields`、`parseWordDoc`），清洗统一用 `lib/wordSources.ts` 的 `sanitizeWordSources`。
+- 来源没有独立写路径：随义项在同一次 `WordsLedger.addWord` / `updateTranslations` 里写入，`updateTranslations` 的 `sources` 是必填项，不要新增单独写来源的接口或 hook，也不要留“只改义项”的分支。
 - 来源只在 `profile/WordDefinitionDialog.tsx` 经 `components/word/WordDefinition.tsx` 展示；练习页的 `components/word/WordSenses.tsx` 只接收 `translation`、不接收来源，双击选词的 `AddWordDialog` 也不展示来源——来源句子必然包含目标词，出现在练习页就是直接给答案。
 
 ## 多语言
@@ -92,7 +91,7 @@
 ## 造句与 AI 集成
 
 - 浏览器只请求本站 `/api/*`，由服务端代理调用各模型服务商；`serverAuth` token 缓存、`await checkRateLimit` 与 `lib/aiClient.ts` 的重试/错误映射语义受测试保护，修改时同步测试。
-- 模型清单、baseUrl 与协议（`openai-compatible`/`anthropic`/`google`）都属于代码里的常量（`lib/aiProviders.ts`），环境变量只提供 API Key；不要为 baseUrl 或模型列表新增环境变量，也不要把 Key 下发到前端。每个模型的思考档位（`reasoning: "off"` 关闭思考，其余取最低档）与是否支持 `temperature` 也写在注册表里（`reasoning`/`supportsTemperature`）。
+- 模型清单、baseUrl 与协议（`openai-compatible`/`anthropic`/`google`）都属于代码里的常量（`lib/aiProviders.ts`），环境变量只提供 API Key；不要为 baseUrl 或模型列表新增环境变量，也不要把 Key 下发到前端。每个模型的思考档位（取各自最低档 `reasoning: "low"`；MiMo 无分档、不传参数）与是否支持 `temperature` 也写在注册表里（`reasoning`/`supportsTemperature`）。
 - 新增模型一律先加进 `lib/aiProviders.ts` 的注册表（复合 ID `provider/model`），不是先改路由；未配置 Key 的服务商在页面上不出现在可选列表，直接用它的模型 ID 请求返回 500。
 - 用户选定模型存在 Firestore `users/{uid}` 文档的 `aiModel` 字段，已启用模型的清单由根 layout 服务端计算并经 `hooks/useAiModel.tsx` 下发；`postJson` 自动注入 `model` 字段，各路由用 `optionalAiModelId()` 解析，不要在各调用点手写模型参数。
 - 路由骨架统一 `withApiPost`；translate 的 prompt 与解析在 `lib/wordLookup.ts`，造句生成/批改的 prompt 与解析在 `lib/sentenceMessages.ts`（生成响应会校验目标词为候选词子集并限制数量，批改响应会夹取 `score`、截断超长字段、过滤 `issues`），批改结果（含「完全相同直接满分」快路径）都由该文件构造，路由只做取参与返回。

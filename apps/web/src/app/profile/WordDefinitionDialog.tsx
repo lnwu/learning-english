@@ -47,7 +47,9 @@ export const WordDefinitionDialog = observer(({ word, onClose }: WordDefinitionD
   const handleUseResult = async (result: TranslateCompareResult) => {
     if (!shownWord || !result.senses || result.senses.length === 0) return;
     try {
-      await updateTranslations([{ word: shownWord, senses: result.senses }]);
+      await updateTranslations([
+        { word: shownWord, senses: result.senses, sources: result.sources ?? [] },
+      ]);
       toast({ title: t("profile.regenerateWordSuccess", { word: shownWord }), variant: "success" });
       setCompareOpen(false);
     } catch (error) {

@@ -37,7 +37,7 @@ interface WordsContextValue {
   syncToFirestore: () => Promise<void>;
   resetPracticeRecords: () => Promise<void>;
   updateTranslations: (
-    updates: Array<{ word: string; senses: WordSense[]; sources?: WordSource[] }>,
+    updates: Array<{ word: string; senses: WordSense[]; sources: WordSource[] }>,
   ) => Promise<void>;
   loading: boolean;
   error: string | null;

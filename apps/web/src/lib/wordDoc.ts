@@ -18,11 +18,6 @@ export const translationFields = (senses: WordSense[]) => ({
   translation: encodeSenses(senses),
 });
 
-export const replaceTranslationFields = (senses: WordSense[]) => ({
-  ...translationFields(senses),
-  sources: [],
-});
-
 export const definitionFields = (senses: WordSense[], sources: WordSource[]) => ({
   ...translationFields(senses),
   sources,

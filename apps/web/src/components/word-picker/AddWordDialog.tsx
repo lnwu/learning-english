@@ -137,7 +137,7 @@ const AddWordDialog = ({ word, onClose, onFinished }: AddWordDialogProps) => {
 
   const handleUseCompareResult = (result: TranslateCompareResult) => {
     if (!result.senses || result.senses.length === 0) return;
-    applySenses(result.senses);
+    applySenses(result.senses, result.sources ?? []);
     setView((prev) => ({ ...prev, useOriginal: false }));
     setCompareOpen(false);
   };

@@ -148,9 +148,6 @@ async function requestOnce(
       messages: conversation,
       temperature: spec.supportsTemperature ? temperature : undefined,
       reasoning: spec.reasoning,
-      providerOptions: spec.disableThinking
-        ? { [spec.provider]: { thinking: { type: "disabled" } } }
-        : undefined,
       maxOutputTokens,
       maxRetries: 0,
       abortSignal: controller.signal,

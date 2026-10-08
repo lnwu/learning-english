@@ -27,7 +27,7 @@ interface DefinitionFlow {
     word: string,
     options: { refresh?: boolean; fallbackError: string },
   ) => Promise<WordDefinitionData | null>;
-  applySenses: (senses: WordSense[]) => void;
+  applySenses: (senses: WordSense[], sources: WordSource[]) => void;
 }
 
 export const useDefinitionFlow = (): DefinitionFlow => {
@@ -70,8 +70,8 @@ export const useDefinitionFlow = (): DefinitionFlow => {
     [],
   );
 
-  const applySenses = useCallback((senses: WordSense[]) => {
-    setData((current) => (current ? { ...current, senses, sources: [] } : current));
+  const applySenses = useCallback((senses: WordSense[], sources: WordSource[]) => {
+    setData((current) => (current ? { ...current, senses, sources } : current));
   }, []);
 
   return { loading, data, load, applySenses };

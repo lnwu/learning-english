@@ -5,7 +5,6 @@ import {
   attemptUpdateFields,
   definitionFields,
   practiceFields,
-  replaceTranslationFields,
   resetPracticeFields,
 } from "@/lib/wordDoc";
 import type { WordsRepo } from "@/lib/wordsRepo";
@@ -306,7 +305,7 @@ export class WordsLedger {
   };
 
   updateTranslations = async (
-    updates: Array<{ word: string; senses: WordSense[]; sources?: WordSource[] }>,
+    updates: Array<{ word: string; senses: WordSense[]; sources: WordSource[] }>,
   ): Promise<void> => {
     const repo = this.#repo;
     if (!repo) {
@@ -320,10 +319,7 @@ export class WordsLedger {
         const data = this.#words.getWordData(word);
         const wordId = data?.id;
         if (!data || !wordId) return null;
-        const fields = sources
-          ? definitionFields(senses, sources)
-          : replaceTranslationFields(senses);
-        return { word, data, wordId, fields };
+        return { word, data, wordId, fields: definitionFields(senses, sources) };
       })
       .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
 
