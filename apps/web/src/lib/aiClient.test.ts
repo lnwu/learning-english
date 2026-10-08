@@ -96,6 +96,7 @@ describe("chatCompletionJson", () => {
     ["网络错误", () => Promise.reject(new Error("network down"))],
     ["服务端 5xx", async () => new Response("{}", { status: 500 })],
     ["服务端 429", async () => new Response("{}", { status: 429 })],
+    ["空内容响应", async () => openAiResponse("")],
   ];
 
   it.each(failureModes)("%s 后重试一次成功", async (_label, failFirst) => {
@@ -140,6 +141,20 @@ describe("chatCompletionJson", () => {
     } finally {
       jest.useRealTimers();
     }
+  });
+
+  it("空内容重试耗尽后抛出 502", async () => {
+    let calls = 0;
+    globalThis.fetch = (async () => {
+      calls += 1;
+      return openAiResponse("  \n  ");
+    }) as unknown as typeof fetch;
+
+    const error = await chatCompletionJson(messages).catch((caught) => caught);
+    expect(error).toBeInstanceOf(AiServiceError);
+    expect((error as AiServiceError).status).toBe(502);
+    expect((error as Error).message).toBe("AI 服务返回内容为空");
+    expect(calls).toBe(2);
   });
 
   it("400 不重试直接失败", async () => {
