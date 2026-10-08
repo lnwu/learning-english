@@ -11,9 +11,15 @@ import {
   DialogTitle,
 } from "@/components/ui";
 import { SenseComparePanel } from "@/components/word/SenseComparePanel";
-import { WordSenses } from "@/components/word/WordSenses";
-import { WordSources } from "@/components/word/WordSources";
-import { toast, useFirestoreWords, useLocale, useSenseCompare, useWordSources } from "@/hooks";
+import { WordDefinition } from "@/components/word/WordDefinition";
+import {
+  toast,
+  useAiModel,
+  useDefinitionFlow,
+  useFirestoreWords,
+  useLocale,
+  useSenseCompare,
+} from "@/hooks";
 import type { TranslateCompareResult } from "@/lib/translateCompare";
 
 interface WordDefinitionDialogProps {
@@ -24,8 +30,9 @@ interface WordDefinitionDialogProps {
 export const WordDefinitionDialog = observer(({ word, onClose }: WordDefinitionDialogProps) => {
   const { words, updateTranslations } = useFirestoreWords();
   const { t } = useLocale();
+  const { aiModel } = useAiModel();
+  const { loading, load } = useDefinitionFlow();
   const compare = useSenseCompare();
-  const findWordSources = useWordSources();
   const [compareOpen, setCompareOpen] = useState(false);
   const [shownWord, setShownWord] = useState(word);
 
@@ -38,13 +45,11 @@ export const WordDefinitionDialog = observer(({ word, onClose }: WordDefinitionD
   const translation = wordData?.translation;
 
   const handleUseResult = async (result: TranslateCompareResult) => {
-    if (!word || !result.senses || result.senses.length === 0) return;
-    const wordId = words.getWordId(word);
+    if (!shownWord || !result.senses || result.senses.length === 0) return;
     try {
-      await updateTranslations([{ word, senses: result.senses }]);
-      toast({ title: t("profile.regenerateWordSuccess", { word }), variant: "success" });
+      await updateTranslations([{ word: shownWord, senses: result.senses }]);
+      toast({ title: t("profile.regenerateWordSuccess", { word: shownWord }), variant: "success" });
       setCompareOpen(false);
-      if (wordId) void findWordSources([{ word, wordId, senses: result.senses }]);
     } catch (error) {
       console.error("Failed to update translation:", error);
       toast({
@@ -54,13 +59,39 @@ export const WordDefinitionDialog = observer(({ word, onClose }: WordDefinitionD
     }
   };
 
-  const handleRegenerate = () => {
+  const handleRegenerate = async () => {
     if (!shownWord) return;
+
+    const result = await load(shownWord, {
+      refresh: true,
+      fallbackError: t("profile.regenerateFailed"),
+    });
+    if (!result) return;
+
+    if (!result.recognized) {
+      toast({
+        title: t("addWord.notRecognized", { word: shownWord }),
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await updateTranslations([
+        { word: shownWord, senses: result.senses, sources: result.sources },
+      ]);
+      toast({ title: t("profile.regenerateWordSuccess", { word: shownWord }), variant: "success" });
+    } catch (error) {
+      console.error("Failed to update translation:", error);
+      toast({
+        title: error instanceof Error ? error.message : t("profile.regenerateFailed"),
+        variant: "destructive",
+      });
+      return;
+    }
+
     setCompareOpen(true);
-    void compare.generate(
-      shownWord,
-      compare.models.map((model) => model.id),
-    );
+    compare.select(compare.models.filter((model) => model.id !== aiModel).map((model) => model.id));
   };
 
   return (
@@ -75,8 +106,7 @@ export const WordDefinitionDialog = observer(({ word, onClose }: WordDefinitionD
           <DialogTitle>{shownWord}</DialogTitle>
         </DialogHeader>
         <div className="flex flex-col gap-3">
-          <WordSenses translation={translation ?? ""} />
-          <WordSources sources={wordData?.sources ?? []} />
+          <WordDefinition translation={translation ?? ""} sources={wordData?.sources ?? []} />
           {compareOpen && shownWord && (
             <SenseComparePanel
               key={shownWord}
@@ -92,8 +122,8 @@ export const WordDefinitionDialog = observer(({ word, onClose }: WordDefinitionD
               {t("senses.collapse")}
             </Button>
           ) : (
-            <Button variant="outline" onClick={handleRegenerate}>
-              {t("profile.regenerateWord")}
+            <Button variant="outline" onClick={handleRegenerate} disabled={loading}>
+              {loading ? t("common.loading") : t("profile.regenerateWord")}
             </Button>
           )}
         </DialogFooter>

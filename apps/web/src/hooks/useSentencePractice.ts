@@ -5,6 +5,7 @@ import { useFirestoreWords } from "@/hooks/useFirestoreWords";
 import { postJson } from "@/lib/apiClient";
 import { tNow } from "@/lib/i18n";
 import type { CheckResult, GenerateResult } from "@/lib/sentenceMessages";
+import { chineseTranslations } from "@/lib/wordSenses";
 import {
   MIN_SENTENCE_WORDS,
   SENTENCE_WORD_POOL_SIZE,
@@ -53,7 +54,7 @@ export const useSentencePractice = () => {
         {
           words: candidateWords.map((word) => ({
             word,
-            translation: words.getTranslation(word) ?? "",
+            translation: chineseTranslations(words.getTranslation(word) ?? ""),
           })),
         },
         tNow("sentence.generateFailed"),

@@ -9,6 +9,7 @@ import { useNoRedisEnv } from "./testSupport";
 const makeEntry = (): TranslationCacheEntry => ({
   lemma: "apple",
   senses: [{ pos: "n.", chinese: "苹果", english: "a fruit" }],
+  sources: [],
 });
 
 describe("translationCache", () => {
@@ -23,7 +24,7 @@ describe("translationCache", () => {
 
   it("未识别单词不写入缓存", async () => {
     const word = "cache-invalid";
-    setCachedTranslation(word, { lemma: word, senses: null });
+    setCachedTranslation(word, { lemma: word, senses: null, sources: [] });
     expect(await getCachedTranslation(word)).toBeUndefined();
   });
 

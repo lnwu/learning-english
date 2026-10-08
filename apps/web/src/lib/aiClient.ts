@@ -147,6 +147,7 @@ async function requestOnce(
       instructions: instructions || undefined,
       messages: conversation,
       temperature: spec.supportsTemperature ? temperature : undefined,
+      reasoning: spec.reasoning,
       maxOutputTokens,
       maxRetries: 0,
       abortSignal: controller.signal,
@@ -187,13 +188,3 @@ export async function chatCompletionJson<T>(
     throw new AiServiceError("AI 服务返回格式无法解析", 502);
   }
 }
-
-export const extractResultItems = (raw: unknown): Record<string, unknown>[] => {
-  const results =
-    typeof raw === "object" && raw !== null ? (raw as { results?: unknown }).results : null;
-  return Array.isArray(results)
-    ? results.filter(
-        (item): item is Record<string, unknown> => typeof item === "object" && item !== null,
-      )
-    : [];
-};

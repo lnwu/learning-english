@@ -27,13 +27,7 @@ const SYNC_INTERVAL_MS = 30 * 1000;
 
 interface WordsContextValue {
   words: Words;
-  addWord: (word: string, senses: WordSense[]) => Promise<string>;
-  attachWordSources: (input: {
-    word: string;
-    wordId: string;
-    senses: WordSense[];
-    sources: WordSource[];
-  }) => Promise<void>;
+  addWord: (word: string, senses: WordSense[], sources: WordSource[]) => Promise<string>;
   deleteWord: (word: string) => Promise<void>;
   recordReview: (
     word: string,
@@ -42,7 +36,9 @@ interface WordsContextValue {
   ) => void;
   syncToFirestore: () => Promise<void>;
   resetPracticeRecords: () => Promise<void>;
-  updateTranslations: (updates: Array<{ word: string; senses: WordSense[] }>) => Promise<void>;
+  updateTranslations: (
+    updates: Array<{ word: string; senses: WordSense[]; sources?: WordSource[] }>,
+  ) => Promise<void>;
   loading: boolean;
   error: string | null;
 }
@@ -115,7 +111,6 @@ export const WordsProvider: FC<{ children: ReactNode }> = ({ children }) => {
     () => ({
       words,
       addWord: ledger.addWord,
-      attachWordSources: ledger.attachWordSources,
       deleteWord: ledger.deleteWord,
       recordReview: ledger.recordReview,
       syncToFirestore: ledger.sync,

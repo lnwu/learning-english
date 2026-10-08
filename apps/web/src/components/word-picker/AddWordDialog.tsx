@@ -11,15 +11,14 @@ import {
 import { SenseComparePanel } from "@/components/word/SenseComparePanel";
 import { useEffect, useEffectEvent, useState } from "react";
 import {
+  useAiModel,
+  useDefinitionFlow,
   useFirestoreWords,
   useLocale,
-  toast,
-  useAiModel,
   useSenseCompare,
-  useWordSources,
+  toast,
 } from "@/hooks";
-import { postJson } from "@/lib/apiClient";
-import { encodeSenses, type WordSense } from "@/lib/wordSenses";
+import { encodeSenses } from "@/lib/wordSenses";
 import { type TranslateCompareResult } from "@/lib/translateCompare";
 
 interface AddWordDialogProps {
@@ -30,36 +29,17 @@ interface AddWordDialogProps {
 
 type Status = "loading" | "ready" | "exists";
 
-interface TranslateResult {
-  word: string;
-  status: Exclude<Status, "loading">;
-  senses: WordSense[];
-  lemma: string;
-}
-
-const toTranslateResult = (
-  source: string,
-  senses: WordSense[],
-  lemma: string | undefined,
-  exists: (word: string) => boolean,
-): TranslateResult => {
-  const normalized = lemma && lemma !== source ? lemma : source;
-  return {
-    word: source,
-    status: normalized !== source && exists(normalized) ? "exists" : "ready",
-    senses,
-    lemma: normalized,
-  };
-};
-
 const AddWordDialog = ({ word, onClose, onFinished }: AddWordDialogProps) => {
   const { words, addWord } = useFirestoreWords();
   const { t } = useLocale();
   const { aiModel } = useAiModel();
+  const { loading, data, load, applySenses } = useDefinitionFlow();
   const compare = useSenseCompare();
-  const findWordSources = useWordSources();
-  const [translated, setTranslated] = useState<TranslateResult | null>(null);
-  const [useOriginalFor, setUseOriginalFor] = useState<string | null>(null);
+  const [view, setView] = useState({
+    word,
+    useOriginal: false,
+    existingLemma: null as string | null,
+  });
   const [confirming, setConfirming] = useState(false);
   const [compareOpen, setCompareOpen] = useState(false);
   const [compareWord, setCompareWord] = useState(word);
@@ -67,6 +47,10 @@ const AddWordDialog = ({ word, onClose, onFinished }: AddWordDialogProps) => {
   const notifyFinished = useEffectEvent(() => {
     onFinished?.();
   });
+
+  if (view.word !== word) {
+    setView({ word, useOriginal: false, existingLemma: null });
+  }
 
   if (compareWord !== word) {
     setCompareWord(word);
@@ -79,53 +63,45 @@ const AddWordDialog = ({ word, onClose, onFinished }: AddWordDialogProps) => {
     let cancelled = false;
 
     const run = async () => {
-      try {
-        const data = await postJson<{
-          lemma?: string;
-          senses: WordSense[] | null;
-        }>("/api/translate", { word }, t("addWord.addFailed"));
+      const result = await load(word, { fallbackError: t("addWord.addFailed") });
+      if (cancelled) return;
 
-        if (cancelled) return;
+      if (!result) {
+        notifyFinished();
+        return;
+      }
 
-        const fetched = data.senses;
-        if (!fetched || fetched.length === 0) {
-          toast({
-            title: t("addWord.notRecognized", { word }),
-            variant: "destructive",
-          });
-          notifyFinished();
-          return;
-        }
-
-        setTranslated(
-          toTranslateResult(word, fetched, data.lemma, (value) => words.hasWord(value)),
-        );
-      } catch (error) {
-        if (cancelled) return;
-        console.error("Failed to translate word:", error);
+      if (!result.recognized) {
         toast({
-          title: error instanceof Error ? error.message : t("addWord.addFailed"),
+          title: t("addWord.notRecognized", { word }),
           variant: "destructive",
         });
         notifyFinished();
+        return;
+      }
+
+      if (result.lemma !== word && words.hasWord(result.lemma)) {
+        setView((prev) => (prev.word === word ? { ...prev, existingLemma: result.lemma } : prev));
       }
     };
 
-    run();
+    void run();
 
     return () => {
       cancelled = true;
     };
-  }, [word, words, t]);
+  }, [word, words, t, load]);
 
-  const current = word && translated?.word === word ? translated : null;
-  const status: Status = current?.status ?? "loading";
+  const current = word && data?.word === word && !loading ? data : null;
+  const status: Status = current ? (view.existingLemma ? "exists" : "ready") : "loading";
   const senses = current?.senses ?? [];
   const lemma = current?.lemma ?? null;
-  const useOriginal = useOriginalFor === word;
+  const existingLemma = view.existingLemma;
+  const useOriginal = view.useOriginal;
+  const isNormalized = Boolean(word && lemma && lemma !== word);
 
   const handleConfirmAdd = async () => {
-    if (!word || current?.status !== "ready") return;
+    if (!word || !current?.recognized) return;
 
     const finalWord = useOriginal ? word : current.lemma;
 
@@ -140,10 +116,9 @@ const AddWordDialog = ({ word, onClose, onFinished }: AddWordDialogProps) => {
 
     setConfirming(true);
     try {
-      const wordId = await addWord(finalWord, current.senses);
+      await addWord(finalWord, current.senses, current.sources);
       toast({ title: t("addWord.addSuccess"), variant: "success" });
       onFinished?.();
-      void findWordSources([{ word: finalWord, wordId, senses: current.senses }]);
     } catch (error) {
       console.error("Failed to add word:", error);
       toast({
@@ -161,15 +136,11 @@ const AddWordDialog = ({ word, onClose, onFinished }: AddWordDialogProps) => {
   };
 
   const handleUseCompareResult = (result: TranslateCompareResult) => {
-    if (!word || !result.senses || result.senses.length === 0) return;
-    setTranslated(
-      toTranslateResult(word, result.senses, result.lemma, (value) => words.hasWord(value)),
-    );
-    setUseOriginalFor(null);
+    if (!result.senses || result.senses.length === 0) return;
+    applySenses(result.senses);
+    setView((prev) => ({ ...prev, useOriginal: false }));
     setCompareOpen(false);
   };
-
-  const isNormalized = Boolean(word && lemma && lemma !== word);
 
   return (
     <Dialog
@@ -191,13 +162,13 @@ const AddWordDialog = ({ word, onClose, onFinished }: AddWordDialogProps) => {
         {status === "loading" && (
           <div className="text-sm text-muted-foreground">{t("common.loading")}</div>
         )}
-        {status === "exists" && word && lemma && (
+        {status === "exists" && word && existingLemma && (
           <div className="space-y-2">
             <div className="text-sm text-muted-foreground">
-              {t("addWord.baseExists", { word, lemma })}
+              {t("addWord.baseExists", { word, lemma: existingLemma })}
             </div>
             <div className="text-sm font-medium">
-              {word} → {lemma}
+              {word} → {existingLemma}
             </div>
           </div>
         )}
@@ -214,14 +185,14 @@ const AddWordDialog = ({ word, onClose, onFinished }: AddWordDialogProps) => {
                 <Button
                   size="sm"
                   variant={useOriginal ? "outline" : "default"}
-                  onClick={() => setUseOriginalFor(null)}
+                  onClick={() => setView((prev) => ({ ...prev, useOriginal: false }))}
                 >
                   {t("addWord.saveLemma", { word: lemma })}
                 </Button>
                 <Button
                   size="sm"
                   variant={useOriginal ? "default" : "outline"}
-                  onClick={() => setUseOriginalFor(word)}
+                  onClick={() => setView((prev) => ({ ...prev, useOriginal: true }))}
                 >
                   {t("addWord.keepOriginal", { word })}
                 </Button>

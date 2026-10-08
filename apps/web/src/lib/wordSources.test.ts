@@ -1,10 +1,9 @@
 import { describe, it, expect } from "bun:test";
-import { MAX_WORD_SOURCES, sanitizeWordSources } from "./wordSources";
+import { sanitizeWordSources } from "./wordSources";
 
 const valid = (overrides: Record<string, unknown> = {}) => ({
   senseIndex: 0,
   kind: "wikipedia",
-  title: "Apple",
   url: "https://en.wikipedia.org/?curid=1",
   excerpt: "an apple a day",
   ...overrides,
@@ -12,11 +11,10 @@ const valid = (overrides: Record<string, unknown> = {}) => ({
 
 describe("sanitizeWordSources", () => {
   it("保留合法来源并去掉首尾空白", () => {
-    expect(sanitizeWordSources([valid({ title: "  Apple  " })])).toEqual([
+    expect(sanitizeWordSources([valid({ url: "  https://en.wikipedia.org/?curid=1  " })])).toEqual([
       {
         senseIndex: 0,
         kind: "wikipedia",
-        title: "Apple",
         url: "https://en.wikipedia.org/?curid=1",
         excerpt: "an apple a day",
       },
@@ -27,11 +25,11 @@ describe("sanitizeWordSources", () => {
     expect(
       sanitizeWordSources([
         valid({ kind: "news" }),
-        valid({ senseIndex: 4 }),
+        valid({ senseIndex: 3 }),
         valid({ senseIndex: -1 }),
         valid({ senseIndex: 0.5 }),
         valid({ url: "http://example.com" }),
-        valid({ title: "" }),
+        valid({ excerpt: "" }),
         valid({ excerpt: "x".repeat(301) }),
         null,
         "text",
@@ -39,10 +37,27 @@ describe("sanitizeWordSources", () => {
     ).toEqual([]);
   });
 
-  it("最多保留三条来源", () => {
-    const items = Array.from({ length: 5 }, (_, index) => valid({ title: `t${index}` }));
-
-    expect(sanitizeWordSources(items)).toHaveLength(MAX_WORD_SOURCES);
+  it("同一义项同一来源只保留一条", () => {
+    expect(
+      sanitizeWordSources([
+        valid({ excerpt: "first" }),
+        valid({ excerpt: "second" }),
+        valid({ senseIndex: 1, excerpt: "third" }),
+      ]),
+    ).toEqual([
+      {
+        senseIndex: 0,
+        kind: "wikipedia",
+        url: "https://en.wikipedia.org/?curid=1",
+        excerpt: "first",
+      },
+      {
+        senseIndex: 1,
+        kind: "wikipedia",
+        url: "https://en.wikipedia.org/?curid=1",
+        excerpt: "third",
+      },
+    ]);
   });
 
   it("非数组输入返回空列表", () => {

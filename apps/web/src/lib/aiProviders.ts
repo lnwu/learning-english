@@ -10,6 +10,7 @@ export interface AiModelSpec {
   baseUrl: string;
   apiKeyEnv: string;
   supportsTemperature: boolean;
+  reasoning?: "minimal" | "low" | "medium" | "high";
 }
 
 export interface AiModelOption {
@@ -23,6 +24,7 @@ interface AiModelDefinition {
   model: string;
   label: string;
   supportsTemperature?: boolean;
+  reasoning?: "minimal" | "low" | "medium" | "high" | null;
 }
 
 const define = (
@@ -33,7 +35,7 @@ const define = (
   sdk: AiSdkKind,
   models: AiModelDefinition[],
 ): AiModelSpec[] =>
-  models.map(({ model, label, supportsTemperature = true }) => ({
+  models.map(({ model, label, supportsTemperature = true, reasoning = "low" }) => ({
     id: `${provider}/${model}`,
     provider,
     providerName,
@@ -43,6 +45,7 @@ const define = (
     baseUrl,
     apiKeyEnv,
     supportsTemperature,
+    reasoning: reasoning ?? undefined,
   }));
 
 const AI_MODELS: AiModelSpec[] = [
@@ -74,8 +77,13 @@ const AI_MODELS: AiModelSpec[] = [
     ],
   ),
   ...define("mimo", "MiMo", "MIMO_API_KEY", "https://api.xiaomimimo.com/v1", "openai-compatible", [
-    { model: "mimo-v2.6-flash", label: "MiMo V2.6 Flash" },
-    { model: "mimo-v2.6-pro", label: "MiMo V2.6 Pro" },
+    {
+      model: "mimo-v2.6-flash",
+      label: "MiMo V2.6 Flash",
+      supportsTemperature: false,
+      reasoning: null,
+    },
+    { model: "mimo-v2.6-pro", label: "MiMo V2.6 Pro", supportsTemperature: false, reasoning: null },
   ]),
 ];
 

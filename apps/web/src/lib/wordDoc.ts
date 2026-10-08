@@ -23,13 +23,14 @@ export const replaceTranslationFields = (senses: WordSense[]) => ({
   sources: [],
 });
 
-export const sourceFields = (sources: WordSource[]) => ({
+export const definitionFields = (senses: WordSense[], sources: WordSource[]) => ({
+  ...translationFields(senses),
   sources,
 });
 
-export const newWordDocFields = (word: string, senses: WordSense[]) => ({
+export const newWordDocFields = (word: string, senses: WordSense[], sources: WordSource[]) => ({
   word,
-  ...translationFields(senses),
+  ...definitionFields(senses, sources),
   memory: initialMemory(Date.now()),
   stats: initialStats(),
   inputTimes: [],

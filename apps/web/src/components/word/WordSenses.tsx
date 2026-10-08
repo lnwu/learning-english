@@ -26,11 +26,11 @@ export const WordSenses = ({ translation, className }: WordSensesProps) => {
       {hasSense
         ? senses.map((sense, index) => (
             <span key={index}>
-              {[sense.pos, sense.chinese].filter(Boolean).join(" ")}
-              {sense.english && (
+              <span className="text-muted-foreground">{sense.pos}</span> {sense.english}
+              {sense.chinese && (
                 <span className="text-sm font-normal text-muted-foreground">
-                  {" "}
-                  — {sense.english}
+                  {" — "}
+                  {sense.chinese}
                 </span>
               )}
             </span>

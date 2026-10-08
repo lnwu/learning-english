@@ -3,11 +3,10 @@ import { mergeSnapshotIntoStore, type Words } from "@/lib/wordsStore";
 import { buildWordUpdates, collectStaleQueueItemIds, runWordSync } from "@/lib/wordSync";
 import {
   attemptUpdateFields,
+  definitionFields,
   practiceFields,
   replaceTranslationFields,
   resetPracticeFields,
-  sourceFields,
-  translationFields,
 } from "@/lib/wordDoc";
 import type { WordsRepo } from "@/lib/wordsRepo";
 import type { WordSense } from "@/lib/wordSenses";
@@ -264,43 +263,18 @@ export class WordsLedger {
     }
   };
 
-  addWord = async (word: string, senses: WordSense[]): Promise<string> => {
+  addWord = async (word: string, senses: WordSense[], sources: WordSource[]): Promise<string> => {
     const repo = this.#repo;
     if (!repo) {
       throw new Error(tNow("error.notAuthenticated"));
     }
 
     try {
-      return await repo.addWord(word, senses);
+      return await repo.addWord(word, senses, sources);
     } catch (error) {
       console.error("Failed to add word:", error);
       throw new Error(`${tNow("addWord.addFailed")}${error}`);
     }
-  };
-
-  attachWordSources = async (input: {
-    word: string;
-    wordId: string;
-    senses: WordSense[];
-    sources: WordSource[];
-  }): Promise<void> => {
-    const repo = this.#repo;
-    if (!repo) {
-      throw new Error(tNow("error.notAuthenticated"));
-    }
-
-    const { word, wordId, senses, sources } = input;
-    if (sources.length === 0) return;
-
-    const data = this.#words.getWordData(word);
-    if (data && data.translation !== translationFields(senses).translation) return;
-
-    if (data) {
-      this.#words.setWordData(word, { ...data, sources });
-    }
-    await repo.commitWordOperations([
-      { type: "update" as const, wordId, fields: sourceFields(sources) },
-    ]);
   };
 
   deleteWord = async (word: string): Promise<void> => {
@@ -332,7 +306,7 @@ export class WordsLedger {
   };
 
   updateTranslations = async (
-    updates: Array<{ word: string; senses: WordSense[] }>,
+    updates: Array<{ word: string; senses: WordSense[]; sources?: WordSource[] }>,
   ): Promise<void> => {
     const repo = this.#repo;
     if (!repo) {
@@ -342,11 +316,14 @@ export class WordsLedger {
     if (updates.length === 0) return;
 
     const entries = updates
-      .map(({ word, senses }) => {
+      .map(({ word, senses, sources }) => {
         const data = this.#words.getWordData(word);
         const wordId = data?.id;
         if (!data || !wordId) return null;
-        return { word, senses, data, wordId, fields: replaceTranslationFields(senses) };
+        const fields = sources
+          ? definitionFields(senses, sources)
+          : replaceTranslationFields(senses);
+        return { word, data, wordId, fields };
       })
       .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
 
