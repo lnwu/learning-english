@@ -9,10 +9,12 @@ import {
 } from "./wordDoc";
 import { MODEL_VERSION, initialMemory, initialStats } from "./masteryModel";
 import type { WordData } from "./wordsStore";
+import type { WordSource } from "./wordSources";
 
 const makeWordData = (overrides: Partial<WordData> = {}): WordData => ({
   word: "apple",
   translation: "苹果",
+  sources: [],
   memory: {
     ...initialMemory(1000),
     stability: 2.3065,
@@ -150,6 +152,22 @@ describe("parseWordDoc", () => {
     expect(data.inputTimes).toEqual([2, 3]);
     expect(data.reviews).toHaveLength(2);
     expect(data.reviews[1]).toMatchObject({ id: "r2", g: 2, h: true, r: 0.9 });
+  });
+
+  it("解析并清洗来源，缺失时为空", () => {
+    const source: WordSource = {
+      senseIndex: 0,
+      kind: "stackexchange",
+      title: "Q",
+      url: "https://english.stackexchange.com/questions/1",
+      excerpt: "hang out",
+    };
+
+    expect(parseWordDoc("id-1", { word: "apple", translation: "苹果" }).sources).toEqual([]);
+    expect(
+      parseWordDoc("id-1", { word: "apple", translation: "苹果", sources: [source, { kind: "x" }] })
+        .sources,
+    ).toEqual([source]);
   });
 
   it("过滤非法复习日志并截断超限数组", () => {

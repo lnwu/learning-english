@@ -11,10 +11,20 @@ import {
   type WordStats,
 } from "@/lib/masteryModel";
 import { encodeSenses, type WordSense } from "@/lib/wordSenses";
+import { sanitizeWordSources, type WordSource } from "@/lib/wordSources";
 import type { SyncableWordData, WordData } from "@/lib/wordsStore";
 
 export const translationFields = (senses: WordSense[]) => ({
   translation: encodeSenses(senses),
+});
+
+export const replaceTranslationFields = (senses: WordSense[]) => ({
+  ...translationFields(senses),
+  sources: [],
+});
+
+export const sourceFields = (sources: WordSource[]) => ({
+  sources,
 });
 
 export const newWordDocFields = (word: string, senses: WordSense[]) => ({
@@ -124,6 +134,7 @@ export const parseWordDoc = (id: string, data: DocumentData): WordData => {
   return {
     word: data.word,
     translation: data.translation,
+    sources: sanitizeWordSources(data.sources),
     memory: parseMemory(data.memory, createdAt.getTime()),
     stats: parseStats(data.stats),
     inputTimes,

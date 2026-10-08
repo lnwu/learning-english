@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { isAiModelId } from "@/lib/aiProviders";
 import type { ApiParseResult } from "@/lib/apiRoute";
 import { isValidWordToken } from "@/lib/lemma";
+import { sanitizeWordSenses, type WordSense } from "@/lib/wordSenses";
 
 type ApiField<T> = { ok: true; value: T } | { ok: false; error: string };
 
@@ -75,6 +76,11 @@ export const wordList =
     }
     return { ok: true, value: values };
   };
+
+export const wordSenseList = (): FieldParser<WordSense[]> => (raw) => {
+  const senses = sanitizeWordSenses(raw);
+  return senses.length > 0 ? { ok: true, value: senses } : { ok: false, error: "无效义项" };
+};
 
 export interface SentenceWordInput {
   word: string;

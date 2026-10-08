@@ -4,11 +4,14 @@ import { buildWordUpdates, collectStaleQueueItemIds, runWordSync } from "@/lib/w
 import {
   attemptUpdateFields,
   practiceFields,
+  replaceTranslationFields,
   resetPracticeFields,
+  sourceFields,
   translationFields,
 } from "@/lib/wordDoc";
 import type { WordsRepo } from "@/lib/wordsRepo";
 import type { WordSense } from "@/lib/wordSenses";
+import type { WordSource } from "@/lib/wordSources";
 import type { Rating } from "@/lib/masteryModel";
 import type { NewQueueItem, QueueStorage, SyncQueueItem } from "@/lib/queueStorage";
 
@@ -261,18 +264,43 @@ export class WordsLedger {
     }
   };
 
-  addWord = async (word: string, senses: WordSense[]): Promise<void> => {
+  addWord = async (word: string, senses: WordSense[]): Promise<string> => {
     const repo = this.#repo;
     if (!repo) {
       throw new Error(tNow("error.notAuthenticated"));
     }
 
     try {
-      await repo.addWord(word, senses);
+      return await repo.addWord(word, senses);
     } catch (error) {
       console.error("Failed to add word:", error);
       throw new Error(`${tNow("addWord.addFailed")}${error}`);
     }
+  };
+
+  attachWordSources = async (input: {
+    word: string;
+    wordId: string;
+    senses: WordSense[];
+    sources: WordSource[];
+  }): Promise<void> => {
+    const repo = this.#repo;
+    if (!repo) {
+      throw new Error(tNow("error.notAuthenticated"));
+    }
+
+    const { word, wordId, senses, sources } = input;
+    if (sources.length === 0) return;
+
+    const data = this.#words.getWordData(word);
+    if (data && data.translation !== translationFields(senses).translation) return;
+
+    if (data) {
+      this.#words.setWordData(word, { ...data, sources });
+    }
+    await repo.commitWordOperations([
+      { type: "update" as const, wordId, fields: sourceFields(sources) },
+    ]);
   };
 
   deleteWord = async (word: string): Promise<void> => {
@@ -318,7 +346,7 @@ export class WordsLedger {
         const data = this.#words.getWordData(word);
         const wordId = data?.id;
         if (!data || !wordId) return null;
-        return { word, senses, data, wordId, fields: translationFields(senses) };
+        return { word, senses, data, wordId, fields: replaceTranslationFields(senses) };
       })
       .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
 
@@ -326,7 +354,11 @@ export class WordsLedger {
 
     try {
       entries.forEach(({ word, data, fields }) => {
-        this.#words.setWordData(word, { ...data, translation: fields.translation });
+        this.#words.setWordData(word, {
+          ...data,
+          translation: fields.translation,
+          sources: fields.sources,
+        });
       });
 
       await repo.commitWordOperations(

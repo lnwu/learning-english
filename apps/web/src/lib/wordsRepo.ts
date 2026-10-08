@@ -35,7 +35,7 @@ export interface WordsRepo {
     onDocs: (docs: WordDocSnapshot[]) => void;
     onError: (error: unknown) => void;
   }): () => void;
-  addWord(word: string, senses: WordSense[]): Promise<void>;
+  addWord(word: string, senses: WordSense[]): Promise<string>;
   deleteWord(wordId: string): Promise<void>;
   commitWordOperations(operations: WordOperation[]): Promise<void>;
   loadPracticeTime(): Promise<Map<string, number>>;
@@ -67,7 +67,8 @@ export const createWordsRepo = (userId: string): WordsRepo => {
     },
 
     async addWord(word, senses) {
-      await addDoc(wordsCollection(), newWordDocFields(word, senses));
+      const created = await addDoc(wordsCollection(), newWordDocFields(word, senses));
+      return created.id;
     },
 
     async deleteWord(wordId) {

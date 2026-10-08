@@ -13,6 +13,7 @@ import type { WordData } from "./wordsStore";
 const makeWordData = (overrides: Partial<WordData> = {}): WordData => ({
   word: "apple",
   translation: "苹果",
+  sources: [],
   memory: memoryAt(2000),
   stats: makeStats({
     reviewDays: 2,
