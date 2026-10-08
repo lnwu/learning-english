@@ -10,10 +10,16 @@ import {
 } from "@/components/ui";
 import { SenseComparePanel } from "@/components/word/SenseComparePanel";
 import { useEffect, useEffectEvent, useState } from "react";
-import { useFirestoreWords, useLocale, toast, useAiModel, useSenseCompare } from "@/hooks";
+import {
+  useFirestoreWords,
+  useLocale,
+  toast,
+  useAiModel,
+  useSenseCompare,
+  useWordSources,
+} from "@/hooks";
 import { postJson } from "@/lib/apiClient";
 import { encodeSenses, type WordSense } from "@/lib/wordSenses";
-import type { WordSource } from "@/lib/wordSources";
 import { type TranslateCompareResult } from "@/lib/translateCompare";
 
 interface AddWordDialogProps {
@@ -47,10 +53,11 @@ const toTranslateResult = (
 };
 
 const AddWordDialog = ({ word, onClose, onFinished }: AddWordDialogProps) => {
-  const { words, addWord, attachWordSources } = useFirestoreWords();
+  const { words, addWord } = useFirestoreWords();
   const { t } = useLocale();
   const { aiModel } = useAiModel();
   const compare = useSenseCompare();
+  const findWordSources = useWordSources();
   const [translated, setTranslated] = useState<TranslateResult | null>(null);
   const [useOriginalFor, setUseOriginalFor] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
@@ -136,14 +143,7 @@ const AddWordDialog = ({ word, onClose, onFinished }: AddWordDialogProps) => {
       const wordId = await addWord(finalWord, current.senses);
       toast({ title: t("addWord.addSuccess"), variant: "success" });
       onFinished?.();
-      void postJson<{ sources: WordSource[] }>("/api/word-sources", {
-        word: finalWord,
-        senses: current.senses,
-      })
-        .then(({ sources }) =>
-          attachWordSources({ word: finalWord, wordId, senses: current.senses, sources }),
-        )
-        .catch((error) => console.error("Failed to attach word sources:", error));
+      void findWordSources([{ word: finalWord, wordId, senses: current.senses }]);
     } catch (error) {
       console.error("Failed to add word:", error);
       toast({

@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { observer } from "mobx-react-lite";
 import { Button, ConfirmDialog } from "@/components/ui";
-import { useFirestoreWords, useLocale, toast } from "@/hooks";
+import { useFirestoreWords, useLocale, toast, useWordSources } from "@/hooks";
 import { postJson } from "@/lib/apiClient";
 import { MAX_REGENERATE_BATCH_SIZE, type RegenerateResult } from "@/lib/regenerateDefinitions";
 import { countFailedWords, chunkItems, runAiBatches } from "@/lib/batchAiTask";
@@ -96,6 +96,7 @@ const BatchAiActionRow = ({
 export const ProfileAiSection = observer(() => {
   const { words, updateTranslations } = useFirestoreWords();
   const { t } = useLocale();
+  const findWordSources = useWordSources();
   const regenerate = useBatchAiAction(t("profile.regenerateFailed"));
 
   const totalWords = words.wordCount;
@@ -133,7 +134,12 @@ export const ProfileAiSection = observer(() => {
           }
         }
         if (updates.length > 0) {
+          const targets = updates.flatMap(({ word, senses }) => {
+            const wordId = words.getWordId(word);
+            return wordId ? [{ word, wordId, senses }] : [];
+          });
           await updateTranslations(updates);
+          void findWordSources(targets);
         }
         skipped += outcome.words.length - updates.length;
       }

@@ -80,8 +80,9 @@
 - 来源是义项的真实用法摘录，只来自 Wikipedia、Stack Exchange（english.stackexchange）与 Urban Dictionary 三个免 Key 的公开接口；`lib/wordSourceSearch.ts` 负责检索与摘录清洗，摘录必须包含目标词才会保留。
 - `/api/word-sources` 经 `withApiPost` 执行：先收集候选，再由 `lib/wordSourceSelection.ts` 让模型只从编号候选中挑选，并用 `senseIndex` 标注所属义项。模型不生成或改写来源文本；无候选或无合适项时返回空列表，界面不显示「未找到」。
 - 每个单词最多三条来源，存为 `WordData.sources`（Firestore 字段 `sources`），字段投影与解析只在 `lib/wordDoc.ts`（`sourceFields`、`replaceTranslationFields`、`parseWordDoc`），清洗统一用 `lib/wordSources.ts` 的 `sanitizeWordSources`。
-- 来源只在添加单词后由 `AddWordDialog` 在后台写入（`WordsLedger.attachWordSources`）。写入前若词库中该词的释义与查找时使用的义项不一致，则丢弃结果。
-- 释义被替换（`updateTranslations`）时同时清空来源，来源不随释义重新生成。
+- 添加单词、单个重新生成释义、批量重新生成释义都走同一条流程：释义写库后，由 `hooks/useWordSources.ts` 按单词串行调用 `/api/word-sources` 并经 `WordsLedger.attachWordSources` 写入。新增入口必须复用这个 hook，不要另写一份。
+- 写入前若词库中该词的释义与查找时使用的义项不一致，则丢弃结果。
+- 释义被替换（`updateTranslations`）时先清空旧来源，再由上面的流程重新查找。
 - 来源只在 `profile/WordDefinitionDialog.tsx` 展示（`components/word/WordSources.tsx`），练习页不展示。
 
 ## 多语言
