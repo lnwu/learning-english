@@ -92,7 +92,7 @@
 ## 造句与 AI 集成
 
 - 浏览器只请求本站 `/api/*`，由服务端代理调用各模型服务商；`serverAuth` token 缓存、`await checkRateLimit` 与 `lib/aiClient.ts` 的重试/错误映射语义受测试保护，修改时同步测试。
-- 模型清单、baseUrl 与协议（`openai-compatible`/`anthropic`/`google`）都属于代码里的常量（`lib/aiProviders.ts`），环境变量只提供 API Key；不要为 baseUrl 或模型列表新增环境变量，也不要把 Key 下发到前端。每个模型的 thinking 最低档与是否支持 `temperature` 也写在注册表里（`reasoning`/`supportsTemperature`）。
+- 模型清单、baseUrl 与协议（`openai-compatible`/`anthropic`/`google`）都属于代码里的常量（`lib/aiProviders.ts`），环境变量只提供 API Key；不要为 baseUrl 或模型列表新增环境变量，也不要把 Key 下发到前端。每个模型的思考档位（`reasoning: "off"` 关闭思考，其余取最低档）与是否支持 `temperature` 也写在注册表里（`reasoning`/`supportsTemperature`）。
 - 新增模型一律先加进 `lib/aiProviders.ts` 的注册表（复合 ID `provider/model`），不是先改路由；未配置 Key 的服务商在页面上不出现在可选列表，直接用它的模型 ID 请求返回 500。
 - 用户选定模型存在 Firestore `users/{uid}` 文档的 `aiModel` 字段，已启用模型的清单由根 layout 服务端计算并经 `hooks/useAiModel.tsx` 下发；`postJson` 自动注入 `model` 字段，各路由用 `optionalAiModelId()` 解析，不要在各调用点手写模型参数。
 - 路由骨架统一 `withApiPost`；translate 的 prompt 与解析在 `lib/wordLookup.ts`，造句生成/批改的 prompt 与解析在 `lib/sentenceMessages.ts`（生成响应会校验目标词为候选词子集并限制数量，批改响应会夹取 `score`、截断超长字段、过滤 `issues`），批改结果（含「完全相同直接满分」快路径）都由该文件构造，路由只做取参与返回。

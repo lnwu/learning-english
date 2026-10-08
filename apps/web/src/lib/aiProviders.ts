@@ -11,6 +11,7 @@ export interface AiModelSpec {
   apiKeyEnv: string;
   supportsTemperature: boolean;
   reasoning?: "minimal" | "low" | "medium" | "high";
+  disableThinking: boolean;
 }
 
 export interface AiModelOption {
@@ -24,7 +25,7 @@ interface AiModelDefinition {
   model: string;
   label: string;
   supportsTemperature?: boolean;
-  reasoning?: "minimal" | "low" | "medium" | "high" | null;
+  reasoning?: "off" | "minimal" | "low" | "medium" | "high";
 }
 
 const define = (
@@ -45,7 +46,8 @@ const define = (
     baseUrl,
     apiKeyEnv,
     supportsTemperature,
-    reasoning: reasoning ?? undefined,
+    reasoning: reasoning === "off" ? undefined : reasoning,
+    disableThinking: reasoning === "off",
   }));
 
 const AI_MODELS: AiModelSpec[] = [
@@ -55,7 +57,7 @@ const AI_MODELS: AiModelSpec[] = [
     "DEEPSEEK_API_KEY",
     "https://api.deepseek.com",
     "openai-compatible",
-    [{ model: "deepseek-flash", label: "DeepSeek V4.1 Flash" }],
+    [{ model: "deepseek-flash", label: "DeepSeek V4.1 Flash", reasoning: "off" }],
   ),
   ...define(
     "opencode",
@@ -81,9 +83,14 @@ const AI_MODELS: AiModelSpec[] = [
       model: "mimo-v2.6-flash",
       label: "MiMo V2.6 Flash",
       supportsTemperature: false,
-      reasoning: null,
+      reasoning: "off",
     },
-    { model: "mimo-v2.6-pro", label: "MiMo V2.6 Pro", supportsTemperature: false, reasoning: null },
+    {
+      model: "mimo-v2.6-pro",
+      label: "MiMo V2.6 Pro",
+      supportsTemperature: false,
+      reasoning: "off",
+    },
   ]),
 ];
 
