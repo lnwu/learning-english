@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { observer } from "mobx-react-lite";
 import { Button, ConfirmDialog } from "@/components/ui";
 import { useFirestoreWords, useLocale, toast } from "@/hooks";
-import { postJson } from "@/lib/apiClient";
+import { postApi } from "@/lib/apiClient";
 import type { WordSense } from "@/lib/wordSenses";
 import type { WordSource } from "@/lib/wordSources";
 import { SettingRow } from "./SettingRow";
@@ -110,7 +110,7 @@ export const ProfileAiSection = observer(() => {
 
       for (const [index, word] of allWords.entries()) {
         try {
-          const result = await postJson<{ senses?: WordSense[] | null; sources?: WordSource[] }>(
+          const result = await postApi<{ senses?: WordSense[] | null; sources?: WordSource[] }>(
             "/api/translate",
             { word, refresh: true },
             t("profile.regenerateFailed"),

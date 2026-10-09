@@ -4,7 +4,7 @@ import { useCallback, useRef, useState } from "react";
 import { useAiModel } from "@/hooks/useAiModel";
 import { useLocale } from "@/hooks/useLocale";
 import { toast } from "@/hooks/useToast";
-import { postJson } from "@/lib/apiClient";
+import { postApi } from "@/lib/apiClient";
 import type { AiModelOption } from "@/lib/aiProviders";
 import type { TranslateCompareResult } from "@/lib/translateCompare";
 
@@ -45,7 +45,7 @@ export const useSenseCompare = (): SenseCompareState => {
       setComparing(true);
       setResults(null);
       try {
-        const data = await postJson<{ results?: TranslateCompareResult[] }>(
+        const data = await postApi<{ results?: TranslateCompareResult[] }>(
           "/api/translate/compare",
           { word, models: modelIds },
           t("senses.compareFailed"),

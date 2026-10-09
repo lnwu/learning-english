@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { API_RATE_LIMITS, withApiPost } from "@/lib/apiRoute";
+import { API_RATE_LIMITS, handleApiPost } from "@/lib/apiRoute";
 import {
   badRequest,
   optionalAiModelId,
@@ -35,7 +35,7 @@ const parse = (raw: unknown) => {
 };
 
 export async function POST(request: Request) {
-  return withApiPost(
+  return handleApiPost(
     request,
     {
       ...API_RATE_LIMITS.sentenceGenerate,

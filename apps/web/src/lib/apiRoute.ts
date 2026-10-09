@@ -29,7 +29,7 @@ export const mapApiError = (
     ? { status: error.status, error: error.message }
     : { status: 500, error: fallbackError };
 
-export const withApiPost = async <T>(
+export const handleApiPost = async <T>(
   request: Request,
   policy: ApiPolicy | ((body: T) => ApiPolicy),
   parse: (raw: unknown) => ApiParseResult<T>,

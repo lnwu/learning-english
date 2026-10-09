@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { API_RATE_LIMITS, withApiPost } from "@/lib/apiRoute";
+import { API_RATE_LIMITS, handleApiPost } from "@/lib/apiRoute";
 import { optionalAiModelId, optionalBoolean, parseBody, wordToken } from "@/lib/apiInput";
 import { getCachedTranslation, setCachedTranslation } from "@/lib/translationCache";
 import { DEFAULT_AI_MODEL_ID } from "@/lib/aiProviders";
@@ -13,7 +13,7 @@ const parse = parseBody<{ word: string; model: string; refresh: boolean }>({
 });
 
 export async function POST(request: Request) {
-  return withApiPost(
+  return handleApiPost(
     request,
     ({ refresh }) => ({
       ...(refresh ? API_RATE_LIMITS.translateRefresh : API_RATE_LIMITS.translate),

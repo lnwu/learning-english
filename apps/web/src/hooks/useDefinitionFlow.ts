@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { toast } from "@/hooks/useToast";
-import { postJson } from "@/lib/apiClient";
+import { postApi } from "@/lib/apiClient";
 import type { WordSense } from "@/lib/wordSenses";
 import type { WordSource } from "@/lib/wordSources";
 
@@ -41,7 +41,7 @@ export const useDefinitionFlow = (): DefinitionFlow => {
     ): Promise<WordDefinitionData | null> => {
       setLoading(true);
       try {
-        const response = await postJson<TranslateResponse>(
+        const response = await postApi<TranslateResponse>(
           "/api/translate",
           { word, refresh: options.refresh ?? false },
           options.fallbackError,

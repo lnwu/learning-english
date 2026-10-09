@@ -5,8 +5,8 @@
 ## 架构
 
 - 浏览器只请求本站 `/api/*`，服务端代理调用各模型服务商。原因：API Key 只能留在服务端；同时便于在服务端加鉴权、限流、缓存三道闸。
-- `postJson<T>`（`lib/apiClient.ts`）统一负责取 ID token、注入当前选择的模型与错误解析，避免每个调用点手写 token + fetch。
-- 路由骨架统一走 `withApiPost`（`lib/apiRoute.ts`）：`serverAuth` → JSON 解析与输入校验 → `checkRateLimit` → `handle` → AI 错误映射与兜底文案；解析排在限流前，因为限额可以按请求体选择（`refresh` 走独立桶）。输入形状与上限由 `lib/apiInput.ts` 的 `parseBody` + 字段解析器声明式描述（超长/缺失/非法统一生成 400 文案），各路由只提供声明式 `parse`（输入校验）与 `handle`（调模型、返回响应），限额集中在 `API_RATE_LIMITS`（默认窗口 60s）。
+- `postApi<T>`（`lib/apiClient.ts`）统一负责取 ID token、注入当前选择的模型与错误解析，避免每个调用点手写 token + fetch。
+- 路由骨架统一走 `handleApiPost`（`lib/apiRoute.ts`）：`serverAuth` → JSON 解析与输入校验 → `checkRateLimit` → `handle` → AI 错误映射与兜底文案；解析排在限流前，因为限额可以按请求体选择（`refresh` 走独立桶）。输入形状与上限由 `lib/apiInput.ts` 的 `parseBody` + 字段解析器声明式描述（超长/缺失/非法统一生成 400 文案），各路由只提供声明式 `parse`（输入校验）与 `handle`（调模型、返回响应），限额集中在 `API_RATE_LIMITS`（默认窗口 60s）。
 
 ## 鉴权与限流
 
@@ -55,7 +55,7 @@
 
 - 用户选择的模型存在 Firestore `users/{uid}` 文档的 `aiModel` 字段（`lib/aiModelPreference.ts`），登录后加载、改完立即写回，登出回到默认值。不改用 localStorage：模型选择应当跟账号走，且 `users/{uid}` 根文档的读写已在现有安全规则内。
 - 服务端在根 layout 里把**已启用**的模型清单（Key 已配置的那些）传给客户端 Provider（`hooks/useAiModel.tsx`），Profile 页用它渲染选择器、添加单词弹窗用它渲染对比选项；不在客户端重复判定 Key 是否存在。
-- `postJson` 把当前模型注入每个请求体的 `model` 字段，各路由用 `optionalAiModelId()` 解析：翻译、重新生成、造句生成与批改全部跟随同一个设置，缺省（字段为空或未传）等价于默认模型。
+- `postApi` 把当前模型注入每个请求体的 `model` 字段，各路由用 `optionalAiModelId()` 解析：翻译、重新生成、造句生成与批改全部跟随同一个设置，缺省（字段为空或未传）等价于默认模型。
 
 ## 测试边界
 
