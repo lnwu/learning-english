@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { API_RATE_LIMITS, withApiPost } from "@/lib/apiRoute";
+import { API_RATE_LIMITS, handleApiPost } from "@/lib/apiRoute";
 import { optionalText, optionalAiModelId, parseBody, requiredText, wordList } from "@/lib/apiInput";
 import { chatCompletionJson } from "@/lib/aiClient";
 import { MAX_LEMMA_LENGTH } from "@/lib/lemma";
@@ -36,7 +36,7 @@ const parse = parseBody<{
 });
 
 export async function POST(request: Request) {
-  return withApiPost(
+  return handleApiPost(
     request,
     {
       ...API_RATE_LIMITS.sentenceCheck,

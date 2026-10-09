@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { API_RATE_LIMITS, withApiPost } from "@/lib/apiRoute";
+import { API_RATE_LIMITS, handleApiPost } from "@/lib/apiRoute";
 import { aiModelIdList, parseBody, wordToken } from "@/lib/apiInput";
 import { AI_MODEL_COUNT, isAiModelEnabled, resolveAiModel } from "@/lib/aiProviders";
 import { AiServiceError } from "@/lib/aiClient";
@@ -13,7 +13,7 @@ const parse = parseBody<{ word: string; models: string[] }>({
 });
 
 export async function POST(request: Request) {
-  return withApiPost(
+  return handleApiPost(
     request,
     { ...API_RATE_LIMITS.translateCompare, fallbackError: "对比生成失败，请稍后重试" },
     parse,

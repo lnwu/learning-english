@@ -2,7 +2,7 @@ import { getAuthInstance } from "@/lib/firebase";
 import { getSelectedAiModel } from "@/lib/aiModelPreference";
 import { getCurrentLocale, t, tNow } from "@/lib/i18n";
 
-export async function postJson<T>(
+export async function postApi<T>(
   url: string,
   payload: unknown,
   fallbackError = tNow("error.requestFailed"),

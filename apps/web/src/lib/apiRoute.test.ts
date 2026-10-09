@@ -1,7 +1,7 @@
 import { describe, it, expect } from "bun:test";
 import { NextResponse } from "next/server";
 import { AiServiceError } from "./aiClient";
-import { mapApiError, withApiPost } from "./apiRoute";
+import { mapApiError, handleApiPost } from "./apiRoute";
 import {
   makeToken,
   mockIdentityToolkitFetch,
@@ -41,7 +41,7 @@ describe("mapApiError", () => {
   });
 });
 
-describe("withApiPost", () => {
+describe("handleApiPost", () => {
   useNoRedisEnv();
   useEnvVar("NEXT_PUBLIC_FIREBASE_API_KEY", "test-key");
   useRestoredFetch();
@@ -49,7 +49,7 @@ describe("withApiPost", () => {
 
   it("缺少 token 时返回 401 且不调用 parse/handle", async () => {
     let called = false;
-    const response = await withApiPost(
+    const response = await handleApiPost(
       makeRequest("{}"),
       { name: "guard-401", limit: 10, fallbackError: "兜底" },
       () => {
@@ -68,7 +68,7 @@ describe("withApiPost", () => {
 
   it("token 校验失败时返回 401", async () => {
     mockIdentityToolkitFetch({ ok: false });
-    const response = await withApiPost(
+    const response = await handleApiPost(
       makeRequest("{}", makeToken("uid-401")),
       { name: "guard-401b", limit: 10, fallbackError: "兜底" },
       okParse,
@@ -80,7 +80,7 @@ describe("withApiPost", () => {
 
   it("请求体不是合法 JSON 时返回 400", async () => {
     mockIdentityToolkitFetch();
-    const response = await withApiPost(
+    const response = await handleApiPost(
       makeRequest("not-json", makeToken("uid-bad-json")),
       { name: "guard-400", limit: 10, fallbackError: "兜底" },
       okParse,
@@ -93,7 +93,7 @@ describe("withApiPost", () => {
 
   it("parse 拒绝时直接返回其响应", async () => {
     mockIdentityToolkitFetch();
-    const response = await withApiPost(
+    const response = await handleApiPost(
       makeRequest("{}", makeToken("uid-parse")),
       { name: "parse-reject", limit: 10, fallbackError: "兜底" },
       () => ({
@@ -109,7 +109,7 @@ describe("withApiPost", () => {
 
   it("handle 成功时返回其响应", async () => {
     mockIdentityToolkitFetch();
-    const response = await withApiPost(
+    const response = await handleApiPost(
       makeRequest("{}", makeToken("uid-ok")),
       { name: "handle-ok", limit: 10, fallbackError: "兜底" },
       okParse,
@@ -122,7 +122,7 @@ describe("withApiPost", () => {
 
   it("handle 抛出 AiServiceError 时映射状态码与消息", async () => {
     mockIdentityToolkitFetch();
-    const response = await withApiPost(
+    const response = await handleApiPost(
       makeRequest("{}", makeToken("uid-ai-service")),
       { name: "handle-ai-service", limit: 10, fallbackError: "兜底" },
       okParse,
@@ -139,7 +139,7 @@ describe("withApiPost", () => {
 
   it("handle 抛出其他错误时返回 500 与兜底文案", async () => {
     mockIdentityToolkitFetch();
-    const response = await withApiPost(
+    const response = await handleApiPost(
       makeRequest("{}", makeToken("uid-unknown")),
       { name: "handle-unknown", limit: 10, fallbackError: "自定义兜底" },
       okParse,
@@ -157,8 +157,8 @@ describe("withApiPost", () => {
     const token = makeToken("uid-limit");
     const policy = { name: "limit-1", limit: 1, fallbackError: "兜底" };
 
-    const first = await withApiPost(makeRequest("{}", token), policy, okParse, okHandle);
-    const second = await withApiPost(makeRequest("{}", token), policy, okParse, okHandle);
+    const first = await handleApiPost(makeRequest("{}", token), policy, okParse, okHandle);
+    const second = await handleApiPost(makeRequest("{}", token), policy, okParse, okHandle);
 
     expect(first.status).toBe(200);
     expect(second.status).toBe(429);

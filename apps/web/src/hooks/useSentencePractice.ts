@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { useFirestoreWords } from "@/hooks/useFirestoreWords";
-import { postJson } from "@/lib/apiClient";
+import { postApi } from "@/lib/apiClient";
 import { tNow } from "@/lib/i18n";
 import type { CheckResult, GenerateResult } from "@/lib/sentenceMessages";
 import { chineseTranslations } from "@/lib/wordSenses";
@@ -49,7 +49,7 @@ export const useSentencePractice = () => {
 
     setGenerating(true);
     try {
-      const result = await postJson<SentenceQuestion>(
+      const result = await postApi<SentenceQuestion>(
         "/api/sentence/generate",
         {
           words: candidateWords.map((word) => ({
@@ -74,7 +74,7 @@ export const useSentencePractice = () => {
       setError(null);
       setChecking(true);
       try {
-        const result = await postJson<SentenceFeedback>(
+        const result = await postApi<SentenceFeedback>(
           "/api/sentence/check",
           {
             chinese: question.chinese,
