@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { Ratelimit } from "@upstash/ratelimit";
 import { setBounded } from "@/lib/boundedMap";
+import { createLogger, nowMs } from "@/lib/log";
 import { getRedis } from "@/lib/redis";
+
+const log = createLogger({ mod: "ratelimit" });
 
 interface Bucket {
   count: number;
@@ -71,11 +74,21 @@ export async function checkRateLimit(
     return checkInMemoryRateLimit(key, limit, windowMs);
   }
 
+  const startedAt = nowMs();
   try {
     const { success } = await limiter.limit(key);
+    log.debug("cache.lookup", "Rate limit checked", {
+      layer: "ratelimit",
+      durationMs: Math.round(nowMs() - startedAt),
+    });
     return success ? null : tooManyRequests();
   } catch (error) {
-    console.error("Upstash rate limit failed, falling back to in-memory:", error);
+    log.warn(
+      "rate_limit.degraded",
+      "Rate limit backend failed, falling back to in-memory",
+      { degraded: true, durationMs: Math.round(nowMs() - startedAt) },
+      error,
+    );
     return checkInMemoryRateLimit(key, limit, windowMs);
   }
 }

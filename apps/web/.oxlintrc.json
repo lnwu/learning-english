@@ -7,9 +7,18 @@
     "es2026": true
   },
   "rules": {
+    "no-console": "error",
     "react/rules-of-hooks": "error",
     "react/unsupported-syntax": "warn"
   },
+  "overrides": [
+    {
+      "files": ["src/lib/log.ts", "**/scripts/**"],
+      "rules": {
+        "no-console": "off"
+      }
+    }
+  ],
   "settings": {
     "next": {
       "rootDir": "."

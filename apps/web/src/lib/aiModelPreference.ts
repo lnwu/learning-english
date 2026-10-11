@@ -1,6 +1,9 @@
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { getDb } from "@/lib/firebase";
 import { DEFAULT_AI_MODEL_ID } from "@/lib/aiProviders";
+import { createLogger } from "@/lib/log";
+
+const log = createLogger({ mod: "preference" });
 
 const AI_MODEL_CHANGE_EVENT = "aimodelchange";
 
@@ -29,7 +32,7 @@ export const loadAiModelPreference = async (userId: string): Promise<void> => {
       notify();
     }
   } catch (error) {
-    console.error("Failed to load AI model preference:", error);
+    log.error("preference.failed", "Failed to load AI model preference", {}, error);
   }
 };
 

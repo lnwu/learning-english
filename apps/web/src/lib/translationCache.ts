@@ -1,8 +1,11 @@
 import { setBounded } from "@/lib/boundedMap";
 import { DEFAULT_AI_MODEL_ID } from "@/lib/aiProviders";
+import { createLogger, nowMs } from "@/lib/log";
 import { getRedis } from "@/lib/redis";
 import type { WordSense } from "@/lib/wordSenses";
 import type { WordSource } from "@/lib/wordSources";
+
+const log = createLogger({ mod: "cache" });
 
 export interface TranslationCacheEntry {
   lemma: string;
@@ -49,18 +52,36 @@ export const getCachedTranslation = async (
 ): Promise<TranslationCacheEntry | undefined> => {
   const key = cacheKey(word, model);
   const memory = readMemory(key);
-  if (memory) return memory;
+  if (memory) {
+    log.debug("cache.lookup", "Translation cache hit", { layer: "memory", hit: true });
+    return memory;
+  }
 
   const redis = getRedis();
   if (!redis) return undefined;
 
+  const startedAt = nowMs();
   try {
     const value = await redis.get<TranslationCacheEntry>(key);
-    if (!isCacheEntry(value)) return undefined;
+    const durationMs = Math.round(nowMs() - startedAt);
+    if (!isCacheEntry(value)) {
+      log.info("cache.lookup", "Translation cache miss", {
+        layer: "redis",
+        hit: false,
+        durationMs,
+      });
+      return undefined;
+    }
+    log.info("cache.lookup", "Translation cache hit", { layer: "redis", hit: true, durationMs });
     writeMemory(key, value);
     return value;
   } catch (error) {
-    console.error("Failed to read translation cache:", error);
+    log.warn(
+      "cache.lookup",
+      "Failed to read translation cache",
+      { layer: "redis", hit: false, durationMs: Math.round(nowMs() - startedAt) },
+      error,
+    );
     return undefined;
   }
 };
@@ -79,6 +100,6 @@ export const setCachedTranslation = (
   if (!redis) return;
 
   redis.set(key, entry, { ex: CACHE_TTL_SECONDS }).catch((error) => {
-    console.error("Failed to write translation cache:", error);
+    log.warn("cache.lookup", "Failed to write translation cache", { layer: "redis" }, error);
   });
 };

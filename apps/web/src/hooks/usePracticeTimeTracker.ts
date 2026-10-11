@@ -2,8 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useWordsRepo } from "@/hooks/useFirestoreWords";
+import { createLogger } from "@/lib/log";
 import { PracticeTimeRecorder } from "@/lib/practiceTime";
 import { formatLocalPracticeDate } from "@/lib/practiceDate";
+
+const log = createLogger({ mod: "practice" });
 
 const FLUSH_INTERVAL_MS = 60_000;
 
@@ -24,7 +27,7 @@ export const usePracticeTimeTracker = (): { todaySeconds: number | null } => {
         if (!cancelled) setBaseSeconds(seconds);
       })
       .catch((error) => {
-        console.error("Failed to load practice time:", error);
+        log.error("practice.time.failed", "Failed to load practice time", {}, error);
       });
 
     const recorder = new PracticeTimeRecorder({

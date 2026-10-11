@@ -9,6 +9,9 @@ import {
   type User,
 } from "@/lib/firebase";
 import { AuthContext } from "@/hooks/useAuth";
+import { createLogger } from "@/lib/log";
+
+const log = createLogger({ mod: "auth" });
 
 export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -18,7 +21,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
     const unsubscribe = onAuthStateChanged(getAuthInstance(), (firebaseUser) => {
       if (!firebaseUser && isPreviewEnv) {
         signInAnonymously().catch((err) => {
-          console.error("Anonymous sign-in failed:", err);
+          log.error("auth.error", "Anonymous sign-in failed", {}, err);
           setLoading(false);
         });
         return;

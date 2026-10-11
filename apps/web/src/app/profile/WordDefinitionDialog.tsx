@@ -21,6 +21,9 @@ import {
   useSenseCompare,
 } from "@/hooks";
 import type { TranslateCompareResult } from "@/lib/translateCompare";
+import { createLogger } from "@/lib/log";
+
+const log = createLogger({ mod: "profile" });
 
 interface WordDefinitionDialogProps {
   word: string | null;
@@ -53,7 +56,7 @@ export const WordDefinitionDialog = observer(({ word, onClose }: WordDefinitionD
       toast({ title: t("profile.regenerateWordSuccess", { word: shownWord }), variant: "success" });
       setCompareOpen(false);
     } catch (error) {
-      console.error("Failed to update translation:", error);
+      log.error("word.write.failed", "Failed to update translation", { op: "compare" }, error);
       toast({
         title: error instanceof Error ? error.message : t("profile.regenerateFailed"),
         variant: "destructive",
@@ -84,7 +87,7 @@ export const WordDefinitionDialog = observer(({ word, onClose }: WordDefinitionD
       ]);
       toast({ title: t("profile.regenerateWordSuccess", { word: shownWord }), variant: "success" });
     } catch (error) {
-      console.error("Failed to update translation:", error);
+      log.error("word.write.failed", "Failed to update translation", { op: "regenerate" }, error);
       toast({
         title: error instanceof Error ? error.message : t("profile.regenerateFailed"),
         variant: "destructive",

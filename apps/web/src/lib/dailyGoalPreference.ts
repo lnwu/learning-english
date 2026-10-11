@@ -1,6 +1,9 @@
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { getDb } from "@/lib/firebase";
 import { DEFAULT_DAILY_GOAL_MINUTES, normalizeDailyGoalMinutes } from "@/lib/dailyGoal";
+import { createLogger } from "@/lib/log";
+
+const log = createLogger({ mod: "preference" });
 
 const DAILY_GOAL_CHANGE_EVENT = "dailygoalchange";
 
@@ -32,7 +35,7 @@ export const loadDailyGoalPreference = async (userId: string): Promise<void> => 
     }
   } catch (error) {
     loadedUserId = null;
-    console.error("Failed to load daily goal preference:", error);
+    log.error("preference.failed", "Failed to load daily goal preference", {}, error);
   }
 };
 

@@ -12,6 +12,9 @@ import type { WordSense } from "@/lib/wordSenses";
 import type { WordSource } from "@/lib/wordSources";
 import type { Rating } from "@/lib/masteryModel";
 import type { NewQueueItem, QueueStorage, SyncQueueItem } from "@/lib/queueStorage";
+import { createLogger } from "@/lib/log";
+
+const log = createLogger({ mod: "ledger" });
 
 const MAX_SYNC_RETRIES = 3;
 
@@ -186,7 +189,7 @@ export class WordsLedger {
           });
         },
         onError: (error) => {
-          console.error("Firestore error:", error);
+          log.error("firestore.error", "Words subscription failed", {}, error);
           this.#setStatus({
             error: tNow("error.loadWordsFailed"),
             loading: false,
@@ -194,7 +197,7 @@ export class WordsLedger {
         },
       });
     } catch (error) {
-      console.error("Firebase Auth error:", error);
+      log.error("auth.error", "Firebase Auth failed", {}, error);
       this.#setStatus({ error: tNow("error.authFailed"), loading: false });
       return () => {};
     }
@@ -212,7 +215,10 @@ export class WordsLedger {
   sync = async (): Promise<void> => {
     const repo = this.#repo;
     if (!repo) {
-      console.warn("User not authenticated, skipping sync");
+      log.warn("sync.batch.failed", "Skipped sync without authenticated user", {
+        reason: "unauthenticated",
+        skipped: true,
+      });
       return;
     }
 
@@ -251,10 +257,15 @@ export class WordsLedger {
       };
       if (result.discarded.length > 0) {
         patch.dataLostCount = this.#status.dataLostCount + 1;
+        log.warn("sync.discarded", "Sync queue items discarded after max retries", {
+          discardedCount: result.discarded.length,
+          committedCount: result.committed.length,
+          retriedCount: result.retried.length,
+        });
       }
       this.#setStatus(patch);
     } catch (error) {
-      console.error("Sync failed:", error);
+      log.error("sync.batch.failed", "Sync failed", { pendingCount: this.#pendingCount() }, error);
       this.#setStatus({ pendingCount: this.#pendingCount() });
     } finally {
       this.#syncing = false;
@@ -271,7 +282,7 @@ export class WordsLedger {
     try {
       return await repo.addWord(word, senses, sources);
     } catch (error) {
-      console.error("Failed to add word:", error);
+      log.error("word.write.failed", "Failed to add word", { op: "add" }, error);
       throw new Error(`${tNow("addWord.addFailed")}${error}`);
     }
   };
@@ -299,7 +310,7 @@ export class WordsLedger {
         this.#setStatus({ pendingCount: this.#pendingCount() });
       }
     } catch (error) {
-      console.error("Failed to delete word:", error);
+      log.error("word.write.failed", "Failed to delete word", { op: "delete" }, error);
       throw new Error(tNow("error.deleteWordFailed"));
     }
   };
@@ -342,7 +353,12 @@ export class WordsLedger {
         })),
       );
     } catch (error) {
-      console.error("Failed to update translations:", error);
+      log.error(
+        "word.write.failed",
+        "Failed to update translations",
+        { op: "updateTranslations" },
+        error,
+      );
       throw new Error(tNow("error.updateTranslationFailed"));
     }
   };
@@ -367,7 +383,7 @@ export class WordsLedger {
       this.#queue.clear();
       this.#setStatus({ pendingCount: this.#pendingCount() });
     } catch (error) {
-      console.error("Failed to reset practice records:", error);
+      log.error("word.write.failed", "Failed to reset practice records", { op: "reset" }, error);
       throw new Error(tNow("error.resetFailed"));
     }
   };

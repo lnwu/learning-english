@@ -17,6 +17,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui";
+import { createLogger } from "@/lib/log";
+
+const log = createLogger({ mod: "auth" });
 
 interface UserMenuProps {
   user: User;
@@ -31,7 +34,7 @@ export const UserMenu = ({ user }: UserMenuProps) => {
     try {
       await signOut();
     } catch (error) {
-      console.error("Sign out failed:", error);
+      log.error("auth.error", "Sign out failed", {}, error);
     }
   };
 

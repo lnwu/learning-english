@@ -1,6 +1,9 @@
 import type { SyncQueueItem } from "@/lib/queueStorage";
 import { isQueueItemStale, type MergedSnapshotResult } from "@/lib/wordsStore";
 import { commitInChunks } from "@/lib/chunkedCommit";
+import { createLogger } from "@/lib/log";
+
+const log = createLogger({ mod: "sync" });
 
 export interface WordSyncUpdate {
   word: string;
@@ -102,8 +105,6 @@ export const runWordSync = async (input: RunWordSyncInput): Promise<WordSyncResu
       result.committed.push(...ids);
     },
     onChunkFailed: (chunk, error) => {
-      console.error("Failed to sync batch:", error);
-
       const { goneQueueItemIds, retryQueueItemIds } = classifySyncBatchFailure({
         errorCode: (error as { code?: string }).code,
         wordsLoaded: input.isWordsLoaded(),
@@ -121,8 +122,21 @@ export const runWordSync = async (input: RunWordSyncInput): Promise<WordSyncResu
 
       const discardedIds = input.queue.incrementRetries(retryQueueItemIds);
       const discardedSet = new Set(discardedIds);
+      const retriedIds = retryQueueItemIds.filter((id) => !discardedSet.has(id));
       result.discarded.push(...discardedIds);
-      result.retried.push(...retryQueueItemIds.filter((id) => !discardedSet.has(id)));
+      result.retried.push(...retriedIds);
+
+      log.error(
+        "sync.batch.failed",
+        "Failed to sync batch",
+        {
+          chunkSize: chunk.length,
+          goneCount: goneQueueItemIds.length,
+          retriedCount: retriedIds.length,
+          discardedCount: discardedIds.length,
+        },
+        error,
+      );
     },
   });
 

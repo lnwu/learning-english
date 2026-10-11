@@ -2,6 +2,7 @@ import { describe, it, expect } from "bun:test";
 import {
   aiModelIdList,
   badRequest,
+  clientLogEntries,
   optionalAiModelId,
   optionalBoolean,
   optionalText,
@@ -227,5 +228,57 @@ describe("aiModelIdList", () => {
         "opencode/claude-opus-5-5",
       ]).ok,
     ).toBe(false);
+  });
+});
+
+describe("clientLogEntries", () => {
+  const parser = clientLogEntries({
+    maxItems: 2,
+    maxMessageLength: 10,
+    maxFieldCount: 2,
+    maxValueLength: 4,
+  });
+
+  it("保留合法事件并裁剪字段", () => {
+    expect(
+      valueOf(parser, [
+        {
+          event: "sync.batch.failed",
+          level: "error",
+          message: "boom",
+          fields: { attempt: 1, note: "abcdefgh", nested: { a: 1 }, extra: "x" },
+        },
+      ]),
+    ).toEqual([
+      {
+        event: "sync.batch.failed",
+        level: "error",
+        message: "boom",
+        fields: { attempt: 1, note: "abcd" },
+      },
+    ]);
+  });
+
+  it("拒绝白名单之外的事件与非法级别", () => {
+    expect(errorOf(parser, [{ event: "api.request", level: "error", message: "boom" }])).toBe(
+      "未知日志事件",
+    );
+    expect(errorOf(parser, [{ event: "app.error", level: "info", message: "boom" }])).toBe(
+      "日志内容不完整",
+    );
+  });
+
+  it("拒绝空数组、超量与超长消息", () => {
+    expect(errorOf(parser, [])).toBe("缺少日志内容");
+    expect(
+      errorOf(parser, [
+        { event: "app.error", level: "error", message: "a" },
+        { event: "app.error", level: "error", message: "b" },
+        { event: "app.error", level: "error", message: "c" },
+      ]),
+    ).toBe("日志条数过多");
+    expect(errorOf(parser, [{ event: "app.error", level: "error", message: "x".repeat(11) }])).toBe(
+      "输入内容过长",
+    );
   });
 });

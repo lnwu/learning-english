@@ -19,7 +19,10 @@ import {
   toast,
 } from "@/hooks";
 import { encodeSenses } from "@/lib/wordSenses";
+import { createLogger } from "@/lib/log";
 import { type TranslateCompareResult } from "@/lib/translateCompare";
+
+const log = createLogger({ mod: "add-word" });
 
 interface AddWordDialogProps {
   word: string | null;
@@ -120,7 +123,7 @@ const AddWordDialog = ({ word, onClose, onFinished }: AddWordDialogProps) => {
       toast({ title: t("addWord.addSuccess"), variant: "success" });
       onFinished?.();
     } catch (error) {
-      console.error("Failed to add word:", error);
+      log.error("word.write.failed", "Failed to add word", { op: "add" }, error);
       toast({
         title: error instanceof Error ? error.message : t("addWord.addFailed"),
         variant: "destructive",

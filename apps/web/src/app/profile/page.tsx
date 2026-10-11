@@ -29,7 +29,10 @@ import { ProfileAiSection } from "./ProfileAiSection";
 import { SettingRow } from "./SettingRow";
 import { WordPerformanceSection } from "./WordPerformanceSection";
 import { MASTERY_LEVELS } from "@/lib/masteryLevels";
+import { createLogger } from "@/lib/log";
 import { averageMasteryScore, masteryDistribution } from "@/lib/masteryStats";
+
+const log = createLogger({ mod: "profile" });
 
 const Profile = observer(() => {
   const { user } = useAuth();
@@ -48,7 +51,7 @@ const Profile = observer(() => {
       .loadPracticeTime()
       .then(setPracticeTime)
       .catch((err) => {
-        console.error("Failed to load practice time:", err);
+        log.error("practice.time.failed", "Failed to load practice time", {}, err);
       });
   }, [repo]);
 
@@ -74,7 +77,7 @@ const Profile = observer(() => {
         variant: "success",
       });
     } catch (err) {
-      console.error("Reset failed:", err);
+      log.error("word.write.failed", "Failed to reset practice records", { op: "reset" }, err);
       toast({
         title: t("profile.resetError"),
         variant: "destructive",
@@ -93,7 +96,7 @@ const Profile = observer(() => {
         variant: "success",
       });
     } catch (err) {
-      console.error("Delete word failed:", err);
+      log.error("word.write.failed", "Failed to delete word", { op: "delete" }, err);
       toast({
         title: t("profile.deleteError"),
         variant: "destructive",

@@ -1,11 +1,14 @@
 "use client";
 
 import { Button } from "@/components/ui";
+import { createLogger } from "@/lib/log";
 import { useEffect } from "react";
+
+const log = createLogger({ mod: "error-boundary" });
 
 const ErrorPage = ({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) => {
   useEffect(() => {
-    console.error("Unhandled app error:", error);
+    log.error("app.error", "Unhandled app error", { pathname: window.location.pathname }, error);
   }, [error]);
 
   return (

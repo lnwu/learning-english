@@ -14,6 +14,9 @@ import {
 import { Fragment } from "react";
 import { useAiModel, useLocale, toast } from "@/hooks";
 import { SettingRow } from "./SettingRow";
+import { createLogger } from "@/lib/log";
+
+const log = createLogger({ mod: "profile" });
 
 export const ProfileAiModelRow = () => {
   const { aiModel, setAiModel, models } = useAiModel();
@@ -24,7 +27,7 @@ export const ProfileAiModelRow = () => {
 
   const handleChange = (value: string) => {
     setAiModel(value).catch((error) => {
-      console.error("Failed to save AI model preference:", error);
+      log.error("preference.failed", "Failed to save AI model preference", {}, error);
       toast({ title: t("profile.aiModelSaveFailed"), variant: "destructive" });
     });
   };

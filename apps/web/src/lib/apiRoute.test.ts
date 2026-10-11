@@ -46,6 +46,8 @@ describe("handleApiPost", () => {
   useEnvVar("NEXT_PUBLIC_FIREBASE_API_KEY", "test-key");
   useRestoredFetch();
   useConsoleSpy("error");
+  useConsoleSpy("warn");
+  useConsoleSpy("log");
 
   it("缺少 token 时返回 401 且不调用 parse/handle", async () => {
     let called = false;
@@ -88,7 +90,8 @@ describe("handleApiPost", () => {
     );
 
     expect(response.status).toBe(400);
-    expect(await response.json()).toEqual({ error: "请求格式错误" });
+    expect(await response.json()).toMatchObject({ error: "请求格式错误" });
+    expect(response.headers.get("x-request-id")).toBeString();
   });
 
   it("parse 拒绝时直接返回其响应", async () => {
@@ -132,9 +135,11 @@ describe("handleApiPost", () => {
     );
 
     expect(response.status).toBe(502);
-    expect(await response.json()).toEqual({
-      error: "AI 服务返回错误，请稍后重试",
-    });
+    const body = (await response.json()) as { error: string; requestId: string };
+    expect(body).toMatchObject({ error: "AI 服务返回错误，请稍后重试" });
+    const requestId = response.headers.get("x-request-id") ?? "";
+    expect(requestId).toBeString();
+    expect(body.requestId).toBe(requestId);
   });
 
   it("handle 抛出其他错误时返回 500 与兜底文案", async () => {
@@ -149,7 +154,7 @@ describe("handleApiPost", () => {
     );
 
     expect(response.status).toBe(500);
-    expect(await response.json()).toEqual({ error: "自定义兜底" });
+    expect(await response.json()).toMatchObject({ error: "自定义兜底" });
   });
 
   it("超过限额时返回 429", async () => {

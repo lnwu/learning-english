@@ -3,8 +3,11 @@
 import { useCallback, useState } from "react";
 import { toast } from "@/hooks/useToast";
 import { postApi } from "@/lib/apiClient";
+import { createLogger } from "@/lib/log";
 import type { WordSense } from "@/lib/wordSenses";
 import type { WordSource } from "@/lib/wordSources";
+
+const log = createLogger({ mod: "definition" });
 
 interface WordDefinitionData {
   word: string;
@@ -57,7 +60,12 @@ export const useDefinitionFlow = (): DefinitionFlow => {
         setData(next);
         return next;
       } catch (error) {
-        console.error("Failed to translate word:", error);
+        log.error(
+          "api.call.failed",
+          "Failed to translate word",
+          { refresh: options.refresh ?? false },
+          error,
+        );
         toast({
           title: error instanceof Error ? error.message : options.fallbackError,
           variant: "destructive",

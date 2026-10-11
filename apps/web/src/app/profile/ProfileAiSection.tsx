@@ -5,9 +5,12 @@ import { observer } from "mobx-react-lite";
 import { Button, ConfirmDialog } from "@/components/ui";
 import { useFirestoreWords, useLocale, toast } from "@/hooks";
 import { postApi } from "@/lib/apiClient";
+import { createLogger } from "@/lib/log";
 import type { WordSense } from "@/lib/wordSenses";
 import type { WordSource } from "@/lib/wordSources";
 import { SettingRow } from "./SettingRow";
+
+const log = createLogger({ mod: "profile" });
 
 const useBatchAiAction = (fallbackError: string) => {
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -24,7 +27,7 @@ const useBatchAiAction = (fallbackError: string) => {
     try {
       await task(setProgress);
     } catch (err) {
-      console.error(fallbackError, err);
+      log.error("api.call.failed", "Batch AI action failed", { fallbackError }, err);
       toast({
         title: err instanceof Error ? err.message : fallbackError,
         variant: "destructive",
@@ -123,7 +126,7 @@ export const ProfileAiSection = observer(() => {
             skipped += 1;
           }
         } catch (error) {
-          console.error("Regenerate word failed:", error);
+          log.error("api.call.failed", "Regenerate word failed", { index }, error);
           failed += 1;
         }
         onProgress(index + 1);

@@ -16,6 +16,11 @@
 - i18n 插值使用 `t(key, params)` 的 `{name}` 占位符，不要手写 `.replace`；英文表保持 `Record<TranslationKey, string>`，key 一致性由 `lib/i18n.test.ts` 守护。
 - 中文不要通过 `next/font` 引入 Noto Sans SC，使用 `app/index.css` 中维护的系统字体栈。
 - 不要删除 `app/error.tsx` 与 `app/global-error.tsx`。
+- 日志统一走 `lib/log.ts` 的 `createLogger`，不直接 `console.*`（oxlint 的 `no-console` 守护，只放行 `lib/log.ts` 与 `scripts/`）；`event` 只用 `LOG_EVENTS` 闭集里的名字，字段用 camelCase，日志里不得出现单词原文、用户句子、prompt 与任何凭据。
+- 客户端 `warn`/`error` 由 `lib/log.ts` 批量上报到 `/api/log`，落到同一条日志流；该路由走 `handleApiPost` + `API_RATE_LIMITS.logs`，输入只用 `lib/apiInput.ts` 的 `clientLogEntries` 校验，服务端补 `uid` 与 `origin: "client"`；匿名登录失败发生在拿到 uid 之前，这类错误只留浏览器控制台。
+- 外部调用必须记耗时与结果：模型调用用 `ai.call`（每次尝试）与 `ai.call.summary`（汇总），来源检索用 `source.search`，ID token 校验用 `auth.token.verify`，缓存读写用 `cache.lookup`；`AiServiceError` 保留上游 `statusCode`/`responseBody`/`url` 供 `errorFields` 输出，仅用于日志，不改对外文案与状态码语义。
+- `handleApiPost` 每个请求记一条 `api.request` 并下发 `x-request-id` 与错误体里的 `requestId`，`handle` 的 context 是 `{ uid, requestId }`；不要在路由里重复记请求级日志。
+- 线上排查用 `bun run logs`（包装 `vercel logs --json`，Hobby 只保留 1 小时），用法见 `docs/DEPLOYMENT.md`「日志与可观测性」。
 - 修改翻译 prompt 或默认模型时，必须同步提升 `lib/translationCache.ts` 的缓存 key 前缀，避免长期复用旧释义。
 - 修改 `lib/masteryModel.ts` 的 FSRS 权重时必须提升 `MODEL_VERSION`，并按 `docs/DEPLOYMENT.md`「熟练度校准」的流程评估与发布。
 
@@ -103,3 +108,13 @@
 - 造句不写入熟练度数据；答案输入使用 `Textarea`，Enter 提交、Shift+Enter 换行，`onKeyDown` 必须检查 `isComposing`。
 - 纯函数测试使用 `bun:test`；跨测试复用的夹具与环境变量/fetch 还原辅助放在 `lib/testSupport.ts`，不要在各测试文件里重复实现。熟练度、翻译解析、句意判定、日期、同步合并等核心算法修改时同步补测试；统一验证入口为仓库根目录 `bun run test`。
 - 调用模型的测试要按真实消息形态覆盖（`system` + `user` 两段：AI SDK 不接受 `messages` 里的 system 消息），只测单条 user 消息会漏掉整条链路。
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

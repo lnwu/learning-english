@@ -169,7 +169,7 @@ export const useRestoredFetch = (): void => {
   });
 };
 
-export const useConsoleSpy = (method: "error" | "warn"): void => {
+export const useConsoleSpy = (method: "error" | "warn" | "log"): void => {
   let spy: ReturnType<typeof spyOn>;
 
   beforeEach(() => {
