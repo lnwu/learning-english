@@ -37,7 +37,7 @@ describe("sanitizeWordSources", () => {
     ).toEqual([]);
   });
 
-  it("同一义项同一来源只保留一条", () => {
+  it("同一含义同一来源只保留一条", () => {
     expect(
       sanitizeWordSources([
         valid({ excerpt: "first" }),
