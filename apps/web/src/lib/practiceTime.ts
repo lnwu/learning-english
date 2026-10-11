@@ -1,5 +1,8 @@
 import type { Locale } from "./i18n";
+import { createLogger } from "@/lib/log";
 import { formatLocalPracticeDate } from "./practiceDate";
+
+const log = createLogger({ mod: "practice" });
 
 export interface PracticeTimeRecorderDeps {
   writeSeconds: (dateId: string, seconds: number) => Promise<void>;
@@ -56,7 +59,12 @@ export class PracticeTimeRecorder {
       await this.#writeSeconds(dateId, wholeSeconds);
       this.#onFlushed?.(dateId, wholeSeconds);
     } catch (error) {
-      console.error("Failed to record practice time:", error);
+      log.error(
+        "practice.time.failed",
+        "Failed to record practice time",
+        { seconds: wholeSeconds },
+        error,
+      );
       this.#carrySeconds += wholeSeconds;
     }
   }

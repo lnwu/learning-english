@@ -1,7 +1,13 @@
 import { describe, it, expect } from "bun:test";
 import { NextResponse } from "next/server";
 import { verifyFirebaseIdToken } from "./serverAuth";
-import { makeToken, mockIdentityToolkitFetch, useEnvVar, useRestoredFetch } from "./testSupport";
+import {
+  makeToken,
+  mockIdentityToolkitFetch,
+  useConsoleSpy,
+  useEnvVar,
+  useRestoredFetch,
+} from "./testSupport";
 
 const makeRequest = (token?: string) =>
   new Request("http://localhost/api/test", {
@@ -11,6 +17,8 @@ const makeRequest = (token?: string) =>
 describe("verifyFirebaseIdToken", () => {
   useEnvVar("NEXT_PUBLIC_FIREBASE_API_KEY", "test-key");
   useRestoredFetch();
+  useConsoleSpy("log");
+  useConsoleSpy("warn");
 
   it("缺少 Authorization 时返回 401", async () => {
     const result = await verifyFirebaseIdToken(makeRequest());

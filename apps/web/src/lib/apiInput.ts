@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { isAiModelId } from "@/lib/aiProviders";
 import type { ApiParseResult } from "@/lib/apiRoute";
 import { isValidWordToken } from "@/lib/lemma";
+import { isClientLogEvent, type LogEvent, type LogFields } from "@/lib/log";
 
 type ApiField<T> = { ok: true; value: T } | { ok: false; error: string };
 
@@ -124,6 +125,55 @@ export const aiModelIdList =
       return { ok: false, error: "未知模型" };
     }
     return { ok: true, value: models };
+  };
+
+export interface ClientLogEntryInput {
+  event: LogEvent;
+  level: "warn" | "error";
+  message: string;
+  fields: LogFields;
+}
+
+const isPrimitiveLogValue = (value: unknown): value is string | number | boolean =>
+  typeof value === "string" || typeof value === "number" || typeof value === "boolean";
+
+export const clientLogEntries =
+  (options: {
+    maxItems: number;
+    maxMessageLength: number;
+    maxFieldCount: number;
+    maxValueLength: number;
+  }): FieldParser<ClientLogEntryInput[]> =>
+  (raw) => {
+    if (!Array.isArray(raw) || raw.length === 0) {
+      return { ok: false, error: "缺少日志内容" };
+    }
+    if (raw.length > options.maxItems) {
+      return { ok: false, error: "日志条数过多" };
+    }
+
+    const entries: ClientLogEntryInput[] = [];
+    for (const item of raw) {
+      const record = (item ?? {}) as Record<string, unknown>;
+      const event = typeof record.event === "string" ? record.event : "";
+      const message = typeof record.message === "string" ? record.message.trim() : "";
+      const level = record.level === "error" ? "error" : record.level === "warn" ? "warn" : null;
+
+      if (!isClientLogEvent(event)) return { ok: false, error: "未知日志事件" };
+      if (!level || !message) return { ok: false, error: "日志内容不完整" };
+      if (message.length > options.maxMessageLength) return { ok: false, error: "输入内容过长" };
+
+      const fields: LogFields = {};
+      const source = (record.fields ?? {}) as Record<string, unknown>;
+      for (const [key, value] of Object.entries(source)) {
+        if (Object.keys(fields).length >= options.maxFieldCount) break;
+        if (!isPrimitiveLogValue(value)) continue;
+        fields[key] = typeof value === "string" ? value.slice(0, options.maxValueLength) : value;
+      }
+      entries.push({ event, level, message, fields });
+    }
+
+    return { ok: true, value: entries };
   };
 
 export const parseBody =

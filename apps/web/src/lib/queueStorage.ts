@@ -1,4 +1,7 @@
 import type { SyncableWordData } from "@/lib/wordsStore";
+import { createLogger } from "@/lib/log";
+
+const log = createLogger({ mod: "queue" });
 
 export interface SyncQueueItem {
   id: string;
@@ -68,7 +71,7 @@ export const createLocalStorageQueueStorage = (userId: string): QueueStorage => 
         if (item) items.push(item);
       }
     } catch (error) {
-      console.error("Failed to read sync queue:", error);
+      log.error("queue.storage.failed", "Failed to read sync queue", {}, error);
       return [];
     }
     return items.sort((a, b) => a.timestamp - b.timestamp);
@@ -84,7 +87,7 @@ export const createLocalStorageQueueStorage = (userId: string): QueueStorage => 
         if (item && idSet.has(item.id)) keys.push(key);
       }
     } catch (error) {
-      console.error("Failed to collect sync queue keys:", error);
+      log.error("queue.storage.failed", "Failed to collect sync queue keys", {}, error);
     }
     return keys;
   };
@@ -105,7 +108,7 @@ export const createLocalStorageQueueStorage = (userId: string): QueueStorage => 
       try {
         return parseItem(localStorage.getItem(`${itemKeyPrefix}${wordId}`));
       } catch (error) {
-        console.error("Failed to read sync queue item:", error);
+        log.error("queue.storage.failed", "Failed to read sync queue item", {}, error);
         return null;
       }
     },
@@ -118,7 +121,7 @@ export const createLocalStorageQueueStorage = (userId: string): QueueStorage => 
       try {
         localStorage.setItem(`${itemKeyPrefix}${item.wordId}`, JSON.stringify(item));
       } catch (error) {
-        console.error("Failed to save sync queue:", error);
+        log.error("queue.storage.failed", "Failed to save sync queue item", {}, error);
         memoryItems = [...readAll().filter((entry) => entry.wordId !== item.wordId), item];
       }
     },
@@ -134,7 +137,7 @@ export const createLocalStorageQueueStorage = (userId: string): QueueStorage => 
       try {
         collectItemKeys(idSet).forEach((key) => localStorage.removeItem(key));
       } catch (error) {
-        console.error("Failed to remove sync queue items:", error);
+        log.error("queue.storage.failed", "Failed to remove sync queue items", {}, error);
       }
     },
 
@@ -148,7 +151,7 @@ export const createLocalStorageQueueStorage = (userId: string): QueueStorage => 
         }
         keys.forEach((key) => localStorage.removeItem(key));
       } catch (error) {
-        console.error("Failed to clear sync queue:", error);
+        log.error("queue.storage.failed", "Failed to clear sync queue", {}, error);
       }
     },
   };

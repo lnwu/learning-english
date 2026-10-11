@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import { setBounded } from "@/lib/boundedMap";
+import { createLogger, nowMs } from "@/lib/log";
+
+const log = createLogger({ mod: "auth" });
 
 const ACCOUNTS_LOOKUP_URL = "https://identitytoolkit.googleapis.com/v1/accounts:lookup";
 
@@ -52,6 +55,8 @@ export async function verifyFirebaseIdToken(
     return NextResponse.json({ error: "服务配置错误" }, { status: 500 });
   }
 
+  const startedAt = nowMs();
+
   try {
     const response = await fetch(`${ACCOUNTS_LOOKUP_URL}?key=${apiKey}`, {
       method: "POST",
@@ -60,6 +65,10 @@ export async function verifyFirebaseIdToken(
     });
 
     if (!response.ok) {
+      log.warn("auth.token.verify", "Identity toolkit rejected token", {
+        status: response.status,
+        durationMs: Math.round(nowMs() - startedAt),
+      });
       return unauthorized("登录状态无效");
     }
 
@@ -68,6 +77,9 @@ export async function verifyFirebaseIdToken(
     };
     const uid = payload.users?.[0]?.localId ?? claims?.uid;
     if (!uid) {
+      log.warn("auth.token.verify", "Identity toolkit returned no uid", {
+        durationMs: Math.round(nowMs() - startedAt),
+      });
       return unauthorized("登录状态无效");
     }
 
@@ -84,8 +96,17 @@ export async function verifyFirebaseIdToken(
       );
     }
 
+    log.info("auth.token.verify", "Identity toolkit verified token", {
+      durationMs: Math.round(nowMs() - startedAt),
+    });
     return { uid };
-  } catch {
+  } catch (error) {
+    log.warn(
+      "auth.token.verify",
+      "Identity toolkit request failed",
+      { durationMs: Math.round(nowMs() - startedAt) },
+      error,
+    );
     return unauthorized("身份验证失败");
   }
 }

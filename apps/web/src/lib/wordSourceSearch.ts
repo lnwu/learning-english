@@ -1,4 +1,7 @@
+import { createLogger, nowMs } from "@/lib/log";
 import type { WordSourceKind } from "@/lib/wordSources";
+
+const log = createLogger({ mod: "source" });
 
 export interface WordSourceCandidate {
   kind: WordSourceKind;
@@ -151,16 +154,35 @@ const searchUrbanDictionary = async (word: string): Promise<WordSourceCandidate[
     word,
   );
 
-export const collectWordSourceCandidates = async (word: string): Promise<WordSourceCandidate[]> => {
-  const results = await Promise.allSettled([
-    searchWikipedia(word),
-    searchStackExchange(word),
-    searchUrbanDictionary(word),
-  ]);
+const SOURCE_SEARCHES: Array<[WordSourceKind, (word: string) => Promise<WordSourceCandidate[]>]> = [
+  ["wikipedia", searchWikipedia],
+  ["stackexchange", searchStackExchange],
+  ["urbandictionary", searchUrbanDictionary],
+];
 
-  return results.flatMap((result) => {
-    if (result.status === "fulfilled") return result.value;
-    console.error("Failed to search word sources:", result.reason);
-    return [];
-  });
+export const collectWordSourceCandidates = async (word: string): Promise<WordSourceCandidate[]> => {
+  const results = await Promise.all(
+    SOURCE_SEARCHES.map(async ([source, search]) => {
+      const startedAt = nowMs();
+      try {
+        const candidates = await search(word);
+        log.info("source.search", "Word source searched", {
+          source,
+          durationMs: Math.round(nowMs() - startedAt),
+          candidateCount: candidates.length,
+        });
+        return candidates;
+      } catch (error) {
+        log.warn(
+          "source.search",
+          "Word source failed",
+          { source, durationMs: Math.round(nowMs() - startedAt) },
+          error,
+        );
+        return [];
+      }
+    }),
+  );
+
+  return results.flat();
 };

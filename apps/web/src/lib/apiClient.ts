@@ -29,7 +29,13 @@ export async function postApi<T>(
   const data = await response.json().catch(() => null);
   if (!response.ok) {
     const message = data && typeof data.error === "string" ? data.error : fallbackError;
-    throw new Error(message);
+    const requestId =
+      data && typeof data.requestId === "string"
+        ? data.requestId
+        : response.headers.get("x-request-id");
+    const error = new Error(message);
+    if (requestId) Object.assign(error, { requestId });
+    throw error;
   }
   return data as T;
 }

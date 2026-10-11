@@ -3,31 +3,79 @@ import { createAnthropic } from "@ai-sdk/anthropic";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { resolveAiModel, type AiModelSpec } from "@/lib/aiProviders";
+import { createLogger, nowMs, type LogFields } from "@/lib/log";
 
 const REQUEST_TIMEOUT_MS = 30000;
 const MAX_ATTEMPTS = 2;
 const RETRY_DELAY_MS = 300;
 const DEFAULT_MAX_OUTPUT_TOKENS = 8192;
+const MAX_RESPONSE_BODY_LOG_LENGTH = 500;
+
+const log = createLogger({ mod: "ai" });
 
 export interface ChatMessage {
   role: "system" | "user" | "assistant";
   content: string;
 }
 
+interface AiErrorDetails {
+  provider?: string;
+  statusCode?: number;
+  responseBody?: string;
+  url?: string;
+  timedOut?: boolean;
+  attempts?: number;
+}
+
 export class AiServiceError extends Error {
   status: number;
+  provider?: string;
+  statusCode?: number;
+  responseBody?: string;
+  url?: string;
+  timedOut?: boolean;
+  attempts?: number;
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, details: AiErrorDetails = {}) {
     super(message);
     this.name = "AiServiceError";
     this.status = status;
+    this.provider = details.provider;
+    this.statusCode = details.statusCode;
+    this.responseBody = details.responseBody;
+    this.url = details.url;
+    this.timedOut = details.timedOut;
+    this.attempts = details.attempts;
   }
 }
 
+interface AiAttemptUsage {
+  finishReason: string | undefined;
+  inputTokens: number | undefined;
+  outputTokens: number | undefined;
+  reasoningTokens: number | undefined;
+}
+
+interface AiAttemptResult extends AiAttemptUsage {
+  text: string;
+}
+
+type AiOutcome =
+  | "timeout"
+  | "rate_limited"
+  | "server_error"
+  | "network_error"
+  | "empty_response"
+  | "parse_error"
+  | "unknown";
+
 class EmptyResponseError extends Error {
-  constructor(message: string) {
+  usage: AiAttemptUsage;
+
+  constructor(message: string, usage: AiAttemptUsage) {
     super(message);
     this.name = "EmptyResponseError";
+    this.usage = usage;
   }
 }
 
@@ -36,7 +84,7 @@ const providerCache = new Map<string, (model: string) => LanguageModel>();
 const getModelFactory = (spec: AiModelSpec): ((model: string) => LanguageModel) => {
   const apiKey = process.env[spec.apiKeyEnv];
   if (!apiKey) {
-    throw new AiServiceError(`${spec.apiKeyEnv} 未配置`, 500);
+    throw new AiServiceError(`${spec.apiKeyEnv} 未配置`, 500, { provider: spec.provider });
   }
 
   const cacheKey = `${spec.sdk}:${spec.baseUrl}:${spec.apiKeyEnv}`;
@@ -74,15 +122,44 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const isRetryableStatus = (status: number) => status === 429 || status >= 500;
 
-const toServiceError = (error: unknown): AiServiceError => {
-  if (error instanceof AiServiceError) return error;
+const classifyAiOutcome = (error: unknown): AiOutcome => {
+  if (error instanceof EmptyResponseError) return "empty_response";
+  if (error instanceof AiServiceError) return error.timedOut ? "timeout" : "unknown";
+  if (error instanceof APICallError) {
+    if (error.statusCode === 429) return "rate_limited";
+    if (typeof error.statusCode === "number") {
+      return error.statusCode >= 500 ? "server_error" : "unknown";
+    }
+    return "network_error";
+  }
+  return "unknown";
+};
+
+const toServiceError = (error: unknown, spec: AiModelSpec, attempts: number): AiServiceError => {
+  if (error instanceof AiServiceError) {
+    error.provider ??= spec.provider;
+    error.attempts ??= attempts;
+    return error;
+  }
   if (error instanceof EmptyResponseError) {
-    return new AiServiceError(error.message, 502);
+    return new AiServiceError(error.message, 502, { provider: spec.provider, attempts });
   }
   if (error instanceof APICallError) {
-    return new AiServiceError("AI 服务返回错误，请稍后重试", 502);
+    return new AiServiceError("AI 服务返回错误，请稍后重试", 502, {
+      provider: spec.provider,
+      statusCode: error.statusCode,
+      responseBody:
+        typeof error.responseBody === "string"
+          ? error.responseBody.slice(0, MAX_RESPONSE_BODY_LOG_LENGTH)
+          : undefined,
+      url: error.url,
+      attempts,
+    });
   }
-  return new AiServiceError("调用 AI 服务失败，请稍后重试", 502);
+  return new AiServiceError("调用 AI 服务失败，请稍后重试", 502, {
+    provider: spec.provider,
+    attempts,
+  });
 };
 
 const isRetryableError = (error: unknown): boolean => {
@@ -126,19 +203,109 @@ interface RequestSettings {
   timeoutMs: number;
 }
 
+const aiFields = (spec: AiModelSpec): LogFields => ({
+  provider: spec.provider,
+  providerName: spec.providerName,
+  model: spec.model,
+  sdk: spec.sdk,
+});
+
+const logAttempt = (
+  spec: AiModelSpec,
+  input: {
+    attempt: number;
+    durationMs: number;
+    timeoutMs: number;
+    outcome: AiOutcome | "ok";
+    willRetry: boolean;
+    result: AiAttemptResult | undefined;
+    failure: unknown;
+  },
+): void => {
+  const fields: LogFields = {
+    ...aiFields(spec),
+    attempt: input.attempt,
+    maxAttempts: MAX_ATTEMPTS,
+    durationMs: input.durationMs,
+    timeoutMs: input.timeoutMs,
+    outcome: input.outcome,
+    willRetry: input.willRetry,
+  };
+
+  const usage =
+    input.result ?? (input.failure instanceof EmptyResponseError ? input.failure.usage : undefined);
+  if (usage) {
+    if (usage.finishReason) fields.finishReason = usage.finishReason;
+    if (typeof usage.inputTokens === "number") fields.inputTokens = usage.inputTokens;
+    if (typeof usage.outputTokens === "number") fields.outputTokens = usage.outputTokens;
+    if (typeof usage.reasoningTokens === "number") fields.reasoningTokens = usage.reasoningTokens;
+  }
+
+  const statusCode = input.failure instanceof APICallError ? input.failure.statusCode : undefined;
+  if (typeof statusCode === "number") fields.statusCode = statusCode;
+
+  if (input.result) {
+    log.info("ai.call", "AI call completed", fields);
+    return;
+  }
+  log.warn("ai.call", "AI call failed", fields, input.failure);
+};
+
 async function requestWithRetry(
   spec: AiModelSpec,
   messages: ChatMessage[],
   settings: RequestSettings,
 ): Promise<string> {
+  const startedAt = nowMs();
+
   for (let attempt = 0; ; attempt++) {
+    const attemptStartedAt = nowMs();
+    let result: AiAttemptResult | undefined;
+    let failure: unknown;
+
     try {
-      return await requestOnce(spec, messages, settings);
+      result = await requestOnce(spec, messages, settings);
     } catch (error) {
-      if (!isRetryableError(error) || attempt >= MAX_ATTEMPTS - 1) {
-        throw toServiceError(error);
-      }
+      failure = error;
     }
+
+    const outcome: AiOutcome | "ok" = failure === undefined ? "ok" : classifyAiOutcome(failure);
+    const willRetry =
+      failure !== undefined && isRetryableError(failure) && attempt < MAX_ATTEMPTS - 1;
+
+    logAttempt(spec, {
+      attempt: attempt + 1,
+      durationMs: Math.round(nowMs() - attemptStartedAt),
+      timeoutMs: settings.timeoutMs,
+      outcome,
+      willRetry,
+      result,
+      failure,
+    });
+
+    const summary: LogFields = {
+      ...aiFields(spec),
+      totalMs: Math.round(nowMs() - startedAt),
+      attempts: attempt + 1,
+      outcome,
+    };
+
+    if (failure === undefined && result) {
+      log.info("ai.call.summary", "AI call completed", summary);
+      return result.text;
+    }
+
+    if (!willRetry) {
+      const serviceError = toServiceError(failure, spec, attempt + 1);
+      log.error(
+        "ai.call.summary",
+        "AI call failed",
+        { ...summary, apiStatus: serviceError.status },
+        serviceError,
+      );
+      throw serviceError;
+    }
+
     await sleep(RETRY_DELAY_MS);
   }
 }
@@ -147,7 +314,7 @@ async function requestOnce(
   spec: AiModelSpec,
   messages: ChatMessage[],
   { temperature, maxOutputTokens, timeoutMs }: RequestSettings,
-): Promise<string> {
+): Promise<AiAttemptResult> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   const { instructions, conversation } = splitSystemMessages(messages);
@@ -163,19 +330,22 @@ async function requestOnce(
       maxRetries: 0,
       abortSignal: controller.signal,
     });
+    const usage: AiAttemptUsage = {
+      finishReason: result.finishReason,
+      inputTokens: result.usage.inputTokens,
+      outputTokens: result.usage.outputTokens,
+      reasoningTokens: result.usage.outputTokenDetails?.reasoningTokens,
+    };
     if (!result.text.trim()) {
-      console.error("AI 服务返回内容为空:", {
-        provider: spec.provider,
-        model: spec.model,
-        finishReason: result.finishReason,
-        usage: result.usage,
-      });
-      throw new EmptyResponseError("AI 服务返回内容为空");
+      throw new EmptyResponseError("AI 服务返回内容为空", usage);
     }
-    return result.text;
+    return { text: result.text, ...usage };
   } catch (error) {
     if (controller.signal.aborted) {
-      throw new AiServiceError("AI 服务响应超时，请稍后重试", 504);
+      throw new AiServiceError("AI 服务响应超时，请稍后重试", 504, {
+        provider: spec.provider,
+        timedOut: true,
+      });
     }
     throw error;
   } finally {
@@ -199,12 +369,18 @@ export async function chatCompletionJson<T>(
   });
 
   if (!text.trim()) {
-    throw new AiServiceError("AI 服务返回内容为空", 502);
+    throw new AiServiceError("AI 服务返回内容为空", 502, { provider: spec.provider });
   }
 
   try {
     return JSON.parse(extractJson(text)) as T;
-  } catch {
-    throw new AiServiceError("AI 服务返回格式无法解析", 502);
+  } catch (error) {
+    log.warn(
+      "ai.call",
+      "AI call returned unparsable JSON",
+      { ...aiFields(spec), outcome: "parse_error", textLength: text.length },
+      error,
+    );
+    throw new AiServiceError("AI 服务返回格式无法解析", 502, { provider: spec.provider });
   }
 }

@@ -3,7 +3,10 @@
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui";
 import { useDailyGoal, useLocale, toast } from "@/hooks";
 import { DAILY_GOAL_PRESET_MINUTES } from "@/lib/dailyGoal";
+import { createLogger } from "@/lib/log";
 import { SettingRow } from "./SettingRow";
+
+const log = createLogger({ mod: "profile" });
 
 export const ProfileDailyGoalRow = () => {
   const { dailyGoalMinutes, setDailyGoalMinutes } = useDailyGoal();
@@ -13,7 +16,7 @@ export const ProfileDailyGoalRow = () => {
     const minutes = Number(value);
     if (!Number.isFinite(minutes)) return;
     setDailyGoalMinutes(minutes).catch((error) => {
-      console.error("Failed to save daily goal preference:", error);
+      log.error("preference.failed", "Failed to save daily goal preference", {}, error);
       toast({ title: t("profile.dailyGoalSaveFailed"), variant: "destructive" });
     });
   };

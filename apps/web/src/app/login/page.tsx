@@ -4,7 +4,10 @@ import { useRouter } from "next/navigation";
 import { Button, Card, CardContent } from "@/components/ui";
 import { useLocale, useAuth } from "@/hooks";
 import { signInWithGoogle } from "@/lib/firebase";
+import { createLogger } from "@/lib/log";
 import { useEffect } from "react";
+
+const log = createLogger({ mod: "login" });
 
 const LoginPage = () => {
   const { t } = useLocale();
@@ -21,7 +24,7 @@ const LoginPage = () => {
     try {
       await signInWithGoogle();
     } catch (error) {
-      console.error("Sign in error:", error);
+      log.error("auth.error", "Google sign-in failed", {}, error);
     }
   };
 

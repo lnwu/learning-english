@@ -5,8 +5,11 @@ import { useAiModel } from "@/hooks/useAiModel";
 import { useLocale } from "@/hooks/useLocale";
 import { toast } from "@/hooks/useToast";
 import { postApi } from "@/lib/apiClient";
+import { createLogger } from "@/lib/log";
 import type { AiModelOption } from "@/lib/aiProviders";
 import type { TranslateCompareResult } from "@/lib/translateCompare";
+
+const log = createLogger({ mod: "compare" });
 
 export interface SenseCompareState {
   models: AiModelOption[];
@@ -52,7 +55,7 @@ export const useSenseCompare = (): SenseCompareState => {
         );
         setResults(data.results ?? []);
       } catch (error) {
-        console.error("Failed to compare models:", error);
+        log.error("api.call.failed", "Failed to compare models", {}, error);
         toast({
           title: error instanceof Error ? error.message : t("senses.compareFailed"),
           variant: "destructive",

@@ -1,6 +1,6 @@
-import { describe, it, expect, jest } from "bun:test";
+import { describe, it, expect, jest, spyOn } from "bun:test";
 import { chatCompletionJson, extractJson, AiServiceError } from "./aiClient";
-import { useEnvVar, useRestoredFetch } from "./testSupport";
+import { useConsoleSpy, useEnvVar, useRestoredFetch } from "./testSupport";
 
 const openAiResponse = (content: string, status = 200) =>
   new Response(JSON.stringify({ choices: [{ message: { content } }] }), { status });
@@ -60,6 +60,9 @@ const stalledFetch = () => {
 describe("chatCompletionJson", () => {
   useEnvVar("DEEPSEEK_API_KEY", "test-key");
   useRestoredFetch();
+  useConsoleSpy("log");
+  useConsoleSpy("warn");
+  useConsoleSpy("error");
 
   it("解析 JSON 返回内容", async () => {
     globalThis.fetch = (async () => openAiResponse('{"ok":true}')) as unknown as typeof fetch;
@@ -190,6 +193,9 @@ describe("模型路由", () => {
   useEnvVar("OPENCODE_API_KEY", "test-key");
   useEnvVar("MIMO_API_KEY", "test-key");
   useRestoredFetch();
+  useConsoleSpy("log");
+  useConsoleSpy("warn");
+  useConsoleSpy("error");
 
   it("mimo 模型路由到 MiMo chat/completions", async () => {
     const captured = captureRequest(openAiResponse('{"ok":true}'));
@@ -214,6 +220,99 @@ describe("模型路由", () => {
     });
     expect(captured.url).toBe("https://opencode.ai/zen/v1/models/gemini-3.8-flash:generateContent");
     expect(result.ok).toBe(true);
+  });
+});
+
+describe("ai 调用日志", () => {
+  useEnvVar("DEEPSEEK_API_KEY", "test-key");
+  useRestoredFetch();
+
+  const capture = () => {
+    const records: Array<Record<string, unknown>> = [];
+    const spies = (["log", "warn", "error"] as const).map((method) =>
+      spyOn(console, method).mockImplementation((line: unknown) => {
+        try {
+          records.push(JSON.parse(String(line)) as Record<string, unknown>);
+        } catch {
+          return;
+        }
+      }),
+    );
+    return { records, restore: () => spies.forEach((spy) => spy.mockRestore()) };
+  };
+
+  it("成功时记录尝试耗时与调用汇总", async () => {
+    globalThis.fetch = (async () => openAiResponse('{"ok":true}')) as unknown as typeof fetch;
+    const console = capture();
+    try {
+      await chatCompletionJson(messages);
+    } finally {
+      console.restore();
+    }
+
+    const attempt = console.records.find((record) => record.event === "ai.call");
+    expect(attempt).toMatchObject({
+      provider: "deepseek",
+      attempt: 1,
+      maxAttempts: 2,
+      outcome: "ok",
+      willRetry: false,
+      model: expect.any(String),
+    });
+    expect(Number(attempt?.durationMs)).toBeGreaterThanOrEqual(0);
+    expect(console.records.find((record) => record.event === "ai.call.summary")).toMatchObject({
+      attempts: 1,
+      outcome: "ok",
+    });
+  });
+
+  it("上游 429 时记录限流、重试与状态码", async () => {
+    globalThis.fetch = (async () => new Response("{}", { status: 429 })) as unknown as typeof fetch;
+    const console = capture();
+    let error: unknown;
+    try {
+      error = await chatCompletionJson(messages).catch((caught) => caught);
+    } finally {
+      console.restore();
+    }
+
+    const attempts = console.records.filter((record) => record.event === "ai.call");
+    expect(attempts).toHaveLength(2);
+    expect(attempts[0]).toMatchObject({
+      outcome: "rate_limited",
+      willRetry: true,
+      statusCode: 429,
+    });
+    expect(attempts[1]).toMatchObject({ outcome: "rate_limited", willRetry: false });
+    const summary = console.records.find((record) => record.event === "ai.call.summary");
+    expect(summary).toMatchObject({ attempts: 2, outcome: "rate_limited", apiStatus: 502 });
+    expect(summary?.errorStatusCode).toBe(429);
+    expect(error).toBeInstanceOf(AiServiceError);
+    expect((error as AiServiceError).statusCode).toBe(429);
+    expect((error as AiServiceError).provider).toBe("deepseek");
+  });
+
+  it("超时标记 timedOut 且不重试", async () => {
+    jest.useFakeTimers();
+    const state = stalledFetch();
+    const console = capture();
+    try {
+      const pending = chatCompletionJson(messages).catch((caught) => caught);
+      jest.advanceTimersByTime(31_000);
+      await pending;
+    } finally {
+      console.restore();
+      jest.useRealTimers();
+    }
+
+    const summary = console.records.find((record) => record.event === "ai.call.summary");
+    expect(summary).toMatchObject({ attempts: 1, outcome: "timeout", apiStatus: 504 });
+    expect(console.records.find((record) => record.event === "ai.call")).toMatchObject({
+      outcome: "timeout",
+      willRetry: false,
+      timeoutMs: 30000,
+    });
+    expect(state.calls).toBe(1);
   });
 });
 
