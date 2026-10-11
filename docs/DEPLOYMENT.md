@@ -28,7 +28,7 @@ bun run logs --event ai.call,ai.call.summary     # 只看某个事件（逗号�
 bun run logs --request-id <id> --json            # 单个请求的全部记录
 ```
 
-- 命中 `error` 级事件时脚本退出码非 0；`--requests` 额外打印状态码 >= 400 的请求行，`--json` 输出原始 JSONL 供 `jq` 处理。`--level` 与 `--query` 透传给 `vercel logs`（只认 Vercel 自己的字段）；`--event` 与 `--request-id` 在本地按我们的字段过滤。
+- 命中 `error` 级事件时脚本退出码非 0；`--level`（`error`/`fatal`/`warn`/`warning`/`info`）、`--event`、`--request-id` 都在本地按我们的字段过滤，只有 `--query` 透传给 `vercel logs`（只认 Vercel 自己的字段）。`--requests` 额外打印状态码 >= 400 的请求行，`--json` 输出原始 JSONL 供 `jq` 处理。
 - **保留期**：Runtime Logs 在 Hobby **只保留 1 小时**（Log Drains 与 Observability Plus 都要 Pro），所以脚本窗口超过 1 小时时会明确提示，而不是静默返回空。报错后尽快查；超过 1 小时只能靠复现。
 - 排查一条用户报错的顺序：`bun run logs --since 15m --level error` 找事件 → 复制 `requestId` → `bun run logs --since 30m --request-id <id> --json` 看完整字段（含 `errorCause`/`errorResponse`/`outcome`）→ 若是 `ai.call`，再看 `provider`/`model`/`statusCode`/`totalMs` 判断是限流、超时还是模型返回异常。
 

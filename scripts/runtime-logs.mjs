@@ -81,6 +81,22 @@ const limit = takeFlag("limit") ?? "100";
 const onlyRequests = hasFlag("requests");
 const rawJson = hasFlag("json");
 
+const LEVEL_ALIASES = {
+  warn: "warn",
+  warning: "warn",
+  info: "info",
+  error: "error",
+  fatal: "error",
+};
+const normalizeLevel = (value) => LEVEL_ALIASES[value] ?? value;
+const levelFilter = level ? normalizeLevel(level) : undefined;
+if (level && !LEVEL_ALIASES[level]) {
+  process.stderr.write(`[logs] 未知级别 ${level}，可用：error、fatal、warn、warning、info\n`);
+  process.exit(2);
+}
+
+const matchesLevel = (value) => !levelFilter || normalizeLevel(value) === levelFilter;
+
 const parseWindowMs = (value) => {
   const match = /^(\d+)(m|h|d)$/.exec(value);
   if (!match) return null;
@@ -100,7 +116,6 @@ const cliArgs = ["x", "vercel", "logs", "--json", "--limit", limit, "--since", s
 if (environment) cliArgs.push("--environment", environment);
 if (branch) cliArgs.push("--branch", branch);
 if (until) cliArgs.push("--until", until);
-if (level) cliArgs.push("--level", level);
 if (query) cliArgs.push("--query", query);
 if (statusCode) cliArgs.push("--status-code", statusCode);
 if (deployment) cliArgs.push("--deployment", deployment);
@@ -189,7 +204,8 @@ for (const line of (result.stdout ?? "").split("\n")) {
   const matched = entries.filter(
     (entry) =>
       (!requestId || entry.requestId === requestId) &&
-      (events.length === 0 || events.includes(entry.event)),
+      (events.length === 0 || events.includes(entry.event)) &&
+      matchesLevel(entry.level),
   );
 
   for (const entry of matched) {
@@ -200,8 +216,9 @@ for (const line of (result.stdout ?? "").split("\n")) {
 
   const status = Number(record.responseStatusCode);
   const isRequestError = Number.isFinite(status) && status >= 400;
+  const requestLevel = status >= 500 ? "error" : isRequestError ? "warn" : "info";
   const showRequest = onlyRequests || (isRequestError && matched.length === 0);
-  if (showRequest && !requestId) {
+  if (showRequest && !requestId && matchesLevel(requestLevel)) {
     if (isRequestError && status >= 500) errorCount += 1;
     output.push(
       rawJson ? JSON.stringify({ event: "vercel.request", ...record }) : formatRequest(record),
