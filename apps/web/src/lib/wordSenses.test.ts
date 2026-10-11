@@ -9,7 +9,7 @@ import {
 } from "./wordSenses";
 
 describe("sanitizeWordSenses", () => {
-  it("截断到 MAX_SENSES 个义项", () => {
+  it("截断到 MAX_SENSES 个含义", () => {
     const senses = sanitizeWordSenses(
       Array.from({ length: MAX_SENSES + 2 }, (_, index) => ({
         pos: "n.",
@@ -93,7 +93,7 @@ describe("decodeSenses", () => {
 });
 
 describe("encodeSenses", () => {
-  it("每行一个义项，英文在前", () => {
+  it("每行一个含义，英文在前", () => {
     expect(
       encodeSenses([
         { pos: "v.", chinese: "吐（口水）；喷出", english: "to force liquid from the mouth" },

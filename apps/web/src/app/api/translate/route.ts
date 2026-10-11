@@ -29,7 +29,7 @@ export async function POST(request: Request) {
         }
       }
 
-      const result = await lookupWord(word, modelId, await collectWordSourceCandidates(word));
+      const result = await lookupWord(word, modelId, collectWordSourceCandidates(word));
       setCachedTranslation(word, result, modelId);
       return NextResponse.json(result);
     },
