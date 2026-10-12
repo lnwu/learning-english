@@ -16,7 +16,7 @@
 
 - 日志是**单行 JSON**，经 `console.*` 打到 stdout，Vercel Runtime Logs 按 console 方法判定级别、按字段过滤。字段由 `apps/web/src/lib/log.ts` 统一组装：`level`/`time`/`message`/`event` + `env`/`region`/`commit` + 业务字段；事件名是 `LOG_EVENTS` 的闭集（新增事件改这个数组），新增字段一律 camelCase。
 - 服务端：`handleApiPost` 每个请求记一条 `api.request`（`route`/`policy`/`uid`/`status`/`durationMs`），并把 `requestId` 写进 `x-request-id` 响应头与错误响应体；未捕获的 SSR/路由异常由 `src/instrumentation.ts` 的 `onRequestError` 记为 `server.error`。
-- 外部调用必须能看出耗时与失败原因：模型调用每次尝试记 `ai.call`（`provider`/`model`/`attempt`/`durationMs`/`timeoutMs`/`outcome`/`willRetry`/token 用量/上游 `statusCode`），调用结束记 `ai.call.summary`（`totalMs`/`attempts`/`outcome`）；来源检索记 `source.search`，ID token 校验记 `auth.token.verify`，翻译缓存记 `cache.lookup`。`AiServiceError` 会带上上游 `statusCode`/`responseBody`/`url` 供日志输出，但对外的错误文案与状态码语义不变。
+- 外部调用必须能看出耗时与失败原因：模型调用每次尝试记 `ai.call`（`provider`/`model`/`attempt`/`durationMs`/`timeoutMs`/`outcome`/`willRetry`/token 用量/上游 `statusCode`），调用结束记 `ai.call.summary`（`totalMs`/`attempts`/`outcome`）；来源检索记 `source.search`，ID token 校验记 `auth.token.verify`，翻译缓存记 `cache.lookup`，释义挑选回退记 `sense.select.failed`（`reason`/`candidateCount`/`model`）。`AiServiceError` 会带上上游 `statusCode`/`responseBody`/`url` 供日志输出，但对外的错误文案与状态码语义不变。
 - 客户端：`warn`/`error` 由 `lib/log.ts` 批量 POST 到 `/api/log`（`handleApiPost` + `logs` 限额 30/min，只收白名单事件，失败静默），服务端补 `uid` 与 `origin: "client"` 后打回同一条流；匿名登录失败发生在拿到 uid 之前，这类错误只留在浏览器控制台。
 - 日志里不允许出现单词原文、用户句子、prompt 与任何凭据：`lib/log.ts` 按禁止键脱敏并截断超长值，调用方不要再自行拼接这些内容。
 - 查询入口：`bun run logs`（包装 `vercel logs --json`，解析并摊平我们的 JSON 事件）。常用形式：

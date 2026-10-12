@@ -2,7 +2,7 @@ import { APICallError, generateText, type LanguageModel } from "ai";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
-import { resolveAiModel, type AiModelSpec } from "@/lib/aiProviders";
+import { resolveAiModel, type AiModelSpec, type AiReasoning } from "@/lib/aiProviders";
 import { createLogger, nowMs, type LogFields } from "@/lib/log";
 
 const REQUEST_TIMEOUT_MS = 30000;
@@ -195,12 +195,14 @@ export interface ChatCompletionOptions {
   temperature?: number;
   maxOutputTokens?: number;
   timeoutMs?: number;
+  reasoning?: AiReasoning | "none";
 }
 
 interface RequestSettings {
   temperature: number;
   maxOutputTokens: number;
   timeoutMs: number;
+  reasoning?: AiReasoning | "none";
 }
 
 const aiFields = (spec: AiModelSpec): LogFields => ({
@@ -313,7 +315,7 @@ async function requestWithRetry(
 async function requestOnce(
   spec: AiModelSpec,
   messages: ChatMessage[],
-  { temperature, maxOutputTokens, timeoutMs }: RequestSettings,
+  { temperature, maxOutputTokens, timeoutMs, reasoning }: RequestSettings,
 ): Promise<AiAttemptResult> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -325,7 +327,7 @@ async function requestOnce(
       instructions: instructions || undefined,
       messages: conversation,
       temperature: spec.supportsTemperature ? temperature : undefined,
-      reasoning: spec.reasoning,
+      reasoning: spec.reasoning === undefined ? undefined : (reasoning ?? spec.reasoning),
       maxOutputTokens,
       maxRetries: 0,
       abortSignal: controller.signal,
@@ -366,6 +368,7 @@ export async function chatCompletionJson<T>(
     temperature: options?.temperature ?? 0.7,
     maxOutputTokens: options?.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS,
     timeoutMs: options?.timeoutMs ?? REQUEST_TIMEOUT_MS,
+    reasoning: options?.reasoning,
   });
 
   if (!text.trim()) {

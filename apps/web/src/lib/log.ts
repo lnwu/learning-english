@@ -18,6 +18,7 @@ export const LOG_EVENTS = [
   "source.search",
   "auth.token.verify",
   "cache.lookup",
+  "sense.select.failed",
 ] as const;
 
 export type LogEvent = (typeof LOG_EVENTS)[number];

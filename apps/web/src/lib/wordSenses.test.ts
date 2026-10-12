@@ -1,6 +1,6 @@
 import { describe, it, expect } from "bun:test";
 import {
-  MAX_SENSES,
+  MAX_CANDIDATE_SENSES,
   chineseTranslations,
   decodeSenses,
   encodeSenses,
@@ -9,16 +9,16 @@ import {
 } from "./wordSenses";
 
 describe("sanitizeWordSenses", () => {
-  it("截断到 MAX_SENSES 个含义", () => {
+  it("默认保留最多 MAX_CANDIDATE_SENSES 个含义", () => {
     const senses = sanitizeWordSenses(
-      Array.from({ length: MAX_SENSES + 2 }, (_, index) => ({
+      Array.from({ length: MAX_CANDIDATE_SENSES + 2 }, (_, index) => ({
         pos: "n.",
         chinese: `语文${index}`,
         english: `english ${index}`,
       })),
     );
 
-    expect(senses).toHaveLength(MAX_SENSES);
+    expect(senses).toHaveLength(MAX_CANDIDATE_SENSES);
   });
 
   it("过滤非法字段与超长内容", () => {
@@ -27,7 +27,8 @@ describe("sanitizeWordSenses", () => {
       { pos: "", chinese: "缺词性", english: "no pos" },
       { pos: "n.", chinese: "", english: "no chinese" },
       { pos: "n.", chinese: "中文", english: "" },
-      { pos: "n.", chinese: "超长", english: "x".repeat(151) },
+      { pos: "n.", chinese: "超长", english: "x".repeat(301) },
+      { pos: "n.", chinese: "超长".repeat(100), english: "too long chinese" },
       "not an object",
       null,
     ]);
