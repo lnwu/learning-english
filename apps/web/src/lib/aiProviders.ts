@@ -1,5 +1,7 @@
 type AiSdkKind = "openai-compatible" | "anthropic" | "google";
 
+export type AiReasoning = "minimal" | "low" | "medium" | "high";
+
 export interface AiModelSpec {
   id: string;
   provider: string;
@@ -10,7 +12,7 @@ export interface AiModelSpec {
   baseUrl: string;
   apiKeyEnv: string;
   supportsTemperature: boolean;
-  reasoning?: "minimal" | "low" | "medium" | "high";
+  reasoning?: AiReasoning;
 }
 
 export interface AiModelOption {
@@ -24,7 +26,7 @@ interface AiModelDefinition {
   model: string;
   label: string;
   supportsTemperature?: boolean;
-  reasoning?: "minimal" | "low" | "medium" | "high" | null;
+  reasoning?: AiReasoning | null;
 }
 
 const define = (

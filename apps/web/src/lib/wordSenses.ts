@@ -5,9 +5,10 @@ export interface WordSense {
 }
 
 export const MAX_SENSES = 3;
+export const MAX_CANDIDATE_SENSES = 40;
 const MAX_POS_TAG_LENGTH = 9;
-const MAX_DEFINITION_LENGTH = 150;
-const MAX_TRANSLATION_LENGTH = 50;
+const MAX_DEFINITION_LENGTH = 300;
+const MAX_TRANSLATION_LENGTH = 100;
 const SENSE_SEPARATOR = " — ";
 const CJK_PATTERN = /[\u3400-\u9fff]/;
 
@@ -24,7 +25,7 @@ export const sanitizeWordSenses = (value: unknown): WordSense[] => {
   if (!Array.isArray(value)) return [];
 
   const senses: WordSense[] = [];
-  for (const raw of value.slice(0, MAX_SENSES)) {
+  for (const raw of value.slice(0, MAX_CANDIDATE_SENSES)) {
     if (typeof raw !== "object" || raw === null) continue;
     const record = raw as Record<string, unknown>;
     const pos = normalizePos(typeof record.pos === "string" ? record.pos : "");

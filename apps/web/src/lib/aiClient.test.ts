@@ -221,6 +221,18 @@ describe("模型路由", () => {
     expect(captured.url).toBe("https://opencode.ai/zen/v1/models/gemini-3.8-flash:generateContent");
     expect(result.ok).toBe(true);
   });
+
+  it("按次传入的 reasoning 覆盖模型默认值", async () => {
+    const captured = captureRequest(openAiResponse('{"ok":true}'));
+    await chatCompletionJson(messages, { reasoning: "none" });
+    expect(JSON.parse(String(captured.init?.body)).reasoning_effort).toBe("none");
+  });
+
+  it("未声明 reasoning 的模型不下发 reasoning_effort", async () => {
+    const captured = captureRequest(openAiResponse('{"ok":true}'));
+    await chatCompletionJson(messages, { model: "mimo/mimo-v2.6-flash", reasoning: "none" });
+    expect(JSON.parse(String(captured.init?.body)).reasoning_effort).toBeUndefined();
+  });
 });
 
 describe("ai 调用日志", () => {

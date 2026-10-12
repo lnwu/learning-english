@@ -1,14 +1,16 @@
 import { describe, it, expect } from "bun:test";
 import { AiServiceError } from "./aiClient";
-import { SENSE_SELECTION_RULE } from "./aiPrompts";
 import {
   buildLemmaMessages,
   buildMeaningMessages,
+  buildSelectionMessages,
   buildSourcesMessages,
   parseLemmaResult,
+  parseSelectionResult,
   parseSensesResult,
   parseSourcesResult,
 } from "./wordLookup";
+import { MAX_SENSES } from "./wordSenses";
 import type { WordSourceCandidate } from "./wordSourceSearch";
 
 const candidate = (overrides: Partial<WordSourceCandidate> = {}): WordSourceCandidate => ({
@@ -70,12 +72,53 @@ describe("buildMeaningMessages", () => {
     expect(messages[0].content).toContain("Return JSON only");
   });
 
-  it("共用 aiPrompts 的含义选择约束与字段说明", () => {
+  it("自然提问且要求 JSON 输出，不附加含义筛选规则", () => {
     const content = buildMeaningMessages("mouth")[0].content;
-    expect(content).toContain(SENSE_SELECTION_RULE);
+    expect(content).toContain('What does the English word "mouth" mean?');
+    expect(content).toContain("Return JSON only");
     expect(content).toContain("pos");
     expect(content).toContain("chinese");
     expect(content).toContain("english");
+  });
+});
+
+describe("buildSelectionMessages", () => {
+  it("带 0 起始编号列表与取用的含义数量", () => {
+    const content = buildSelectionMessages("mouth", senses)[0].content;
+
+    expect(content).toContain('Here are senses of the English word "mouth"');
+    expect(content).toContain("0. n. the part of the face");
+    expect(content).toContain("1. n. the opening of a river");
+    expect(content).toContain(`${MAX_SENSES} of these senses`);
+    expect(content).toContain("Return JSON only");
+  });
+});
+
+describe("parseSelectionResult", () => {
+  const six = Array.from({ length: 6 }, (_, index) => ({
+    pos: "n.",
+    chinese: `语文${index}`,
+    english: `english ${index}`,
+  }));
+
+  it("保留模型给出的顺序与编号", () => {
+    expect(parseSelectionResult({ senses: [4, 0, 2] }, six.length)).toEqual([4, 0, 2]);
+  });
+
+  it("丢弃越界、重复与非整数编号", () => {
+    expect(parseSelectionResult({ senses: [1, 1, 9, -1, 0.5, "2", 2] }, six.length)).toEqual([
+      1, 2,
+    ]);
+  });
+
+  it("最多接受 MAX_SENSES 个编号", () => {
+    expect(parseSelectionResult({ senses: [0, 1, 2, 3, 4] }, six.length)).toHaveLength(MAX_SENSES);
+  });
+
+  it("无可用编号时返回 null", () => {
+    expect(parseSelectionResult({ senses: [] }, 6)).toBeNull();
+    expect(parseSelectionResult({ senses: "bad" }, 6)).toBeNull();
+    expect(parseSelectionResult({}, 6)).toBeNull();
   });
 });
 
