@@ -72,13 +72,17 @@ describe("buildMeaningMessages", () => {
     expect(messages[0].content).toContain("Return JSON only");
   });
 
-  it("自然提问且要求 JSON 输出，不附加含义筛选规则", () => {
+  it("自然提问、要求覆盖 computing 语域并限制长度，且要求 JSON 输出", () => {
     const content = buildMeaningMessages("mouth")[0].content;
     expect(content).toContain('What does the English word "mouth" mean?');
     expect(content).toContain("Return JSON only");
     expect(content).toContain("pos");
     expect(content).toContain("chinese");
     expect(content).toContain("english");
+    expect(content).toContain("a dictionary of computing would list");
+    expect(content).toContain("Otherwise do not mention computing");
+    expect(content).toContain("Do not include proper nouns");
+    expect(content).toContain("under 200 characters");
   });
 });
 
@@ -90,6 +94,10 @@ describe("buildSelectionMessages", () => {
     expect(content).toContain("0. n. the part of the face");
     expect(content).toContain("1. n. the opening of a river");
     expect(content).toContain(`${MAX_SENSES} of these senses`);
+    expect(content).toContain(
+      "Always include a sense marked as specific to a domain such as computing",
+    );
+    expect(content).toContain("Do not pick two senses that express the same meaning");
     expect(content).toContain("Return JSON only");
   });
 });
