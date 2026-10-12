@@ -7,16 +7,33 @@ export interface WordSense {
 export const MAX_SENSES = 3;
 export const MAX_CANDIDATE_SENSES = 40;
 const MAX_POS_TAG_LENGTH = 9;
-const MAX_DEFINITION_LENGTH = 300;
-const MAX_TRANSLATION_LENGTH = 100;
+const MAX_DEFINITION_LENGTH = 600;
+const MAX_TRANSLATION_LENGTH = 200;
 const SENSE_SEPARATOR = " — ";
 const CJK_PATTERN = /[\u3400-\u9fff]/;
 
 const normalizeInline = (value: string): string => value.replace(/\s+/g, " ").trim();
 
+const POS_ABBREVIATIONS: Record<string, string> = {
+  noun: "n.",
+  verb: "v.",
+  adjective: "adj.",
+  adverb: "adv.",
+  pronoun: "pron.",
+  preposition: "prep.",
+  conjunction: "conj.",
+  interjection: "interj.",
+  determiner: "det.",
+  article: "art.",
+  numeral: "num.",
+};
+
 const normalizePos = (value: string): string => {
   const tag = /[a-z]+/.exec(value.toLowerCase())?.[0] ?? "";
-  return tag && tag.length <= MAX_POS_TAG_LENGTH ? `${tag}.` : "";
+  if (!tag) return "";
+  const abbreviation = POS_ABBREVIATIONS[tag];
+  if (abbreviation) return abbreviation;
+  return tag.length <= MAX_POS_TAG_LENGTH ? `${tag}.` : "";
 };
 
 const normalizeChinese = (value: string): string => normalizeInline(value.replace(/[—–]/g, " "));

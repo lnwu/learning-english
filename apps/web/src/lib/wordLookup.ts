@@ -39,6 +39,9 @@ export const buildMeaningMessages = (lemma: string): ChatMessage[] => [
     role: "user",
     content: [
       `What does the English word "${lemma}" mean?`,
+      "If the word also has a widely used meaning in computing or software that a dictionary of computing would list, include that sense. Otherwise do not mention computing.",
+      "Do not include proper nouns such as product, company, or tool names.",
+      "Keep every English definition to a single sentence under 200 characters, and every Simplified Chinese translation under 40 characters.",
       'Return JSON only: {"senses": [{"pos": "...", "chinese": "...", "english": "..."}]}. Each sense has a pos (n., v., adj., adv., etc.), a short Simplified Chinese translation, and an English definition.',
     ].join("\n"),
   },
@@ -61,7 +64,7 @@ export const buildSelectionMessages = (
     content: [
       `Here are senses of the English word "${lemma}" (0-based):`,
       ...senses.map((sense, index) => `${index}. ${sense.pos} ${sense.english}`),
-      `Which ${MAX_SENSES} of these senses is an English learner most likely to encounter? Order them from most to least likely.`,
+      `Which ${MAX_SENSES} of these senses is an English learner most likely to encounter? Always include a sense marked as specific to a domain such as computing, even when it seems less common than the general senses. Do not pick two senses that express the same meaning. Order them from most to least likely.`,
       'Return JSON only: {"senses": [0, 1, 2]}',
     ].join("\n"),
   },

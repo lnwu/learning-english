@@ -27,8 +27,8 @@ describe("sanitizeWordSenses", () => {
       { pos: "", chinese: "缺词性", english: "no pos" },
       { pos: "n.", chinese: "", english: "no chinese" },
       { pos: "n.", chinese: "中文", english: "" },
-      { pos: "n.", chinese: "超长", english: "x".repeat(301) },
-      { pos: "n.", chinese: "超长".repeat(100), english: "too long chinese" },
+      { pos: "n.", chinese: "超长", english: "x".repeat(601) },
+      { pos: "n.", chinese: "超长".repeat(101), english: "too long chinese" },
       "not an object",
       null,
     ]);
@@ -45,6 +45,20 @@ describe("sanitizeWordSenses", () => {
     ).toEqual([
       { pos: "n.", chinese: "嘴 口", english: "the part of the face" },
       { pos: "adj.", chinese: "口 嘴", english: "x" },
+    ]);
+  });
+
+  it("全称词性映射为标准缩写", () => {
+    expect(
+      sanitizeWordSenses([
+        { pos: "noun", chinese: "名词", english: "noun sense" },
+        { pos: "Preposition", chinese: "介词", english: "preposition sense" },
+        { pos: "interjection", chinese: "感叹词", english: "interjection sense" },
+      ]),
+    ).toEqual([
+      { pos: "n.", chinese: "名词", english: "noun sense" },
+      { pos: "prep.", chinese: "介词", english: "preposition sense" },
+      { pos: "interj.", chinese: "感叹词", english: "interjection sense" },
     ]);
   });
 
