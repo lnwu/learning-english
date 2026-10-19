@@ -267,6 +267,20 @@ describe("practiceStats", () => {
     expect(practiceStats.map((item) => item.word)).toEqual(["apple", "banana"]);
     expect(practiceStats[0]).toMatchObject({ reviews: 1, hints: 1 });
   });
+
+  it("同长度分档的词共用同一基线，不因遍历顺序退化为按词长估算", () => {
+    const store = new Words();
+    const inputTimes = [4, 4, 4, 4, 4];
+    addWord(store, "apple", { inputTimes });
+    addWord(store, "chair", { inputTimes });
+
+    const fluencyByWord = new Map(
+      store.practiceStats.map((item) => [item.word, item.fluencyScore]),
+    );
+
+    expect(fluencyByWord.get("apple")).toBe(80);
+    expect(fluencyByWord.get("chair")).toBe(80);
+  });
 });
 
 describe("isQueueItemStale", () => {

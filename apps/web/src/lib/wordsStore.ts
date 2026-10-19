@@ -365,11 +365,10 @@ export class Words {
 
   get practiceStats(): PracticeStat[] {
     const stats: PracticeStat[] = [];
-    const entries = this.wordData.entries();
 
     this.wordData.forEach((data, word) => {
       const times = data.inputTimes;
-      const baseline = computeBaselineForWord(entries, word);
+      const baseline = computeBaselineForWord(this.wordData.entries(), word);
       stats.push({
         word,
         avgTime: times.length > 0 ? average(times) : 0,
