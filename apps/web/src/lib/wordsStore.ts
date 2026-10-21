@@ -385,22 +385,19 @@ export class Words {
   }
 }
 
+const isSyncableDataEqual = (a: SyncableWordData, b: SyncableWordData): boolean =>
+  memoryEquals(a.memory, b.memory) &&
+  statsEquals(a.stats, b.stats) &&
+  arraysEqual(a.inputTimes, b.inputTimes) &&
+  reviewsEqual(a.reviews, b.reviews);
+
 const isWordDataEqual = (a: Readonly<WordData>, b: Readonly<WordData>): boolean =>
   a.id === b.id &&
   a.word === b.word &&
   a.translation === b.translation &&
   sourcesEqual(a.sources, b.sources) &&
   a.createdAt.getTime() === b.createdAt.getTime() &&
-  memoryEquals(a.memory, b.memory) &&
-  statsEquals(a.stats, b.stats) &&
-  arraysEqual(a.inputTimes, b.inputTimes) &&
-  reviewsEqual(a.reviews, b.reviews);
-
-const isSyncableDataEqual = (a: SyncableWordData, b: SyncableWordData): boolean =>
-  memoryEquals(a.memory, b.memory) &&
-  statsEquals(a.stats, b.stats) &&
-  arraysEqual(a.inputTimes, b.inputTimes) &&
-  reviewsEqual(a.reviews, b.reviews);
+  isSyncableDataEqual(a, b);
 
 export const isQueueItemStale = (
   firestore: SyncableWordData,
