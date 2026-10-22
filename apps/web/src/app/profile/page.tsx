@@ -5,6 +5,7 @@ import {
   AlertDescription,
   AlertTitle,
   Button,
+  ButtonLink,
   Card,
   CardContent,
   CardHeader,
@@ -20,7 +21,6 @@ import {
 } from "@/components/ui";
 import { useFirestoreWords, useLocale, toast, useAuth, useWordsRepo } from "@/hooks";
 import { observer } from "mobx-react-lite";
-import Link from "next/link";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import PracticeHeatmap from "./PracticeHeatmap";
 import { ProfileAiModelRow } from "./ProfileAiModelRow";
@@ -137,12 +137,10 @@ const Profile = observer(() => {
           title={t("profile.title")}
           actions={
             <>
-              <Button render={<Link href="/words" />} nativeButton={false}>
-                {t("profile.practiceWords")}
-              </Button>
-              <Button render={<Link href="/add-word" />} nativeButton={false} variant="outline">
+              <ButtonLink href="/words">{t("profile.practiceWords")}</ButtonLink>
+              <ButtonLink href="/add-word" variant="outline">
                 {t("addWord.title")}
-              </Button>
+              </ButtonLink>
             </>
           }
         />

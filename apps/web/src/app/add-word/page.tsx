@@ -2,6 +2,7 @@
 
 import {
   Button,
+  ButtonLink,
   Empty,
   EmptyDescription,
   EmptyHeader,
@@ -13,7 +14,6 @@ import {
 } from "@/components/ui";
 import { AddWordDialog } from "@/components/word-picker";
 import { useRef, useState } from "react";
-import Link from "next/link";
 import { useAddableWordCheck, useFirestoreWords, useLocale } from "@/hooks";
 
 const Home = () => {
@@ -56,9 +56,9 @@ const Home = () => {
             <EmptyTitle>{t("common.error")}</EmptyTitle>
             <EmptyDescription>{wordsError}</EmptyDescription>
           </EmptyHeader>
-          <Button render={<Link href="/home" />} nativeButton={false} variant="outline">
+          <ButtonLink href="/home" variant="outline">
             {t("practiceHub.back")}
-          </Button>
+          </ButtonLink>
         </Empty>
       </PageContainer>
     );
@@ -71,12 +71,12 @@ const Home = () => {
         title={t("addWord.title")}
         actions={
           <>
-            <Button render={<Link href="/profile" />} nativeButton={false} variant="outline">
+            <ButtonLink href="/profile" variant="outline">
               {t("menu.profile")}
-            </Button>
-            <Button render={<Link href="/home" />} nativeButton={false} variant="ghost">
+            </ButtonLink>
+            <ButtonLink href="/home" variant="ghost">
               {t("practiceHub.back")}
-            </Button>
+            </ButtonLink>
           </>
         }
       />

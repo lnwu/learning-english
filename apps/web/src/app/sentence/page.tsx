@@ -5,6 +5,7 @@ import {
   AlertDescription,
   AlertTitle,
   Button,
+  ButtonLink,
   Card,
   CardContent,
   Empty,
@@ -19,7 +20,6 @@ import { CheckIcon, XIcon } from "lucide-react";
 import { useSentencePractice, useLocale, usePracticeTimeTracker } from "@/hooks";
 import { DailyProgress } from "@/components/practice/DailyProgress";
 import { observer } from "mobx-react-lite";
-import Link from "next/link";
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { MIN_SENTENCE_WORDS } from "@/lib/sentenceWords";
 
@@ -116,9 +116,9 @@ const Sentence = observer(() => {
           </span>
         }
         actions={
-          <Button render={<Link href="/home" />} nativeButton={false} variant="ghost">
+          <ButtonLink href="/home" variant="ghost">
             {t("practiceHub.back")}
-          </Button>
+          </ButtonLink>
         }
       />
 
@@ -133,9 +133,9 @@ const Sentence = observer(() => {
             <EmptyHeader>
               <EmptyTitle>{t("sentence.needMoreWords")}</EmptyTitle>
             </EmptyHeader>
-            <Button render={<Link href="/add-word" />} nativeButton={false} variant="outline">
+            <ButtonLink href="/add-word" variant="outline">
               {t("addWord.title")}
-            </Button>
+            </ButtonLink>
           </Empty>
         )
       ) : (

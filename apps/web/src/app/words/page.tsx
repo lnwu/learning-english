@@ -2,6 +2,7 @@
 
 import {
   Button,
+  ButtonLink,
   Empty,
   EmptyDescription,
   EmptyHeader,
@@ -18,7 +19,6 @@ import { CheckIcon, XIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCallback, useEffect, useState, useRef, type FormEvent, type RefObject } from "react";
 import { observer } from "mobx-react-lite";
-import Link from "next/link";
 import { useFirestoreWords, useLocale, usePracticeTimeTracker } from "@/hooks";
 import {
   createPracticeInputState,
@@ -260,9 +260,9 @@ const WordsPractice = observer(() => {
             <EmptyTitle>{t("common.error")}</EmptyTitle>
             <EmptyDescription>{error}</EmptyDescription>
           </EmptyHeader>
-          <Button render={<Link href="/add-word" />} nativeButton={false} variant="outline">
+          <ButtonLink href="/add-word" variant="outline">
             {t("addWord.title")}
-          </Button>
+          </ButtonLink>
         </Empty>
       </PageContainer>
     );
@@ -276,9 +276,9 @@ const WordsPractice = observer(() => {
             <EmptyTitle>{t("words.emptyLibraryTitle")}</EmptyTitle>
             <EmptyDescription>{t("words.emptyLibraryDescription")}</EmptyDescription>
           </EmptyHeader>
-          <Button render={<Link href="/add-word" />} nativeButton={false} variant="outline">
+          <ButtonLink href="/add-word" variant="outline">
             {t("addWord.title")}
-          </Button>
+          </ButtonLink>
         </Empty>
       </PageContainer>
     );
@@ -292,9 +292,9 @@ const WordsPractice = observer(() => {
             <EmptyTitle>{t("words.allReviewedTitle")}</EmptyTitle>
             <EmptyDescription>{t("words.allReviewedDescription")}</EmptyDescription>
           </EmptyHeader>
-          <Button render={<Link href="/home" />} nativeButton={false} variant="outline">
+          <ButtonLink href="/home" variant="outline">
             {t("practiceHub.back")}
-          </Button>
+          </ButtonLink>
         </Empty>
       </PageContainer>
     );
@@ -314,12 +314,12 @@ const WordsPractice = observer(() => {
           description={t("practiceHub.words.description")}
           actions={
             <>
-              <Button render={<Link href="/add-word" />} nativeButton={false} variant="outline">
+              <ButtonLink href="/add-word" variant="outline">
                 {t("addWord.title")}
-              </Button>
-              <Button render={<Link href="/home" />} nativeButton={false} variant="ghost">
+              </ButtonLink>
+              <ButtonLink href="/home" variant="ghost">
                 {t("practiceHub.back")}
-              </Button>
+              </ButtonLink>
             </>
           }
         />

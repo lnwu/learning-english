@@ -8,6 +8,7 @@ export * from "./dropdown-menu";
 export * from "./empty";
 export * from "./mastery-bar";
 export * from "./input";
+export * from "./link-button";
 export * from "./page";
 export * from "./progress-ring";
 export * from "./separator";
