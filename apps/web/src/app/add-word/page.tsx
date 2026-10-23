@@ -3,10 +3,7 @@
 import {
   Button,
   ButtonLink,
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyTitle,
+  EmptyState,
   Input,
   LoadingState,
   PageContainer,
@@ -51,15 +48,15 @@ const Home = () => {
   if (wordsError) {
     return (
       <PageContainer width="narrow">
-        <Empty className="border">
-          <EmptyHeader>
-            <EmptyTitle>{t("common.error")}</EmptyTitle>
-            <EmptyDescription>{wordsError}</EmptyDescription>
-          </EmptyHeader>
-          <ButtonLink href="/home" variant="outline">
-            {t("practiceHub.back")}
-          </ButtonLink>
-        </Empty>
+        <EmptyState
+          title={t("common.error")}
+          description={wordsError}
+          action={
+            <ButtonLink href="/home" variant="outline">
+              {t("practiceHub.back")}
+            </ButtonLink>
+          }
+        />
       </PageContainer>
     );
   }
