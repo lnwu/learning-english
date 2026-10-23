@@ -3,11 +3,11 @@ import {
   CALIBRATION_MIN_SAMPLES,
   buildCalibrationReport,
 } from "../apps/web/src/lib/calibrationMetrics.ts";
+import { createArgs } from "./lib/args.mjs";
 
-const args = process.argv.slice(2);
-const input = args.find((arg) => !arg.startsWith("-")) ?? "calibration-out/reviews.json";
-const outIndex = args.indexOf("--out");
-const outFile = outIndex >= 0 ? args[outIndex + 1] : null;
+const { takeFlag, positional } = createArgs(process.argv.slice(2));
+const outFile = takeFlag("out") || null;
+const input = positional()[0] ?? "calibration-out/reviews.json";
 
 const raw = JSON.parse(await readFile(input, "utf8"));
 const cards = (raw.cards ?? []).map((card) => card.reviews ?? []);

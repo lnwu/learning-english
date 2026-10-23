@@ -1,5 +1,6 @@
 #!/usr/bin/env bun
 import { spawnSync } from "node:child_process";
+import { createArgs } from "./lib/args.mjs";
 
 const RETENTION_MS = 60 * 60 * 1000;
 const EVENT_FIELDS = [
@@ -45,23 +46,7 @@ const EVENT_FIELDS = [
   "errorDigest",
 ];
 
-const args = process.argv.slice(2);
-
-const takeFlag = (name) => {
-  const index = args.indexOf(`--${name}`);
-  if (index < 0) return undefined;
-  const value = args[index + 1];
-  if (value === undefined || value.startsWith("--")) return "";
-  args.splice(index, 2);
-  return value;
-};
-
-const hasFlag = (name) => {
-  const index = args.indexOf(`--${name}`);
-  if (index < 0) return false;
-  args.splice(index, 1);
-  return true;
-};
+const { takeFlag, hasFlag } = createArgs(process.argv.slice(2));
 
 const environment = takeFlag("environment");
 const branch = takeFlag("branch");
