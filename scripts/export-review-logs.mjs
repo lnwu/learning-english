@@ -1,11 +1,10 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { initAdmin } from "./lib/admin.mjs";
+import { createArgs } from "./lib/args.mjs";
 
-const args = process.argv.slice(2);
-const uidArgIndex = args.indexOf("--uid");
-const uid = uidArgIndex >= 0 ? args[uidArgIndex + 1] : process.env.PROD_USER_UID;
-const outIndex = args.indexOf("--out");
-const outDir = outIndex >= 0 ? args[outIndex + 1] : "calibration-out";
+const { takeFlag } = createArgs(process.argv.slice(2));
+const uid = takeFlag("uid") || process.env.PROD_USER_UID;
+const outDir = takeFlag("out") || "calibration-out";
 
 if (!uid) {
   console.error("Missing user id: set PROD_USER_UID or pass --uid <uid>");

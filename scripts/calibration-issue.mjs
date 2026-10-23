@@ -1,12 +1,12 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { CALIBRATION_MIN_SAMPLES } from "../apps/web/src/lib/calibrationMetrics.ts";
+import { createArgs } from "./lib/args.mjs";
 
-const args = process.argv.slice(2);
-const input = args.find((arg) => !arg.startsWith("-")) ?? "calibration-out/report.json";
-const dryRun = args.includes("--dry-run");
-const runUrlIndex = args.indexOf("--run-url");
-const runUrl = runUrlIndex >= 0 ? args[runUrlIndex + 1] : null;
+const { takeFlag, hasFlag, positional } = createArgs(process.argv.slice(2));
+const dryRun = hasFlag("dry-run");
+const runUrl = takeFlag("run-url") || null;
+const input = positional()[0] ?? "calibration-out/report.json";
 const LABEL = "calibration";
 const TITLE = "熟练度校准样本已达标";
 
