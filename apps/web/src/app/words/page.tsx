@@ -3,10 +3,7 @@
 import {
   Button,
   ButtonLink,
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyTitle,
+  EmptyState,
   Input,
   LoadingState,
   MasteryBar,
@@ -255,15 +252,15 @@ const WordsPractice = observer(() => {
   if (error) {
     return (
       <PageContainer>
-        <Empty className="border">
-          <EmptyHeader>
-            <EmptyTitle>{t("common.error")}</EmptyTitle>
-            <EmptyDescription>{error}</EmptyDescription>
-          </EmptyHeader>
-          <ButtonLink href="/add-word" variant="outline">
-            {t("addWord.title")}
-          </ButtonLink>
-        </Empty>
+        <EmptyState
+          title={t("common.error")}
+          description={error}
+          action={
+            <ButtonLink href="/add-word" variant="outline">
+              {t("addWord.title")}
+            </ButtonLink>
+          }
+        />
       </PageContainer>
     );
   }
@@ -271,15 +268,15 @@ const WordsPractice = observer(() => {
   if (words.wordCount === 0) {
     return (
       <PageContainer>
-        <Empty className="border">
-          <EmptyHeader>
-            <EmptyTitle>{t("words.emptyLibraryTitle")}</EmptyTitle>
-            <EmptyDescription>{t("words.emptyLibraryDescription")}</EmptyDescription>
-          </EmptyHeader>
-          <ButtonLink href="/add-word" variant="outline">
-            {t("addWord.title")}
-          </ButtonLink>
-        </Empty>
+        <EmptyState
+          title={t("words.emptyLibraryTitle")}
+          description={t("words.emptyLibraryDescription")}
+          action={
+            <ButtonLink href="/add-word" variant="outline">
+              {t("addWord.title")}
+            </ButtonLink>
+          }
+        />
       </PageContainer>
     );
   }
@@ -287,15 +284,15 @@ const WordsPractice = observer(() => {
   if (roundInitialized && randomWords.length === 0) {
     return (
       <PageContainer>
-        <Empty className="border">
-          <EmptyHeader>
-            <EmptyTitle>{t("words.allReviewedTitle")}</EmptyTitle>
-            <EmptyDescription>{t("words.allReviewedDescription")}</EmptyDescription>
-          </EmptyHeader>
-          <ButtonLink href="/home" variant="outline">
-            {t("practiceHub.back")}
-          </ButtonLink>
-        </Empty>
+        <EmptyState
+          title={t("words.allReviewedTitle")}
+          description={t("words.allReviewedDescription")}
+          action={
+            <ButtonLink href="/home" variant="outline">
+              {t("practiceHub.back")}
+            </ButtonLink>
+          }
+        />
       </PageContainer>
     );
   }

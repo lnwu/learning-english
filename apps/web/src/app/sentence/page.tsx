@@ -8,9 +8,7 @@ import {
   ButtonLink,
   Card,
   CardContent,
-  Empty,
-  EmptyHeader,
-  EmptyTitle,
+  EmptyState,
   LoadingState,
   PageContainer,
   PageHeader,
@@ -129,14 +127,14 @@ const Sentence = observer(() => {
             <AlertDescription>{loadError}</AlertDescription>
           </Alert>
         ) : (
-          <Empty className="border">
-            <EmptyHeader>
-              <EmptyTitle>{t("sentence.needMoreWords")}</EmptyTitle>
-            </EmptyHeader>
-            <ButtonLink href="/add-word" variant="outline">
-              {t("addWord.title")}
-            </ButtonLink>
-          </Empty>
+          <EmptyState
+            title={t("sentence.needMoreWords")}
+            action={
+              <ButtonLink href="/add-word" variant="outline">
+                {t("addWord.title")}
+              </ButtonLink>
+            }
+          />
         )
       ) : (
         <div className="flex flex-col gap-4">

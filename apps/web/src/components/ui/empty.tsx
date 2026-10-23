@@ -46,4 +46,26 @@ function EmptyDescription({ className, ...props }: React.ComponentProps<"p">) {
   );
 }
 
-export { Empty, EmptyHeader, EmptyTitle, EmptyDescription };
+function EmptyState({
+  className,
+  title,
+  description,
+  action,
+  ...props
+}: React.ComponentProps<"div"> & {
+  title: React.ReactNode;
+  description?: React.ReactNode;
+  action?: React.ReactNode;
+}) {
+  return (
+    <Empty className={cn("border", className)} {...props}>
+      <EmptyHeader>
+        <EmptyTitle>{title}</EmptyTitle>
+        {description ? <EmptyDescription>{description}</EmptyDescription> : null}
+      </EmptyHeader>
+      {action}
+    </Empty>
+  );
+}
+
+export { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyState };
