@@ -15,6 +15,14 @@ export const usePracticeTimeTracker = (): { todaySeconds: number | null } => {
   const [baseSeconds, setBaseSeconds] = useState<number | null>(null);
   const [sessionSeconds, setSessionSeconds] = useState(0);
 
+  // 退出登录时清空累计值：同一个标签页里换账号登录时，上一个账号的 session 秒数
+  // 会原样留在 state 里，加到新账号的今日总时长上。repo 变成 null 正好是登出这一刻。
+  useEffect(() => {
+    if (repo) return;
+    setBaseSeconds(null);
+    setSessionSeconds(0);
+  }, [repo]);
+
   useEffect(() => {
     if (!repo) return;
 
