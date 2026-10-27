@@ -1,23 +1,23 @@
-import { NextResponse } from "next/server";
+import type { NextResponse } from "next/server";
+import { apiErrorResponse, type ApiErrorCode } from "@/lib/apiErrors";
 import { isAiModelId } from "@/lib/aiProviders";
 import type { ApiParseResult } from "@/lib/apiRoute";
 import { isValidWordToken } from "@/lib/lemma";
 import { isClientLogEvent, type LogEvent, type LogFields } from "@/lib/log";
 
-type ApiField<T> = { ok: true; value: T } | { ok: false; error: string };
+type ApiField<T> = { ok: true; value: T } | { ok: false; code: ApiErrorCode };
 
 export type FieldParser<T> = (raw: unknown) => ApiField<T>;
 
-export const badRequest = (error: string): NextResponse =>
-  NextResponse.json({ error }, { status: 400 });
+export const badRequest = (code: ApiErrorCode): NextResponse => apiErrorResponse(code, 400);
 
 export const requiredText =
-  (options: { maxLength: number; message: string }): FieldParser<string> =>
+  (options: { maxLength: number; code: ApiErrorCode }): FieldParser<string> =>
   (raw) => {
     const value = typeof raw === "string" ? raw.trim() : "";
-    if (!value) return { ok: false, error: options.message };
+    if (!value) return { ok: false, code: options.code };
     if (value.length > options.maxLength) {
-      return { ok: false, error: "输入内容过长" };
+      return { ok: false, code: "inputTooLong" };
     }
     return { ok: true, value };
   };
@@ -27,14 +27,14 @@ export const optionalText =
   (raw) => {
     const value = typeof raw === "string" ? raw.trim() : "";
     if (value.length > maxLength) {
-      return { ok: false, error: "输入内容过长" };
+      return { ok: false, code: "inputTooLong" };
     }
     return { ok: true, value };
   };
 
 export const wordToken = (): FieldParser<string> => (raw) => {
   const value = typeof raw === "string" ? raw.trim().toLowerCase() : "";
-  return isValidWordToken(value) ? { ok: true, value } : { ok: false, error: "无效单词" };
+  return isValidWordToken(value) ? { ok: true, value } : { ok: false, code: "invalidWord" };
 };
 
 export const wordList =
@@ -49,7 +49,7 @@ export const wordList =
       : [];
 
     if (values.some((value) => value.length > options.maxItemLength)) {
-      return { ok: false, error: "输入内容过长" };
+      return { ok: false, code: "inputTooLong" };
     }
     return { ok: true, value: values };
   };
@@ -93,7 +93,7 @@ export const sentenceWordList =
         item.translation.length > options.maxTranslationLength,
     );
     if (hasOverlongItem) {
-      return { ok: false, error: "输入内容过长" };
+      return { ok: false, code: "inputTooLong" };
     }
     return { ok: true, value: items };
   };
@@ -101,7 +101,7 @@ export const sentenceWordList =
 export const optionalAiModelId = (): FieldParser<string> => (raw) => {
   if (raw === undefined || raw === null || raw === "") return { ok: true, value: "" };
   if (typeof raw !== "string" || !isAiModelId(raw.trim())) {
-    return { ok: false, error: "未知模型" };
+    return { ok: false, code: "unknownModel" };
   }
   return { ok: true, value: raw.trim() };
 };
@@ -110,19 +110,19 @@ export const aiModelIdList =
   (options: { maxItems: number }): FieldParser<string[]> =>
   (raw) => {
     if (!Array.isArray(raw) || raw.length === 0) {
-      return { ok: false, error: "缺少模型" };
+      return { ok: false, code: "missingModel" };
     }
     const models = Array.from(
       new Set(raw.map((item) => (typeof item === "string" ? item.trim() : ""))),
     ).filter(Boolean);
     if (models.length === 0) {
-      return { ok: false, error: "缺少模型" };
+      return { ok: false, code: "missingModel" };
     }
     if (models.length > options.maxItems) {
-      return { ok: false, error: "模型数量过多" };
+      return { ok: false, code: "tooManyModels" };
     }
     if (models.some((model) => !isAiModelId(model))) {
-      return { ok: false, error: "未知模型" };
+      return { ok: false, code: "unknownModel" };
     }
     return { ok: true, value: models };
   };
@@ -146,10 +146,10 @@ export const clientLogEntries =
   }): FieldParser<ClientLogEntryInput[]> =>
   (raw) => {
     if (!Array.isArray(raw) || raw.length === 0) {
-      return { ok: false, error: "缺少日志内容" };
+      return { ok: false, code: "missingLogEntries" };
     }
     if (raw.length > options.maxItems) {
-      return { ok: false, error: "日志条数过多" };
+      return { ok: false, code: "tooManyLogEntries" };
     }
 
     const entries: ClientLogEntryInput[] = [];
@@ -159,9 +159,9 @@ export const clientLogEntries =
       const message = typeof record.message === "string" ? record.message.trim() : "";
       const level = record.level === "error" ? "error" : record.level === "warn" ? "warn" : null;
 
-      if (!isClientLogEvent(event)) return { ok: false, error: "未知日志事件" };
-      if (!level || !message) return { ok: false, error: "日志内容不完整" };
-      if (message.length > options.maxMessageLength) return { ok: false, error: "输入内容过长" };
+      if (!isClientLogEvent(event)) return { ok: false, code: "unknownLogEvent" };
+      if (!level || !message) return { ok: false, code: "incompleteLogEntry" };
+      if (message.length > options.maxMessageLength) return { ok: false, code: "inputTooLong" };
 
       const fields: LogFields = {};
       const source = (record.fields ?? {}) as Record<string, unknown>;
@@ -187,7 +187,7 @@ export const parseBody =
     for (const key of Object.keys(parsers) as Array<keyof T>) {
       const result = parsers[key](source[String(key)]);
       if (!result.ok) {
-        return { ok: false, response: badRequest(result.error) };
+        return { ok: false, response: badRequest(result.code) };
       }
       body[key] = result.value;
     }

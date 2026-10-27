@@ -17,7 +17,7 @@ const parse = parseBody<{ entries: ClientLogEntryInput[] }>({
 export const POST = (request: Request): Promise<NextResponse> =>
   handleApiPost(
     request,
-    { ...API_RATE_LIMITS.logs, fallbackError: "日志上报失败" },
+    { ...API_RATE_LIMITS.logs, fallbackCode: "logReportFailed" },
     parse,
     async ({ entries }, { uid }) => {
       for (const entry of entries) {

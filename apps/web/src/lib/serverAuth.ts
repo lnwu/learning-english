@@ -1,4 +1,5 @@
-import { NextResponse } from "next/server";
+import type { NextResponse } from "next/server";
+import { apiErrorResponse, type ApiErrorCode } from "@/lib/apiErrors";
 import { setBounded } from "@/lib/boundedMap";
 import { createLogger, nowMs } from "@/lib/log";
 
@@ -11,8 +12,7 @@ const CACHE_SKEW_MS = 60 * 1000;
 const MAX_TOKEN_CACHE_ENTRIES = 1000;
 const tokenCache = new Map<string, number>();
 
-const unauthorized = (message: string): NextResponse =>
-  NextResponse.json({ error: message }, { status: 401 });
+const unauthorized = (code: ApiErrorCode): NextResponse => apiErrorResponse(code, 401);
 
 const decodeTokenClaims = (token: string): { uid: string; expiry: number | null } | null => {
   try {
@@ -41,18 +41,18 @@ export async function verifyFirebaseIdToken(
     : null;
 
   if (!idToken) {
-    return unauthorized("用户未登录");
+    return unauthorized("notAuthenticated");
   }
 
   const claims = decodeTokenClaims(idToken);
   const cachedExpiry = tokenCache.get(idToken);
   if (cachedExpiry && cachedExpiry > Date.now()) {
-    return claims ? { uid: claims.uid } : unauthorized("登录状态无效");
+    return claims ? { uid: claims.uid } : unauthorized("invalidSession");
   }
 
   const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
   if (!apiKey) {
-    return NextResponse.json({ error: "服务配置错误" }, { status: 500 });
+    return apiErrorResponse("serverMisconfigured", 500);
   }
 
   const startedAt = nowMs();
@@ -69,7 +69,7 @@ export async function verifyFirebaseIdToken(
         status: response.status,
         durationMs: Math.round(nowMs() - startedAt),
       });
-      return unauthorized("登录状态无效");
+      return unauthorized("invalidSession");
     }
 
     const payload = (await response.json()) as {
@@ -80,7 +80,7 @@ export async function verifyFirebaseIdToken(
       log.warn("auth.token.verify", "Identity toolkit returned no uid", {
         durationMs: Math.round(nowMs() - startedAt),
       });
-      return unauthorized("登录状态无效");
+      return unauthorized("invalidSession");
     }
 
     const expiry = claims?.expiry ?? Date.now() + DEFAULT_TOKEN_TTL_MS;
@@ -107,6 +107,6 @@ export async function verifyFirebaseIdToken(
       { durationMs: Math.round(nowMs() - startedAt) },
       error,
     );
-    return unauthorized("身份验证失败");
+    return unauthorized("authFailed");
   }
 }

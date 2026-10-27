@@ -1,3 +1,4 @@
+import { apiErrorText, readApiErrorCode } from "@/lib/apiErrors";
 import { getAuthInstance } from "@/lib/firebase";
 import { getSelectedAiModel } from "@/lib/aiModelPreference";
 import { getCurrentLocale, t, tNow } from "@/lib/i18n";
@@ -28,7 +29,11 @@ export async function postApi<T>(
 
   const data = await response.json().catch(() => null);
   if (!response.ok) {
-    const message = data && typeof data.error === "string" ? data.error : fallbackError;
+    const code = readApiErrorCode(data);
+    const serverMessage = data && typeof data.error === "string" ? data.error : null;
+    const message = code
+      ? apiErrorText(code, getCurrentLocale())
+      : (serverMessage ?? fallbackError);
     const requestId =
       data && typeof data.requestId === "string"
         ? data.requestId

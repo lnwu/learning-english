@@ -17,7 +17,7 @@ export async function POST(request: Request) {
     request,
     ({ refresh }) => ({
       ...(refresh ? API_RATE_LIMITS.translateRefresh : API_RATE_LIMITS.translate),
-      fallbackError: "翻译失败，请稍后重试",
+      fallbackCode: "translateFailed",
     }),
     parse,
     async ({ word, model, refresh }) => {

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { apiErrorResponse, type ApiErrorCode } from "@/lib/apiErrors";
 import { verifyFirebaseIdToken } from "@/lib/serverAuth";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { AiServiceError } from "@/lib/aiClient";
@@ -9,7 +10,7 @@ const log = createLogger({ mod: "api" });
 export interface ApiPolicy {
   name: string;
   limit: number;
-  fallbackError: string;
+  fallbackCode: ApiErrorCode;
 }
 
 export type ApiParseResult<T> = { ok: true; body: T } | { ok: false; response: NextResponse };
@@ -27,11 +28,11 @@ const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 
 export const mapApiError = (
   error: unknown,
-  fallbackError: string,
-): { status: number; error: string } =>
+  fallbackCode: ApiErrorCode,
+): { status: number; code: ApiErrorCode } =>
   error instanceof AiServiceError
-    ? { status: error.status, error: error.message }
-    : { status: 500, error: fallbackError };
+    ? { status: error.status, code: error.code }
+    : { status: 500, code: fallbackCode };
 
 export const handleApiPost = async <T>(
   request: Request,
@@ -62,7 +63,7 @@ export const handleApiPost = async <T>(
     try {
       raw = await request.json();
     } catch {
-      return respond(NextResponse.json({ error: "请求格式错误", requestId }, { status: 400 }));
+      return respond(apiErrorResponse("invalidJson", 400, { requestId }));
     }
 
     const parsed = parse(raw);
@@ -91,10 +92,8 @@ export const handleApiPost = async <T>(
       return respond(await handle(parsed.body, { uid: auth.uid, requestId }));
     } catch (error) {
       failure = error;
-      const mapped = mapApiError(error, resolvedPolicy.fallbackError);
-      return respond(
-        NextResponse.json({ error: mapped.error, requestId }, { status: mapped.status }),
-      );
+      const mapped = mapApiError(error, resolvedPolicy.fallbackCode);
+      return respond(apiErrorResponse(mapped.code, mapped.status, { requestId }));
     }
   } finally {
     const fields: LogFields = {

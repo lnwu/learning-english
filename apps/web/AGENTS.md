@@ -8,7 +8,8 @@
 
 - API Key 只允许在服务端使用，禁止加 `NEXT_PUBLIC_` 前缀或下发到前端。
 - `NEXT_PUBLIC_*` 必须用字面量 `process.env.NEXT_PUBLIC_X` 读取，不要用 `process.env[name]` 动态访问：Next 只在构建期内联字面量，动态访问在浏览器端恒为 undefined。
-- 新增 `/api/*` 统一走 `lib/apiRoute.ts` 的 `handleApiPost`（内部依次完成 `serverAuth`、JSON 解析与输入校验、`await checkRateLimit`、AI 错误映射；限额可按请求体选择），限额加进 `API_RATE_LIMITS`；输入校验用 `lib/apiInput.ts` 的 `parseBody` + 字段解析器（`requiredText`/`optionalText`/`wordToken`/`wordList`/`sentenceWordList`/`optionalBoolean`/`optionalAiModelId`/`aiModelIdList`）声明式描述形状与上限，缺省文案由 `badRequest` 统一生成；不要手写守卫三段、取字段/过滤/限长或错误尾巴。
+- 新增 `/api/*` 统一走 `lib/apiRoute.ts` 的 `handleApiPost`（内部依次完成 `serverAuth`、JSON 解析与输入校验、`await checkRateLimit`、AI 错误映射；限额可按请求体选择），限额加进 `API_RATE_LIMITS`；输入校验用 `lib/apiInput.ts` 的 `parseBody` + 字段解析器（`requiredText`/`optionalText`/`wordToken`/`wordList`/`sentenceWordList`/`optionalBoolean`/`optionalAiModelId`/`aiModelIdList`）声明式描述形状与上限，缺省错误码由 `badRequest` 统一生成；不要手写守卫三段、取字段/过滤/限长或错误尾巴。
+- `/api/*` 错误响应统一为 `{ code, error, requestId? }`：`code` 取自 `lib/apiErrors.ts` 的 `ApiErrorCode` 闭集并决定 i18n key，`error` 是中文兜底文案（供 curl 与日志）；界面文案一律经 `postApi` 或 `apiErrorText(code, locale)` 渲染，不直接展示 `error`，新增错误分支要同时补 `ApiErrorCode` 与中英文案。
 - 带登录态调用 `/api/*` 统一使用 `lib/apiClient.ts` 的 `postApi<T>(url, payload, fallbackError)`，不要手写 token 与 fetch。
 - Firestore 客户端访问统一经 `lib/wordsRepo.ts`（`WordsProvider` 按 effective uid 构造并注入），页面与组件不直接 import `firebase/firestore`；订阅仍只在 `WordsProvider` 中发生一次。
 - 练习计时不能伪造：只有拼写练习写入记忆模型，粘贴或联想补全等整段插入的输入因计时失效不产生复习；造句不写入熟练度数据。统计用的本地日期按客户端时区生成 `YYYY-MM-DD`，不存 ISO 时间戳。
