@@ -2,6 +2,7 @@ import { APICallError, generateText, type LanguageModel } from "ai";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
+import type { ApiErrorCode } from "@/lib/apiErrors";
 import { resolveAiModel, type AiModelSpec, type AiReasoning } from "@/lib/aiProviders";
 import { createLogger, nowMs, type LogFields } from "@/lib/log";
 
@@ -19,6 +20,7 @@ export interface ChatMessage {
 }
 
 interface AiErrorDetails {
+  code?: ApiErrorCode;
   provider?: string;
   statusCode?: number;
   responseBody?: string;
@@ -29,6 +31,7 @@ interface AiErrorDetails {
 
 export class AiServiceError extends Error {
   status: number;
+  code: ApiErrorCode;
   provider?: string;
   statusCode?: number;
   responseBody?: string;
@@ -40,6 +43,7 @@ export class AiServiceError extends Error {
     super(message);
     this.name = "AiServiceError";
     this.status = status;
+    this.code = details.code ?? "aiCallFailed";
     this.provider = details.provider;
     this.statusCode = details.statusCode;
     this.responseBody = details.responseBody;
@@ -84,7 +88,10 @@ const providerCache = new Map<string, (model: string) => LanguageModel>();
 const getModelFactory = (spec: AiModelSpec): ((model: string) => LanguageModel) => {
   const apiKey = process.env[spec.apiKeyEnv];
   if (!apiKey) {
-    throw new AiServiceError(`${spec.apiKeyEnv} 未配置`, 500, { provider: spec.provider });
+    throw new AiServiceError(`${spec.apiKeyEnv} 未配置`, 500, {
+      code: "serverMisconfigured",
+      provider: spec.provider,
+    });
   }
 
   const cacheKey = `${spec.sdk}:${spec.baseUrl}:${spec.apiKeyEnv}`;
@@ -142,10 +149,15 @@ const toServiceError = (error: unknown, spec: AiModelSpec, attempts: number): Ai
     return error;
   }
   if (error instanceof EmptyResponseError) {
-    return new AiServiceError(error.message, 502, { provider: spec.provider, attempts });
+    return new AiServiceError(error.message, 502, {
+      code: "aiEmptyResponse",
+      provider: spec.provider,
+      attempts,
+    });
   }
   if (error instanceof APICallError) {
     return new AiServiceError("AI 服务返回错误，请稍后重试", 502, {
+      code: "aiError",
       provider: spec.provider,
       statusCode: error.statusCode,
       responseBody:
@@ -157,6 +169,7 @@ const toServiceError = (error: unknown, spec: AiModelSpec, attempts: number): Ai
     });
   }
   return new AiServiceError("调用 AI 服务失败，请稍后重试", 502, {
+    code: "aiCallFailed",
     provider: spec.provider,
     attempts,
   });
@@ -345,6 +358,7 @@ async function requestOnce(
   } catch (error) {
     if (controller.signal.aborted) {
       throw new AiServiceError("AI 服务响应超时，请稍后重试", 504, {
+        code: "aiTimeout",
         provider: spec.provider,
         timedOut: true,
       });
@@ -361,7 +375,7 @@ export async function chatCompletionJson<T>(
 ): Promise<T> {
   const spec = resolveAiModel(options?.model);
   if (!spec) {
-    throw new AiServiceError("未知模型", 400);
+    throw new AiServiceError("未知模型", 400, { code: "unknownModel" });
   }
 
   const text = await requestWithRetry(spec, messages, {
@@ -372,7 +386,10 @@ export async function chatCompletionJson<T>(
   });
 
   if (!text.trim()) {
-    throw new AiServiceError("AI 服务返回内容为空", 502, { provider: spec.provider });
+    throw new AiServiceError("AI 服务返回内容为空", 502, {
+      code: "aiEmptyResponse",
+      provider: spec.provider,
+    });
   }
 
   try {
@@ -384,6 +401,9 @@ export async function chatCompletionJson<T>(
       { ...aiFields(spec), outcome: "parse_error", textLength: text.length },
       error,
     );
-    throw new AiServiceError("AI 服务返回格式无法解析", 502, { provider: spec.provider });
+    throw new AiServiceError("AI 服务返回格式无法解析", 502, {
+      code: "aiParseError",
+      provider: spec.provider,
+    });
   }
 }

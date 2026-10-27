@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { apiErrorResponse } from "@/lib/apiErrors";
 import { API_RATE_LIMITS, handleApiPost } from "@/lib/apiRoute";
 import {
   badRequest,
@@ -29,7 +30,7 @@ const parse = (raw: unknown) => {
   const parsed = parseWords(raw);
   if (!parsed.ok) return parsed;
   if (parsed.body.words.length < MIN_SENTENCE_WORDS) {
-    return { ok: false as const, response: badRequest("缺少单词") };
+    return { ok: false as const, response: badRequest("missingWords") };
   }
   return parsed;
 };
@@ -39,7 +40,7 @@ export async function POST(request: Request) {
     request,
     {
       ...API_RATE_LIMITS.sentenceGenerate,
-      fallbackError: "生成失败，请稍后重试",
+      fallbackCode: "sentenceGenerateFailed",
     },
     parse,
     async ({ words, model }) => {
@@ -49,7 +50,7 @@ export async function POST(request: Request) {
       );
 
       if (!result) {
-        return NextResponse.json({ error: "生成失败，请稍后重试" }, { status: 502 });
+        return apiErrorResponse("sentenceGenerateFailed", 502);
       }
 
       return NextResponse.json({

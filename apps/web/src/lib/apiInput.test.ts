@@ -16,7 +16,7 @@ import {
 
 const errorOf = <T>(parser: FieldParser<T>, raw: unknown): string | null => {
   const result = parser(raw);
-  return result.ok ? null : result.error;
+  return result.ok ? null : result.code;
 };
 
 const valueOf = <T>(parser: FieldParser<T>, raw: unknown): T | undefined => {
@@ -25,25 +25,25 @@ const valueOf = <T>(parser: FieldParser<T>, raw: unknown): T | undefined => {
 };
 
 describe("badRequest", () => {
-  it("返回 400 与 error 字段", async () => {
-    const response = badRequest("无效单词");
+  it("返回 400、错误码与中文文案", async () => {
+    const response = badRequest("invalidWord");
     expect(response.status).toBe(400);
-    expect(await response.json()).toEqual({ error: "无效单词" });
+    expect(await response.json()).toEqual({ code: "invalidWord", error: "无效单词" });
   });
 });
 
 describe("requiredText", () => {
-  const parser = requiredText({ maxLength: 10, message: "缺少内容" });
+  const parser = requiredText({ maxLength: 10, code: "missingSentence" });
 
-  it("缺失或纯空白返回自定义文案", () => {
-    expect(errorOf(parser, undefined)).toBe("缺少内容");
-    expect(errorOf(parser, "")).toBe("缺少内容");
-    expect(errorOf(parser, "   ")).toBe("缺少内容");
-    expect(errorOf(parser, 5)).toBe("缺少内容");
+  it("缺失或纯空白返回指定错误码", () => {
+    expect(errorOf(parser, undefined)).toBe("missingSentence");
+    expect(errorOf(parser, "")).toBe("missingSentence");
+    expect(errorOf(parser, "   ")).toBe("missingSentence");
+    expect(errorOf(parser, 5)).toBe("missingSentence");
   });
 
-  it("超长返回统一文案", () => {
-    expect(errorOf(parser, "x".repeat(11))).toBe("输入内容过长");
+  it("超长返回统一错误码", () => {
+    expect(errorOf(parser, "x".repeat(11))).toBe("inputTooLong");
   });
 
   it("去除首尾空白", () => {
@@ -59,8 +59,8 @@ describe("optionalText", () => {
     expect(valueOf(parser, "  ")).toBe("");
   });
 
-  it("超长返回统一文案", () => {
-    expect(errorOf(parser, "abcdef")).toBe("输入内容过长");
+  it("超长返回统一错误码", () => {
+    expect(errorOf(parser, "abcdef")).toBe("inputTooLong");
   });
 });
 
@@ -72,10 +72,10 @@ describe("wordToken", () => {
   });
 
   it("非字母、超长或非字符串都返回无效单词", () => {
-    expect(errorOf(parser, "ap ple")).toBe("无效单词");
-    expect(errorOf(parser, "a".repeat(51))).toBe("无效单词");
-    expect(errorOf(parser, 123)).toBe("无效单词");
-    expect(errorOf(parser, "")).toBe("无效单词");
+    expect(errorOf(parser, "ap ple")).toBe("invalidWord");
+    expect(errorOf(parser, "a".repeat(51))).toBe("invalidWord");
+    expect(errorOf(parser, 123)).toBe("invalidWord");
+    expect(errorOf(parser, "")).toBe("invalidWord");
   });
 });
 
@@ -101,8 +101,8 @@ describe("wordList", () => {
     expect(valueOf(parser, [" ab ", 5, "", "cdef", "ghij"])).toEqual(["ab", "cdef"]);
   });
 
-  it("截断后仍超长返回统一文案", () => {
-    expect(errorOf(parser, ["abcdef"])).toBe("输入内容过长");
+  it("截断后仍超长返回统一错误码", () => {
+    expect(errorOf(parser, ["abcdef"])).toBe("inputTooLong");
   });
 });
 
@@ -141,9 +141,9 @@ describe("sentenceWordList", () => {
     ]);
   });
 
-  it("单词或释义超长返回统一文案", () => {
-    expect(errorOf(parser, [{ word: "abcdef", translation: "" }])).toBe("输入内容过长");
-    expect(errorOf(parser, [{ word: "a", translation: "五个字以上" }])).toBe("输入内容过长");
+  it("单词或释义超长返回统一错误码", () => {
+    expect(errorOf(parser, [{ word: "abcdef", translation: "" }])).toBe("inputTooLong");
+    expect(errorOf(parser, [{ word: "a", translation: "五个字以上" }])).toBe("inputTooLong");
   });
 });
 
@@ -158,12 +158,12 @@ describe("parseBody", () => {
     expect(result).toEqual({ ok: true, body: { word: "apple", note: "hi" } });
   });
 
-  it("首个失败字段决定 400 文案", async () => {
+  it("首个失败字段决定 400 错误码", async () => {
     const result = parse({ word: "ap ple" });
     expect(result.ok).toBe(false);
     if (result.ok) throw new Error("expected failure");
     expect(result.response.status).toBe(400);
-    expect(await result.response.json()).toEqual({ error: "无效单词" });
+    expect(await result.response.json()).toEqual({ code: "invalidWord", error: "无效单词" });
   });
 
   it("忽略多余字段，null 输入按空对象处理", () => {
@@ -261,24 +261,24 @@ describe("clientLogEntries", () => {
 
   it("拒绝白名单之外的事件与非法级别", () => {
     expect(errorOf(parser, [{ event: "api.request", level: "error", message: "boom" }])).toBe(
-      "未知日志事件",
+      "unknownLogEvent",
     );
     expect(errorOf(parser, [{ event: "app.error", level: "info", message: "boom" }])).toBe(
-      "日志内容不完整",
+      "incompleteLogEntry",
     );
   });
 
   it("拒绝空数组、超量与超长消息", () => {
-    expect(errorOf(parser, [])).toBe("缺少日志内容");
+    expect(errorOf(parser, [])).toBe("missingLogEntries");
     expect(
       errorOf(parser, [
         { event: "app.error", level: "error", message: "a" },
         { event: "app.error", level: "error", message: "b" },
         { event: "app.error", level: "error", message: "c" },
       ]),
-    ).toBe("日志条数过多");
+    ).toBe("tooManyLogEntries");
     expect(errorOf(parser, [{ event: "app.error", level: "error", message: "x".repeat(11) }])).toBe(
-      "输入内容过长",
+      "inputTooLong",
     );
   });
 });

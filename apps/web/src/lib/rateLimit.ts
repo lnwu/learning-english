@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
+import type { NextResponse } from "next/server";
 import { Ratelimit } from "@upstash/ratelimit";
+import { apiErrorResponse } from "@/lib/apiErrors";
 import { setBounded } from "@/lib/boundedMap";
 import { createLogger, nowMs } from "@/lib/log";
 import { getRedis } from "@/lib/redis";
@@ -42,7 +43,7 @@ export function checkInMemoryRateLimit(
 }
 
 function tooManyRequests(): NextResponse {
-  return NextResponse.json({ error: "请求过于频繁，请稍后再试" }, { status: 429 });
+  return apiErrorResponse("rateLimited", 429);
 }
 
 const limiters = new Map<string, Ratelimit>();

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui";
 import { useLocale } from "@/hooks";
+import { apiErrorText } from "@/lib/apiErrors";
 import type { SenseCompareState } from "@/hooks/useSenseCompare";
 import { encodeSenses } from "@/lib/wordSenses";
 import type { TranslateCompareResult } from "@/lib/translateCompare";
@@ -20,7 +21,7 @@ export const SenseComparePanel = ({
   showLemma = false,
   onUseResult,
 }: SenseComparePanelProps) => {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const [applyingModel, setApplyingModel] = useState<string | null>(null);
   const { models, selection, results, comparing, toggleModel, generate } = compare;
 
@@ -64,7 +65,9 @@ export const SenseComparePanel = ({
               <div key={result.model} className="rounded-md border p-2 text-sm">
                 <div className="font-medium">{label}</div>
                 {result.error ? (
-                  <div className="text-destructive">{result.error}</div>
+                  <div className="text-destructive">
+                    {result.code ? apiErrorText(result.code, locale) : result.error}
+                  </div>
                 ) : senses.length > 0 ? (
                   <>
                     {showLemma && result.lemma && result.lemma !== word && (

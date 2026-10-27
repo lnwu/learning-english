@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { apiErrorText } from "@/lib/apiErrors";
 import { API_RATE_LIMITS, handleApiPost } from "@/lib/apiRoute";
 import { aiModelIdList, parseBody, wordToken } from "@/lib/apiInput";
 import { AI_MODEL_COUNT, isAiModelEnabled, resolveAiModel } from "@/lib/aiProviders";
@@ -15,15 +16,15 @@ const parse = parseBody<{ word: string; models: string[] }>({
 export async function POST(request: Request) {
   return handleApiPost(
     request,
-    { ...API_RATE_LIMITS.translateCompare, fallbackError: "对比生成失败，请稍后重试" },
+    { ...API_RATE_LIMITS.translateCompare, fallbackCode: "compareFailed" },
     parse,
     async ({ word, models }) => {
       const candidates = collectWordSourceCandidates(word);
       const results: TranslateCompareResult[] = await Promise.all(
-        models.map(async (model) => {
+        models.map(async (model): Promise<TranslateCompareResult> => {
           const spec = resolveAiModel(model);
           if (!spec || !isAiModelEnabled(spec)) {
-            return { model, error: "模型未启用" };
+            return { model, code: "modelDisabled", error: apiErrorText("modelDisabled") };
           }
           try {
             const entry = await lookupWord(word, model, candidates);
@@ -34,10 +35,8 @@ export async function POST(request: Request) {
               sources: entry.sources,
             };
           } catch (error) {
-            return {
-              model,
-              error: error instanceof AiServiceError ? error.message : "生成失败，请稍后重试",
-            };
+            const code = error instanceof AiServiceError ? error.code : "sentenceGenerateFailed";
+            return { model, code, error: apiErrorText(code) };
           }
         }),
       );

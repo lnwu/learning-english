@@ -21,11 +21,11 @@ const parse = parseBody<{
 }>({
   chinese: requiredText({
     maxLength: MAX_SENTENCE_LENGTH,
-    message: "缺少题目或答案",
+    code: "missingSentence",
   }),
   userAnswer: requiredText({
     maxLength: MAX_SENTENCE_LENGTH,
-    message: "缺少题目或答案",
+    code: "missingSentence",
   }),
   words: wordList({
     maxItems: MAX_SENTENCE_WORDS,
@@ -40,7 +40,7 @@ export async function POST(request: Request) {
     request,
     {
       ...API_RATE_LIMITS.sentenceCheck,
-      fallbackError: "批改失败，请稍后重试",
+      fallbackCode: "sentenceCheckFailed",
     },
     parse,
     async ({ chinese, words, reference, userAnswer, model }) => {
