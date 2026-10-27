@@ -102,6 +102,10 @@ const byId = new Map(AI_MODELS.map((spec) => [spec.id, spec]));
 
 export const isAiModelId = (value: string): boolean => byId.has(value);
 
+/** 服务端只认 AI_MODELS 里的 id，其它一律 400「未知模型」，所以客户端存的偏好也要按同一规则收敛。 */
+export const normalizeAiModelId = (value: unknown): string =>
+  typeof value === "string" && isAiModelId(value) ? value : DEFAULT_AI_MODEL_ID;
+
 export const resolveAiModel = (id?: string): AiModelSpec | undefined =>
   byId.get(id || DEFAULT_AI_MODEL_ID);
 

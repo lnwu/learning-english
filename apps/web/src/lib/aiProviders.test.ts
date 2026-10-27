@@ -4,6 +4,7 @@ import {
   isAiModelEnabled,
   isAiModelId,
   listEnabledAiModels,
+  normalizeAiModelId,
   resolveAiModel,
 } from "./aiProviders";
 import { useEnvVar } from "./testSupport";
@@ -40,5 +41,13 @@ describe("aiProviders", () => {
     expect(enabled.some((model) => model.provider === "deepseek")).toBe(true);
     expect(enabled.some((model) => model.provider === "mimo")).toBe(true);
     expect(enabled.some((model) => model.provider === "opencode")).toBe(false);
+  });
+
+  it("存过的模型 id 只保留服务端认识的，其它回落到默认", () => {
+    expect(normalizeAiModelId("mimo/mimo-v2.6-pro")).toBe("mimo/mimo-v2.6-pro");
+    expect(normalizeAiModelId("deepseek/deepseek-flash-removed")).toBe(DEFAULT_AI_MODEL_ID);
+    expect(normalizeAiModelId("")).toBe(DEFAULT_AI_MODEL_ID);
+    expect(normalizeAiModelId(undefined)).toBe(DEFAULT_AI_MODEL_ID);
+    expect(normalizeAiModelId(42)).toBe(DEFAULT_AI_MODEL_ID);
   });
 });

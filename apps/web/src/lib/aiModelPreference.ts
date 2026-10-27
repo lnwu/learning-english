@@ -1,6 +1,6 @@
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { getDb } from "@/lib/firebase";
-import { DEFAULT_AI_MODEL_ID } from "@/lib/aiProviders";
+import { DEFAULT_AI_MODEL_ID, normalizeAiModelId } from "@/lib/aiProviders";
 import { createLogger } from "@/lib/log";
 
 const log = createLogger({ mod: "preference" });
@@ -25,8 +25,7 @@ export const subscribeAiModel = (listener: () => void): (() => void) => {
 export const loadAiModelPreference = async (userId: string): Promise<void> => {
   try {
     const snapshot = await getDoc(doc(getDb(), "users", userId));
-    const value = snapshot.data()?.aiModel;
-    const next = typeof value === "string" && value ? value : DEFAULT_AI_MODEL_ID;
+    const next = normalizeAiModelId(snapshot.data()?.aiModel);
     if (next !== current) {
       current = next;
       notify();
