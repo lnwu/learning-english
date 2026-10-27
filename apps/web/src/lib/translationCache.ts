@@ -40,9 +40,10 @@ const readMemory = (key: string): TranslationCacheEntry | undefined => {
 };
 
 const writeMemory = (key: string, entry: TranslationCacheEntry): void => {
-  if (!entry.senses || entry.senses.length === 0 || memoryCache.has(key)) {
-    return;
-  }
+  // 每次都覆盖：refresh 请求（查看释义 / 重新生成）拿到的是新结果，内存层必须跟着换掉，
+  // 否则这一实例在后续的非 refresh 请求里会一直返回该词最早的那次结果。
+  memoryCache.delete(key);
+  if (!entry.senses || entry.senses.length === 0) return;
   setBounded(memoryCache, key, entry, MAX_CACHE_ENTRIES);
 };
 

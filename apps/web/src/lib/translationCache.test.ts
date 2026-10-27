@@ -31,4 +31,27 @@ describe("translationCache", () => {
   it("未命中返回 undefined", async () => {
     expect(await getCachedTranslation("cache-missing")).toBeUndefined();
   });
+
+  it("新结果覆盖内存中的旧结果", async () => {
+    const word = "cache-overwrite";
+    setCachedTranslation(word, makeEntry());
+    const refreshed: TranslationCacheEntry = {
+      lemma: "apple",
+      senses: [{ pos: "n.", chinese: "苹果公司", english: "the company" }],
+      sources: [],
+    };
+
+    setCachedTranslation(word, refreshed);
+
+    expect(await getCachedTranslation(word)).toEqual(refreshed);
+  });
+
+  it("未识别结果清掉内存中的旧结果", async () => {
+    const word = "cache-negative";
+    setCachedTranslation(word, makeEntry());
+
+    setCachedTranslation(word, { lemma: word, senses: null, sources: [] });
+
+    expect(await getCachedTranslation(word)).toBeUndefined();
+  });
 });
