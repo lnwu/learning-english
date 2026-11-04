@@ -50,7 +50,7 @@ const { takeFlag, hasFlag } = createArgs(process.argv.slice(2));
 
 const environment = takeFlag("environment");
 const branch = takeFlag("branch");
-const since = takeFlag("since") ?? "1h";
+const since = takeFlag("since");
 const until = takeFlag("until");
 const level = takeFlag("level");
 const events = (takeFlag("event") ?? "")
@@ -89,15 +89,18 @@ const parseWindowMs = (value) => {
   return Number(match[1]) * unit;
 };
 
-const windowMs = parseWindowMs(since);
-const windowStart = windowMs === null ? new Date(since).getTime() : Date.now() - windowMs;
-if (Number.isFinite(windowStart) && Date.now() - windowStart > RETENTION_MS) {
-  process.stderr.write(
-    `[logs] 当前窗口超过 Vercel Hobby 的 1 小时保留上限，更早的日志不会被返回。\n`,
-  );
+const windowMs = since === undefined ? null : parseWindowMs(since);
+if (since !== undefined) {
+  const windowStart = windowMs === null ? new Date(since).getTime() : Date.now() - windowMs;
+  if (Number.isFinite(windowStart) && Date.now() - windowStart >= RETENTION_MS) {
+    process.stderr.write(
+      `[logs] 窗口达到 Vercel Hobby 的 1 小时保留上限，--since ${since} 会被拒绝，请改用 55m 以内的值。\n`,
+    );
+  }
 }
 
-const cliArgs = ["x", "vercel", "logs", "--json", "--limit", limit, "--since", since];
+const cliArgs = ["x", "vercel", "logs", "--json", "--limit", limit];
+if (since !== undefined) cliArgs.push("--since", since);
 if (environment) cliArgs.push("--environment", environment);
 if (branch) cliArgs.push("--branch", branch);
 if (until) cliArgs.push("--until", until);
@@ -213,7 +216,7 @@ for (const line of (result.stdout ?? "").split("\n")) {
 
 process.stdout.write(`${output.join("\n")}${output.length > 0 ? "\n" : ""}`);
 process.stderr.write(
-  `[logs] 事件 ${eventCount} 条，其中 error ${errorCount} 条（窗口 ${since}${
+  `[logs] 事件 ${eventCount} 条，其中 error ${errorCount} 条（窗口 ${since ?? "默认 30m"}${
     environment ? `，环境 ${environment}` : ""
   }）\n`,
 );
