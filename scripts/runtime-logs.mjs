@@ -62,6 +62,7 @@ const requestId = takeFlag("request-id");
 const statusCode = takeFlag("status");
 const deployment = takeFlag("deployment");
 const project = takeFlag("project");
+const scope = takeFlag("scope");
 const limit = takeFlag("limit") ?? "100";
 const onlyRequests = hasFlag("requests");
 const rawJson = hasFlag("json");
@@ -108,6 +109,7 @@ if (query) cliArgs.push("--query", query);
 if (statusCode) cliArgs.push("--status-code", statusCode);
 if (deployment) cliArgs.push("--deployment", deployment);
 if (project) cliArgs.push("--project", project);
+if (scope) cliArgs.push("--scope", scope);
 
 const result = spawnSync("bun", cliArgs, {
   cwd: new URL("../apps/web", import.meta.url),
