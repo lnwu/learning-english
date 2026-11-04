@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import { toast } from "@/hooks/useToast";
 import { postApi } from "@/lib/apiClient";
 import { createLogger } from "@/lib/log";
+import { createLatestOnly } from "@/lib/latestOnly";
 import type { WordSense } from "@/lib/wordSenses";
 import type { WordSource } from "@/lib/wordSources";
 
@@ -36,12 +37,14 @@ interface DefinitionFlow {
 export const useDefinitionFlow = (): DefinitionFlow => {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<WordDefinitionData | null>(null);
+  const [latest] = useState(createLatestOnly);
 
   const load = useCallback(
     async (
       word: string,
       options: { refresh?: boolean; fallbackError: string },
     ): Promise<WordDefinitionData | null> => {
+      const token = latest.begin();
       setLoading(true);
       try {
         const response = await postApi<TranslateResponse>(
@@ -49,6 +52,7 @@ export const useDefinitionFlow = (): DefinitionFlow => {
           { word, refresh: options.refresh ?? false },
           options.fallbackError,
         );
+        if (!latest.isCurrent(token)) return null;
         const senses = response.senses ?? [];
         const next: WordDefinitionData = {
           word,
@@ -60,6 +64,7 @@ export const useDefinitionFlow = (): DefinitionFlow => {
         setData(next);
         return next;
       } catch (error) {
+        if (!latest.isCurrent(token)) return null;
         log.error(
           "api.call.failed",
           "Failed to translate word",
@@ -72,10 +77,10 @@ export const useDefinitionFlow = (): DefinitionFlow => {
         });
         return null;
       } finally {
-        setLoading(false);
+        if (latest.isCurrent(token)) setLoading(false);
       }
     },
-    [],
+    [latest],
   );
 
   const applySenses = useCallback((senses: WordSense[], sources: WordSource[]) => {
