@@ -91,7 +91,9 @@ const Home = () => {
           onChange={(e) => setWord(e.target.value.toLowerCase())}
           ref={inputRef}
         />
-        <Button onClick={handleAddWord}>{t("addWord.add")}</Button>
+        <Button type="button" onClick={handleAddWord}>
+          {t("addWord.add")}
+        </Button>
       </form>
       <AddWordDialog
         word={pendingWord}
