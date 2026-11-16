@@ -1,88 +1,125 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
+import {
+  CALIBRATION_ISSUE_LABEL,
+  planCalibrationIssue,
+} from "../apps/web/src/lib/calibrationIssue.ts";
 import { CALIBRATION_MIN_SAMPLES } from "../apps/web/src/lib/calibrationMetrics.ts";
 import { createArgs } from "./lib/args.mjs";
 
 const { takeFlag, hasFlag, positional } = createArgs(process.argv.slice(2));
 const dryRun = hasFlag("dry-run");
 const runUrl = takeFlag("run-url") || null;
+const cooldownRaw = takeFlag("cooldown-days");
+const issuesFile = takeFlag("issues-file") || null;
 const input = positional()[0] ?? "calibration-out/report.json";
-const LABEL = "calibration";
-const TITLE = "熟练度校准样本已达标";
 
-const report = JSON.parse(readFileSync(input, "utf8"));
+const describePlan = (plan) => {
+  switch (plan.action) {
+    case "skip-below-threshold":
+      return `[issue] 可校准样本 ${plan.samples} 未达门槛（${CALIBRATION_MIN_SAMPLES}），跳过`;
+    case "skip-cooldown":
+      return `[issue] 校准 Issue #${plan.number} 仍在冷却期，剩余 ${plan.daysLeft} 天（重开时间 ${new Date(plan.reopenAt).toISOString()}），跳过`;
+    case "update":
+      return `[issue] update #${plan.number}`;
+    case "create":
+      return "[issue] create";
+  }
+};
 
-if (!report.meetsThreshold) {
-  console.log(`[issue] 可校准样本 ${report.samples} 未达门槛（${CALIBRATION_MIN_SAMPLES}），跳过`);
-  process.exit(0);
+const run = () => {
+  const report = JSON.parse(readFileSync(input, "utf8"));
+  const issues = issuesFile
+    ? JSON.parse(readFileSync(issuesFile, "utf8"))
+    : JSON.parse(
+        execFileSync(
+          "gh",
+          [
+            "issue",
+            "list",
+            "--label",
+            CALIBRATION_ISSUE_LABEL,
+            "--state",
+            "all",
+            "--limit",
+            "100",
+            "--json",
+            "number,state,closedAt",
+          ],
+          { encoding: "utf8" },
+        ),
+      );
+
+  let cooldownDays;
+  if (cooldownRaw !== undefined) {
+    cooldownDays = Number(cooldownRaw);
+    if (!Number.isFinite(cooldownDays) || cooldownDays < 0) {
+      throw new Error(`无效的 --cooldown-days：${cooldownRaw}`);
+    }
+  }
+
+  const plan = planCalibrationIssue({
+    report,
+    issues,
+    now: Date.now(),
+    runUrl,
+    cooldownDays,
+  });
+
+  console.log(describePlan(plan));
+  if ("title" in plan) {
+    console.log(`标题：${plan.title}`);
+    console.log(plan.body);
+  }
+
+  if (dryRun || plan.action === "skip-below-threshold" || plan.action === "skip-cooldown") return;
+
+  const execOptions = { input: plan.body, stdio: ["pipe", "inherit", "inherit"] };
+
+  if (plan.action === "create") {
+    execFileSync(
+      "gh",
+      [
+        "label",
+        "create",
+        CALIBRATION_ISSUE_LABEL,
+        "--description",
+        "熟练度校准提醒",
+        "--color",
+        "1D76DB",
+        "--force",
+      ],
+      { stdio: "inherit" },
+    );
+    execFileSync(
+      "gh",
+      [
+        "issue",
+        "create",
+        "--title",
+        plan.title,
+        "--label",
+        CALIBRATION_ISSUE_LABEL,
+        "--body-file",
+        "-",
+      ],
+      execOptions,
+    );
+    console.log("[issue] 已创建校准提醒 Issue");
+    return;
+  }
+
+  execFileSync(
+    "gh",
+    ["issue", "edit", String(plan.number), "--title", plan.title, "--body-file", "-"],
+    execOptions,
+  );
+  console.log(`[issue] 已更新校准 Issue #${plan.number}`);
+};
+
+try {
+  run();
+} catch (error) {
+  console.error(`[issue] 失败：${error instanceof Error ? error.message : String(error)}`);
+  process.exit(1);
 }
-
-const formatNumber = (value, digits = 4) =>
-  typeof value === "number" ? value.toFixed(digits) : "无";
-
-const bucketRows = report.buckets
-  .map(
-    (bucket) =>
-      `| ${bucket.from.toFixed(2)}–${bucket.to.toFixed(2)} | ${bucket.count} | ${bucket.meanPredicted.toFixed(3)} | ${bucket.observedRecall.toFixed(3)} | ${bucket.gap >= 0 ? "+" : ""}${bucket.gap.toFixed(3)} |`,
-  )
-  .join("\n");
-
-const body = [
-  "## 熟练度校准样本已达标",
-  "",
-  `- 可校准样本：**${report.samples}** 条（门槛 ${CALIBRATION_MIN_SAMPLES}）`,
-  `- Brier：${formatNumber(report.brier)}，AUC：${formatNumber(report.auc)}`,
-  `- 跳过样本：首次复习 ${report.skippedNoPrediction}、同日复习 ${report.skippedSameDay}`,
-  ...(runUrl ? [`- 本次运行：[${runUrl}](${runUrl})`] : []),
-  "",
-  "| 预测区间 | 样本 | 预测均值 | 实际回忆率 | 偏差 |",
-  "| --- | --- | --- | --- | --- |",
-  bucketRows || "| — | 0 | — | — | — |",
-  "",
-  "## 拟合步骤",
-  "",
-  "1. 从本次运行的 artifact `calibration-export` 下载 `revlog.csv`（或本地 `bun run calibrate:export --out calibration-out`）。",
-  "2. `python -m pip install fsrs-optimizer`",
-  "3. `python -m fsrs_optimizer revlog.csv -y -o weights.json`",
-  "4. 将新 `w` 写回 `apps/web/src/lib/masteryModel.ts` 并提升 `MODEL_VERSION`，走功能分支 + Preview 验收后合并，然后关闭本 Issue。",
-  "",
-  "流程文档：`docs/DEPLOYMENT.md`「熟练度校准」。",
-].join("\n");
-
-if (dryRun) {
-  console.log(body);
-  process.exit(0);
-}
-
-execFileSync(
-  "gh",
-  ["label", "create", LABEL, "--description", "熟练度校准提醒", "--color", "1D76DB", "--force"],
-  { stdio: "inherit" },
-);
-
-const existing = JSON.parse(
-  execFileSync("gh", ["issue", "list", "--label", LABEL, "--state", "open", "--json", "number"], {
-    encoding: "utf8",
-  }),
-);
-
-if (existing.length > 0) {
-  console.log(`[issue] 已有未关闭的校准 Issue #${existing[0].number}，跳过`);
-  process.exit(0);
-}
-
-execFileSync(
-  "gh",
-  [
-    "issue",
-    "create",
-    "--title",
-    `${TITLE}（${report.samples} 条）`,
-    "--label",
-    LABEL,
-    "--body",
-    body,
-  ],
-  { stdio: "inherit" },
-);
-console.log("[issue] 已创建校准提醒 Issue");

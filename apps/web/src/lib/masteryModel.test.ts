@@ -2,15 +2,21 @@ import { describe, expect, it } from "bun:test";
 import {
   calculateFluencyScore,
   effectiveLevel,
+  FSRS6_DEFAULT_WEIGHTS,
   initialMemory,
   intervalDays,
   masteryScoreFor,
+  MODEL_WEIGHTS,
   retrievability,
   reviewMemory,
   type WordMemory,
 } from "@/lib/masteryModel";
 import { DAY_MS, MINUTE_MS } from "@/lib/time";
 import { makeStats } from "./testSupport";
+
+const perturbedWeights = MODEL_WEIGHTS.map((value, index) =>
+  index === 20 ? value * 1.2 : value * 1.05,
+);
 
 const memoryWith = (
   stability: number,
@@ -102,6 +108,81 @@ describe("intervalDays", () => {
     expect(intervalDays(10.971074)).toBe(11);
     expect(intervalDays(46.316896)).toBe(46);
     expect(intervalDays(0.2)).toBe(1);
+  });
+});
+
+describe("权重", () => {
+  it("默认权重长度 21 且全部有限", () => {
+    expect(MODEL_WEIGHTS).toHaveLength(21);
+    expect(FSRS6_DEFAULT_WEIGHTS).toHaveLength(21);
+    for (const weight of [...MODEL_WEIGHTS, ...FSRS6_DEFAULT_WEIGHTS]) {
+      expect(Number.isFinite(weight)).toBe(true);
+    }
+  });
+
+  it("默认调用与显式传入 MODEL_WEIGHTS 结果一致", () => {
+    const start = Date.UTC(2026, 0, 1);
+    const implicitFirst = reviewMemory(initialMemory(start), 3, start);
+    const explicitFirst = reviewMemory(initialMemory(start), 3, start, MODEL_WEIGHTS);
+    expect(explicitFirst).toEqual(implicitFirst);
+
+    const implicitGraduated = reviewMemory(implicitFirst, 3, start + 10 * MINUTE_MS);
+    const explicitGraduated = reviewMemory(explicitFirst, 3, start + 10 * MINUTE_MS, MODEL_WEIGHTS);
+    expect(explicitGraduated).toEqual(implicitGraduated);
+
+    expect(retrievability(implicitGraduated, implicitGraduated.due, MODEL_WEIGHTS)).toBe(
+      retrievability(implicitGraduated, implicitGraduated.due),
+    );
+    expect(intervalDays(2.3065, MODEL_WEIGHTS)).toBe(intervalDays(2.3065));
+  });
+
+  it("注入权重改变新词 Again 的初始稳定度与难度", () => {
+    const base = reviewMemory(initialMemory(0), 1, 0);
+    const custom = reviewMemory(initialMemory(0), 1, 0, perturbedWeights);
+    expect(custom.stability).not.toBeCloseTo(base.stability, 8);
+    expect(custom.difficulty).not.toBeCloseTo(base.difficulty, 8);
+  });
+
+  it("注入权重改变新词 Good 的初始稳定度与难度", () => {
+    const base = reviewMemory(initialMemory(0), 3, 0);
+    const custom = reviewMemory(initialMemory(0), 3, 0, perturbedWeights);
+    expect(custom.stability).not.toBeCloseTo(base.stability, 8);
+    expect(custom.difficulty).not.toBeCloseTo(base.difficulty, 8);
+  });
+
+  it("注入权重改变同日复习的短期稳定度", () => {
+    const base = reviewMemory(memoryWith(2.3065), 1, 0);
+    const custom = reviewMemory(memoryWith(2.3065), 1, 0, perturbedWeights);
+    expect(custom.stability).not.toBeCloseTo(base.stability, 8);
+  });
+
+  it("注入权重改变跨天 Good 复习的回忆稳定度", () => {
+    const base = reviewMemory(memoryWith(2.3065), 3, 10 * DAY_MS);
+    const custom = reviewMemory(memoryWith(2.3065), 3, 10 * DAY_MS, perturbedWeights);
+    expect(custom.stability).not.toBeCloseTo(base.stability, 8);
+  });
+
+  it("注入权重改变跨天 Again 复习的遗忘稳定度", () => {
+    const base = reviewMemory(memoryWith(10.971), 1, 10 * DAY_MS);
+    const custom = reviewMemory(memoryWith(10.971), 1, 10 * DAY_MS, perturbedWeights);
+    expect(custom.stability).not.toBeCloseTo(base.stability, 8);
+  });
+
+  it("注入权重改变回忆概率，间隔乘数仍为 1", () => {
+    expect(retrievability(memoryWith(2.3065), 5 * DAY_MS, perturbedWeights)).not.toBeCloseTo(
+      retrievability(memoryWith(2.3065), 5 * DAY_MS)!,
+      8,
+    );
+    expect(intervalDays(2.3, perturbedWeights)).toBe(2);
+  });
+
+  it("传入扰动向量不会修改 MODEL_WEIGHTS", () => {
+    const before = [...MODEL_WEIGHTS];
+    reviewMemory(initialMemory(0), 3, 0, perturbedWeights);
+    reviewMemory(memoryWith(2.3065), 3, 10 * DAY_MS, perturbedWeights);
+    retrievability(memoryWith(2.3065), 5 * DAY_MS, perturbedWeights);
+    intervalDays(2.3, perturbedWeights);
+    expect(MODEL_WEIGHTS).toEqual(before);
   });
 });
 

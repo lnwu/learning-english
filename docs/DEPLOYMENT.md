@@ -64,13 +64,15 @@ bun run sync:preview      # 手动同步 preview 数据（需 ADC + PROD_USER_UI
 - `apps/web/.env.local` 提供 Firebase 变量（不入库）；AI 服务的 API Key 可选，无 key 时对应服务商的模型不可选，仅剩的服务商也无 key 时翻译/造句接口返回 500。
 - 本机没有 terraform/firebase CLI，infra 变更只能靠 CI 的 plan/apply 验证。
 
-## 熟练度校准（导出与拟合）
+## 熟练度校准（导出、回放与发布）
 
-1. `export-review-logs` 每周一自动运行（也可手动触发）：产物 artifact `calibration-export` 内含官方格式的 `revlog.csv`（`card_id,review_time,review_rating`）、原始 `reviews.json` 与校准报告 `report.json`；workflow 日志同时打印可靠性表、Brier 与 AUC。
-2. 可校准样本达到门槛（`lib/calibrationMetrics.ts` 的 `CALIBRATION_MIN_SAMPLES = 500`）时，工作流自动创建 `calibration` 标签的 Issue（标题「熟练度校准样本已达标」，正文含指标与拟合步骤；已有未关闭的同类 Issue 则跳过）；未达标时只留 artifact，不打扰。
-3. 按 Issue 指引本地拟合（需 Python）：`python -m pip install fsrs-optimizer`，再执行 `python -m fsrs_optimizer revlog.csv -y -o weights.json`；结果（优化后的 `w`、`evaluation.json` 指标）与报告一起评估。
-4. 只有指标有改善时才发布：把新权重写入 `apps/web/src/lib/masteryModel.ts` 的 `W`、提升 `MODEL_VERSION`，走功能分支 + Preview 验收后合并，并关闭对应的校准 Issue。
-5. 本地导出（需 ADC 与 `PROD_USER_UID`）：`bun run calibrate:export --out calibration-out`；查看报告 `bun run calibrate:report calibration-out/reviews.json`；预览通知正文 `bun run calibrate:issue calibration-out/report.json --dry-run`。
+1. `export-review-logs` 每周一自动运行（也可手动触发）：artifact `calibration-export` 内含 `revlog.csv`（`card_id,review_time,review_rating`）、`reviews.json`（只含 `cardId` 与 `at/g/h/r/id/s/d`，不含单词原文）与 `report.json`（指标、数据区间与 `modelVersion`）；保留 90 天，workflow 日志同时打印可靠性表、Brier 与 AUC。
+2. 可校准样本达到门槛（`lib/calibrationMetrics.ts` 的 `CALIBRATION_MIN_SAMPLES = 500`）时，工作流维护一个 `calibration` 标签的 Issue：已有未关闭的同类 Issue 就更新其标题与正文（最新运行链接、指标与数据区间）；没有则按 28 天冷却决定是否新建。未达门槛只留 artifact。
+3. 拟合需要 Python 3.11–3.13：`uv venv --python 3.13`，`uv pip install --python <venv>/bin/python fsrs-optimizer==6.5.0`。先用 `bun run calibrate:replay reviews.json --report report.json --fit-csv revlog-fit.csv` 生成训练 CSV（时间轴重写为按卡锚定的日轴，使 optimizer 的日历日差等于线上的 `floor(Δms/DAY)`；同日复习保留顺序）。在输出目录 `revlog-fit_csv/` 下放 `.fsrs_optimizer`：`{"timezone":"UTC","next_day":0,"revlog_start_date":"2006-10-05","preview":"n","filter_out_suspended_cards":"n","enable_short_term":"y"}`，再执行 `python -m fsrs_optimizer revlog-fit.csv -y`。权重从 `evaluation.json` 的 `parameters` 取；`-o` 追加的是带注释的配置块，不是 JSON。
+4. 发布门槛：先用 `bun run calibrate:replay ... --report ...` 校验回放能复现存储的 `reviews[].r` 与 `report.json`；再用 `--weights evaluation.json` 对时间切分 holdout 打分。要求 identity 0 mismatch、holdout ≥300 条、相对 Brier 改善 ≥1%、AUC 降幅 ≤0.01、间隔 p50 比值 0.7–1.4。任一不过就不发布，保留 Issue 并记录数值。
+5. 只发布通过了门槛的向量（训练窗口拟合，不用同一 holdout 做样本内自证）：写入 `apps/web/src/lib/masteryModel.ts` 的 `MODEL_WEIGHTS`、提升 `MODEL_VERSION`，同步 `docs/WORD_FAMILIARITY_ALGORITHM.md` 的派生数值，走功能分支 + Preview 验收后合并，并在对应 Issue 记录运行 ID、窗口、门槛数值与 PR 链接后关闭。
+6. 本地命令（导出需 ADC 与 `PROD_USER_UID`）：`bun run calibrate:export --out calibration-out`；`bun run calibrate:report calibration-out/reviews.json`；`bun run calibrate:replay calibration-out/reviews.json --report calibration-out/report.json`；`bun run calibrate:issue calibration-out/report.json --issues-file issues.json --dry-run`（`--issues-file` 用于离线提供 Issue 列表）。
+7. optimizer 的 `loss_before` 使用库内置默认参数，与线上 `MODEL_WEIGHTS` 可能不同；线上前后对比以 `calibrate:replay` 为准。
 
 ## 事故处理
 

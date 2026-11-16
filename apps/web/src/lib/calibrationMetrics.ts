@@ -1,12 +1,23 @@
 import { DAY_MS } from "@/lib/time";
 
 export interface ReviewLogLike {
+  id?: string | null;
   at: number;
   g: 1 | 2 | 3;
   r: number | null;
 }
 
 export interface CalibrationSample {
+  predicted: number;
+  recalled: boolean;
+}
+
+export interface CalibrationObservation {
+  cardId: string;
+  cardIndex: number;
+  reviewIndex: number;
+  reviewId: string;
+  at: number;
   predicted: number;
   recalled: boolean;
 }
@@ -36,19 +47,19 @@ const DEFAULT_BUCKET_EDGES: readonly number[] = [0, 0.6, 0.7, 0.8, 0.9, 0.95, 1.
 
 const clamp01 = (value: number): number => Math.min(Math.max(value, 0), 1);
 
-export const buildCalibrationSamples = (
+export const calibrationObservations = (
   cards: ReadonlyArray<ReadonlyArray<ReviewLogLike>>,
   minGapMs: number = DAY_MS,
 ): {
-  samples: CalibrationSample[];
+  observations: CalibrationObservation[];
   skippedNoPrediction: number;
   skippedSameDay: number;
 } => {
-  const samples: CalibrationSample[] = [];
+  const observations: CalibrationObservation[] = [];
   let skippedNoPrediction = 0;
   let skippedSameDay = 0;
 
-  for (const card of cards) {
+  for (const [cardIndex, card] of cards.entries()) {
     const ordered = [...card].sort((a, b) => a.at - b.at);
     for (let i = 0; i < ordered.length; i++) {
       const review = ordered[i];
@@ -61,14 +72,40 @@ export const buildCalibrationSamples = (
         skippedSameDay += 1;
         continue;
       }
-      samples.push({
+      const reviewId =
+        typeof review.id === "string" && review.id.length > 0 ? review.id : `${cardIndex}:${i}`;
+      observations.push({
+        cardId: String(cardIndex),
+        cardIndex,
+        reviewIndex: i,
+        reviewId,
+        at: review.at,
         predicted: clamp01(review.r),
         recalled: review.g >= 2,
       });
     }
   }
 
-  return { samples, skippedNoPrediction, skippedSameDay };
+  return { observations, skippedNoPrediction, skippedSameDay };
+};
+
+export const buildCalibrationSamples = (
+  cards: ReadonlyArray<ReadonlyArray<ReviewLogLike>>,
+  minGapMs: number = DAY_MS,
+): {
+  samples: CalibrationSample[];
+  skippedNoPrediction: number;
+  skippedSameDay: number;
+} => {
+  const { observations, skippedNoPrediction, skippedSameDay } = calibrationObservations(
+    cards,
+    minGapMs,
+  );
+  return {
+    samples: observations.map(({ predicted, recalled }) => ({ predicted, recalled })),
+    skippedNoPrediction,
+    skippedSameDay,
+  };
 };
 
 export const brierScore = (samples: ReadonlyArray<CalibrationSample>): number | null => {

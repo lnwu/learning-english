@@ -33,12 +33,15 @@ for (const doc of snapshot.docs) {
       g: review.g,
       h: review.h === true,
       r: typeof review.r === "number" ? review.r : null,
+      id: typeof review.id === "string" ? review.id : null,
+      s: typeof review.s === "number" ? review.s : null,
+      d: typeof review.d === "number" ? review.d : null,
     }))
     .sort((a, b) => a.at - b.at);
 
   if (valid.length === 0) continue;
 
-  cards.push({ cardId: doc.id, word: data.word, reviews: valid });
+  cards.push({ cardId: doc.id, reviews: valid });
   for (const review of valid) {
     rows.push([doc.id, review.at, review.g]);
   }
