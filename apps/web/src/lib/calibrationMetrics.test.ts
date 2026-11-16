@@ -4,6 +4,7 @@ import {
   buildCalibrationReport,
   buildCalibrationSamples,
   calibrationBuckets,
+  calibrationObservations,
   rocAuc,
   type ReviewLogLike,
 } from "@/lib/calibrationMetrics";
@@ -44,6 +45,67 @@ describe("buildCalibrationSamples", () => {
     ]);
 
     expect(samples[0].predicted).toBe(1);
+  });
+});
+
+describe("calibrationObservations", () => {
+  it("保留卡片与复习来源，跳过计数与 buildCalibrationSamples 一致", () => {
+    const start = 1_000_000;
+    const cards = [
+      card([
+        { at: start, g: 3, r: null },
+        { at: start + 10 * MINUTE_MS, g: 3, r: 1.2 },
+        { at: start + 2 * DAY_MS, g: 3, r: 0.9 },
+      ]),
+      card([
+        { at: start + 6 * DAY_MS + MINUTE_MS, g: 1, r: 0.6 },
+        { at: start + 5 * DAY_MS, g: 1, r: -0.2 },
+        { at: start + 6 * DAY_MS, g: 3, r: 0.85 },
+      ]),
+    ];
+
+    const { observations, skippedNoPrediction, skippedSameDay } = calibrationObservations(cards);
+    const { samples } = buildCalibrationSamples(cards);
+
+    expect(observations).toEqual([
+      {
+        cardId: "0",
+        cardIndex: 0,
+        reviewIndex: 2,
+        reviewId: "0:2",
+        at: start + 2 * DAY_MS,
+        predicted: 0.9,
+        recalled: true,
+      },
+      {
+        cardId: "1",
+        cardIndex: 1,
+        reviewIndex: 1,
+        reviewId: "1:1",
+        at: start + 6 * DAY_MS,
+        predicted: 0.85,
+        recalled: true,
+      },
+    ]);
+    expect(skippedNoPrediction).toBe(1);
+    expect(skippedSameDay).toBe(3);
+    expect(samples).toEqual(
+      observations.map(({ predicted, recalled }) => ({ predicted, recalled })),
+    );
+  });
+
+  it("优先用存储的复习 id，缺失时回退到下标", () => {
+    const start = 1_000_000;
+    const { observations } = calibrationObservations([
+      card([
+        { at: start, g: 3, r: null, id: "r-0" },
+        { at: start + DAY_MS, g: 3, r: 0.9, id: "r-1" },
+        { at: start + 2 * DAY_MS, g: 3, r: 0.8, id: "r-2" },
+        { at: start + 3 * DAY_MS, g: 3, r: 0.7 },
+      ]),
+    ]);
+
+    expect(observations.map((observation) => observation.reviewId)).toEqual(["r-1", "r-2", "0:3"]);
   });
 });
 

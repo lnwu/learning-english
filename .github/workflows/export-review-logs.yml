@@ -43,7 +43,7 @@ jobs:
         with:
           name: calibration-export
           path: calibration-out/
-          retention-days: 30
+          retention-days: 90
 
       - name: Notify calibration threshold
         env:

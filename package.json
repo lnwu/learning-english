@@ -15,7 +15,8 @@
     "logs": "bun run scripts/runtime-logs.mjs",
     "calibrate:export": "bun run scripts/export-review-logs.mjs",
     "calibrate:report": "bun run scripts/calibration-report.mjs",
-    "calibrate:issue": "bun run scripts/calibration-issue.mjs"
+    "calibrate:issue": "bun run scripts/calibration-issue.mjs",
+    "calibrate:replay": "bun run scripts/calibration-replay.mjs"
   },
   "workspaces": [
     "apps/*"

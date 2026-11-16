@@ -51,13 +51,18 @@ const MIN_FLUENCY_SAMPLES = 3;
 const SPEED_ANOMALY_FACTOR = 5;
 const WORD_LENGTH_CATEGORY_COUNT = 3;
 
-const W = [
+export const FSRS6_DEFAULT_WEIGHTS: readonly number[] = Object.freeze([
   0.212, 1.2931, 2.3065, 8.2956, 6.4133, 0.8334, 3.0194, 0.001, 1.8722, 0.1666, 0.796, 1.4835,
   0.0614, 0.2629, 1.6483, 0.6014, 1.8729, 0.5425, 0.0912, 0.0658, 0.1542,
-] as const;
+]);
 
-const DECAY = -W[20];
-const FACTOR = 0.9 ** (1 / DECAY) - 1;
+export const MODEL_WEIGHTS: readonly number[] = Object.freeze([
+  0.212, 1.2931, 2.3065, 8.2956, 6.4133, 0.8334, 3.0194, 0.001, 1.8722, 0.1666, 0.796, 1.4835,
+  0.0614, 0.2629, 1.6483, 0.6014, 1.8729, 0.5425, 0.0912, 0.0658, 0.1542,
+]);
+
+const decayOf = (weights: readonly number[]): number => -weights[20];
+const factorOf = (weights: readonly number[]): number => 0.9 ** (1 / decayOf(weights)) - 1;
 const LEARNING_STEP_MINUTES = [1, 10] as const;
 const RELEARNING_STEP_MINUTES = 10;
 const HARD_LEARNING_MINUTES = Math.round((LEARNING_STEP_MINUTES[0] + LEARNING_STEP_MINUTES[1]) / 2);
@@ -97,15 +102,22 @@ export const getLastReviewAt = (memory: WordMemory): number => memory.lastReview
 export const isNewMemory = (memory: WordMemory): boolean =>
   memory.state === "new" || memory.reps === 0;
 
-const recallProbability = (memory: WordMemory, elapsedDays: number): number =>
-  (1 + (FACTOR * elapsedDays) / memory.stability) ** DECAY;
+const recallProbability = (
+  memory: WordMemory,
+  elapsedDays: number,
+  weights: readonly number[],
+): number => (1 + (factorOf(weights) * elapsedDays) / memory.stability) ** decayOf(weights);
 
-export const retrievability = (memory: WordMemory, now: number): number | null => {
+export const retrievability = (
+  memory: WordMemory,
+  now: number,
+  weights: readonly number[] = MODEL_WEIGHTS,
+): number | null => {
   if (isNewMemory(memory) || memory.stability <= 0) return null;
   if (memory.lastReviewAt === null) return null;
   const elapsedDays = Math.floor((now - memory.lastReviewAt) / DAY_MS);
   if (elapsedDays <= 0) return 1;
-  return roundTo(recallProbability(memory, elapsedDays), 8);
+  return roundTo(recallProbability(memory, elapsedDays, weights), 8);
 };
 
 const getElapsedDays = (memory: WordMemory, now: number): number => {
@@ -113,14 +125,20 @@ const getElapsedDays = (memory: WordMemory, now: number): number => {
   return Math.max(0, Math.floor((now - memory.lastReviewAt) / DAY_MS));
 };
 
-const initialStability = (rating: Rating): number => Math.max(W[rating - 1], 0.1);
+const initialStability = (rating: Rating, weights: readonly number[]): number =>
+  Math.max(weights[rating - 1], 0.1);
 
-const initialDifficulty = (rating: number): number => W[4] - Math.exp((rating - 1) * W[5]) + 1;
+const initialDifficulty = (rating: number, weights: readonly number[]): number =>
+  weights[4] - Math.exp((rating - 1) * weights[5]) + 1;
 
-const nextDifficulty = (difficulty: number, rating: Rating): number => {
-  const delta = -W[6] * (rating - 3);
+const nextDifficulty = (difficulty: number, rating: Rating, weights: readonly number[]): number => {
+  const delta = -weights[6] * (rating - 3);
   const next = difficulty + (delta * (10 - difficulty)) / 9;
-  return clamp(roundTo(W[7] * initialDifficulty(4) + (1 - W[7]) * next, 8), 1, 10);
+  return clamp(
+    roundTo(weights[7] * initialDifficulty(4, weights) + (1 - weights[7]) * next, 8),
+    1,
+    10,
+  );
 };
 
 const recallStability = (
@@ -128,15 +146,16 @@ const recallStability = (
   stability: number,
   retrievabilityBefore: number,
   rating: Rating,
+  weights: readonly number[],
 ): number => {
-  const hardPenalty = rating === 2 ? W[15] : 1;
+  const hardPenalty = rating === 2 ? weights[15] : 1;
   const next =
     stability *
     (1 +
-      Math.exp(W[8]) *
+      Math.exp(weights[8]) *
         (11 - difficulty) *
-        stability ** -W[9] *
-        (Math.exp(W[10] * (1 - retrievabilityBefore)) - 1) *
+        stability ** -weights[9] *
+        (Math.exp(weights[10] * (1 - retrievabilityBefore)) - 1) *
         hardPenalty);
   return clamp(roundTo(next, 8), MIN_STABILITY, MAX_STABILITY);
 };
@@ -145,41 +164,60 @@ const forgetStability = (
   difficulty: number,
   stability: number,
   retrievabilityBefore: number,
+  weights: readonly number[],
 ): number => {
   const stabilityAfterFail =
-    W[11] *
-    difficulty ** -W[12] *
-    ((stability + 1) ** W[13] - 1) *
-    Math.exp(W[14] * (1 - retrievabilityBefore));
-  const bound = stability / Math.exp(W[17] * W[18]);
+    weights[11] *
+    difficulty ** -weights[12] *
+    ((stability + 1) ** weights[13] - 1) *
+    Math.exp(weights[14] * (1 - retrievabilityBefore));
+  const bound = stability / Math.exp(weights[17] * weights[18]);
   return clamp(roundTo(Math.min(stabilityAfterFail, bound), 8), MIN_STABILITY, MAX_STABILITY);
 };
 
-const shortTermStability = (stability: number, rating: Rating): number => {
-  const factor = stability ** -W[19] * Math.exp(W[17] * (rating - 3 + W[18]));
+const shortTermStability = (
+  stability: number,
+  rating: Rating,
+  weights: readonly number[],
+): number => {
+  const factor = stability ** -weights[19] * Math.exp(weights[17] * (rating - 3 + weights[18]));
   const masked = rating >= 2 ? Math.max(factor, 1) : factor;
   return clamp(roundTo(stability * masked, 8), MIN_STABILITY, MAX_STABILITY);
 };
 
-export const intervalDays = (stability: number): number => {
-  const modifier = (REQUEST_RETENTION ** (1 / DECAY) - 1) / FACTOR;
+export const intervalDays = (
+  stability: number,
+  weights: readonly number[] = MODEL_WEIGHTS,
+): number => {
+  const modifier = (REQUEST_RETENTION ** (1 / decayOf(weights)) - 1) / factorOf(weights);
   return Math.min(Math.max(1, Math.round(stability * modifier)), MAX_STABILITY);
 };
 
-export const reviewMemory = (memory: WordMemory, rating: Rating, now: number): WordMemory => {
+export const reviewMemory = (
+  memory: WordMemory,
+  rating: Rating,
+  now: number,
+  weights: readonly number[] = MODEL_WEIGHTS,
+): WordMemory => {
   const isNew = isNewMemory(memory);
   const elapsedDays = getElapsedDays(memory, now);
-  const retrievabilityBefore = isNew ? 0 : recallProbability(memory, elapsedDays);
+  const retrievabilityBefore = isNew ? 0 : recallProbability(memory, elapsedDays, weights);
   const stability = isNew
-    ? initialStability(rating)
+    ? initialStability(rating, weights)
     : elapsedDays === 0
-      ? shortTermStability(memory.stability, rating)
+      ? shortTermStability(memory.stability, rating, weights)
       : rating === 1
-        ? forgetStability(memory.difficulty, memory.stability, retrievabilityBefore)
-        : recallStability(memory.difficulty, memory.stability, retrievabilityBefore, rating);
+        ? forgetStability(memory.difficulty, memory.stability, retrievabilityBefore, weights)
+        : recallStability(
+            memory.difficulty,
+            memory.stability,
+            retrievabilityBefore,
+            rating,
+            weights,
+          );
   const difficulty = isNew
-    ? clamp(initialDifficulty(rating), 1, 10)
-    : nextDifficulty(memory.difficulty, rating);
+    ? clamp(initialDifficulty(rating, weights), 1, 10)
+    : nextDifficulty(memory.difficulty, rating, weights);
 
   let state: MemoryState = memory.state;
   let learningSteps = memory.learningSteps;
@@ -207,7 +245,7 @@ export const reviewMemory = (memory: WordMemory, rating: Rating, now: number): W
     } else if (memory.learningSteps >= LAST_LEARNING_STEP) {
       state = "review";
       learningSteps = 0;
-      due = now + intervalDays(stability) * DAY_MS;
+      due = now + intervalDays(stability, weights) * DAY_MS;
     } else {
       learningSteps = memory.learningSteps + 1;
       due = now + LEARNING_STEP_MINUTES[learningSteps] * MINUTE_MS;
@@ -221,7 +259,7 @@ export const reviewMemory = (memory: WordMemory, rating: Rating, now: number): W
     } else {
       state = "review";
       learningSteps = 0;
-      due = now + intervalDays(stability) * DAY_MS;
+      due = now + intervalDays(stability, weights) * DAY_MS;
     }
   } else {
     if (rating === 1) {
@@ -232,7 +270,7 @@ export const reviewMemory = (memory: WordMemory, rating: Rating, now: number): W
     } else {
       state = "review";
       learningSteps = 0;
-      due = now + intervalDays(stability) * DAY_MS;
+      due = now + intervalDays(stability, weights) * DAY_MS;
     }
   }
 

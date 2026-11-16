@@ -7,7 +7,7 @@
 
 - `apps/web`：Next.js（App Router）+ Firebase（Auth + Firestore）+ MobX + Tailwind CSS
 - `infra`：Terraform 管理 GCP 项目、Identity Platform、Firestore 与安全规则
-- `scripts`：预览同步（`sync-preview-words.mjs`）与校准工具（`export-review-logs.mjs`、`calibration-report.mjs`、`calibration-issue.mjs`）
+- `scripts`：预览同步（`sync-preview-words.mjs`）与校准工具（`export-review-logs.mjs`、`calibration-report.mjs`、`calibration-issue.mjs`、`calibration-replay.mjs`）
 
 ## 本地开发
 
@@ -32,5 +32,5 @@ Vercel preview 环境使用匿名登录，所有用户共享 `users/preview` 词
 ## 生产环境注意
 
 - API 限流与翻译缓存在未配置 Upstash Redis 时回退到单实例内存实现，多实例下不生效。生产环境请通过 Vercel Marketplace 安装 Upstash for Redis（自动注入 `KV_REST_API_*` 环境变量）。
-- 熟练度校准：`Export Review Logs` 工作流每周检查可校准样本，达标时自动创建 Issue；导出、拟合与权重发布流程见 `docs/DEPLOYMENT.md`「熟练度校准」。
+- 熟练度校准：工作流每周检查可校准样本，达标时自动创建或更新 Issue（关闭后 28 天内不新建）；导出、拟合、回放门槛与权重发布流程见 `docs/DEPLOYMENT.md`「熟练度校准」。
 

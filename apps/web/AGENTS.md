@@ -23,7 +23,7 @@
 - `handleApiPost` 每个请求记一条 `api.request` 并下发 `x-request-id` 与错误体里的 `requestId`，`handle` 的 context 是 `{ uid, requestId }`；不要在路由里重复记请求级日志。
 - 线上排查用 `bun run logs`（包装 `vercel logs --json`，Hobby 只保留 1 小时），用法见 `docs/DEPLOYMENT.md`「日志与可观测性」。
 - 修改翻译 prompt 或默认模型时，必须同步提升 `lib/translationCache.ts` 的缓存 key 前缀，避免长期复用旧释义。
-- 修改 `lib/masteryModel.ts` 的 FSRS 权重时必须提升 `MODEL_VERSION`，并按 `docs/DEPLOYMENT.md`「熟练度校准」的流程评估与发布。
+- 修改 `lib/masteryModel.ts` 的 FSRS 权重时必须提升 `MODEL_VERSION`，并用 `bun run calibrate:replay` 通过 `docs/DEPLOYMENT.md`「熟练度校准」的应用级回放门槛后再发布。
 
 ## TypeScript 7
 
