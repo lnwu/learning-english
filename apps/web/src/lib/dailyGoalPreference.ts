@@ -42,6 +42,13 @@ export const resetDailyGoalPreference = (): void => {
 
 export const saveDailyGoalPreference = async (userId: string, minutes: number): Promise<void> => {
   const next = normalizeDailyGoalMinutes(minutes);
-  if (state.applySave(userId, next)) notify();
-  await setDoc(doc(getDb(), "users", userId), { dailyGoalMinutes: next }, { merge: true });
+  const previous = state.get();
+  const { changed, token } = state.applySave(userId, next);
+  if (changed) notify();
+  try {
+    await setDoc(doc(getDb(), "users", userId), { dailyGoalMinutes: next }, { merge: true });
+  } catch (error) {
+    if (state.failSave(token, previous)) notify();
+    throw error;
+  }
 };

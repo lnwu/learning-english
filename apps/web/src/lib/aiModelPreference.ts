@@ -40,6 +40,13 @@ export const resetAiModelPreference = (): void => {
 };
 
 export const saveAiModelPreference = async (userId: string, model: string): Promise<void> => {
-  if (state.applySave(userId, model)) notify();
-  await setDoc(doc(getDb(), "users", userId), { aiModel: model }, { merge: true });
+  const previous = state.get();
+  const { changed, token } = state.applySave(userId, model);
+  if (changed) notify();
+  try {
+    await setDoc(doc(getDb(), "users", userId), { aiModel: model }, { merge: true });
+  } catch (error) {
+    if (state.failSave(token, previous)) notify();
+    throw error;
+  }
 };

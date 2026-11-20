@@ -3,7 +3,8 @@ export interface PreferenceState<T> {
   beginLoad: (userId: string) => number | null;
   applyLoad: (token: number, value: T) => boolean;
   failLoad: (token: number) => void;
-  applySave: (userId: string, value: T) => boolean;
+  applySave: (userId: string, value: T) => { changed: boolean; token: number };
+  failSave: (token: number, previous: T) => boolean;
   reset: () => boolean;
 }
 
@@ -31,8 +32,16 @@ export const createPreferenceState = <T>(initial: T): PreferenceState<T> => {
     applySave: (userId, value) => {
       loadedUserId = userId;
       generation += 1;
-      if (Object.is(value, current)) return false;
+      if (Object.is(value, current)) return { changed: false, token: generation };
       current = value;
+      return { changed: true, token: generation };
+    },
+    failSave: (token, previous) => {
+      if (token !== generation) return false;
+      loadedUserId = null;
+      generation += 1;
+      if (Object.is(previous, current)) return false;
+      current = previous;
       return true;
     },
     reset: () => {

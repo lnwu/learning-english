@@ -36,9 +36,36 @@ describe("createPreferenceState", () => {
   it("保存之后到达的旧结果不覆盖刚保存的值", () => {
     const state = createPreferenceState(30);
     const token = state.beginLoad("a") ?? 0;
-    expect(state.applySave("a", 45)).toBe(true);
+    expect(state.applySave("a", 45).changed).toBe(true);
     expect(state.applyLoad(token, 30)).toBe(false);
     expect(state.get()).toBe(45);
+  });
+
+  it("保存失败后回到保存前的值，并允许重新加载", () => {
+    const state = createPreferenceState(30);
+    const { token } = state.applySave("a", 45);
+    expect(state.failSave(token, 30)).toBe(true);
+    expect(state.get()).toBe(30);
+    expect(state.beginLoad("a")).not.toBeNull();
+  });
+
+  it("过期的保存失败不回滚更新的一次保存", () => {
+    const state = createPreferenceState(30);
+    const first = state.applySave("a", 45);
+    const second = state.applySave("a", 60);
+    expect(state.failSave(first.token, 30)).toBe(false);
+    expect(state.get()).toBe(60);
+    expect(state.beginLoad("a")).toBeNull();
+    expect(state.failSave(second.token, 45)).toBe(true);
+    expect(state.get()).toBe(45);
+  });
+
+  it("保存失败但值本来没变时不重发通知，仍允许重新加载", () => {
+    const state = createPreferenceState(30);
+    const { changed, token } = state.applySave("a", 30);
+    expect(changed).toBe(false);
+    expect(state.failSave(token, 30)).toBe(false);
+    expect(state.beginLoad("a")).not.toBeNull();
   });
 
   it("加载失败后允许重试", () => {
