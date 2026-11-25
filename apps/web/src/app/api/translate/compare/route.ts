@@ -35,7 +35,7 @@ export async function POST(request: Request) {
               sources: entry.sources,
             };
           } catch (error) {
-            const code = error instanceof AiServiceError ? error.code : "sentenceGenerateFailed";
+            const code = error instanceof AiServiceError ? error.code : "compareFailed";
             return { model, code, error: apiErrorText(code) };
           }
         }),
